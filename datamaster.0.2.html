@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urbanism+ Feed & Hashtag Analysis</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Ensure html and body take full viewport height and remove default margins/paddings */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #dae2e8; /* Changed: New modern background color for the whole page */
+            color: #333;
+            padding: 20px; /* Padding around the main content area */
+            display: flex;
+            flex-direction: column; /* Arrange children vertically */
+            box-sizing: border-box; /* Include padding in height calculation */
+        }
+        .main-wrapper {
+            display: flex;
+            flex-direction: column; /* Stack sections on small screens */
+            gap: 30px; /* Space between the two main sections */
+            width: 100%;
+            max-width: 1200px; /* Wider max-width for dual content */
+            margin: auto;
+            flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
+            overflow: hidden; /* Hide scrollbar for main-wrapper, let cards handle it */
+        }
+        @media (min-width: 1024px) { /* Side-by-side on larger screens */
+            .main-wrapper {
+                flex-direction: row;
+            }
+            /* Adjusted flex-grow values for different widths */
+            .section-wrapper:first-child { /* Iframe section */
+                flex: 0.68; /* Adjusted for wider rankings card */
+                min-width: 45%;
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+            }
+            .section-wrapper:last-child { /* Rankings section */
+                flex: 1.32; /* Increased by ~20% of its previous value (1.1 * 1.2 = 1.32) */
+                min-width: 45%; /* Ensure it doesn't get too narrow */
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+            }
+        }
+
+        .section-card {
+            background-color: #f0f0f3; /* Background color for the cards */
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            padding: 25px;
+            display: flex;
+            flex-direction: column; /* Crucial for internal flex layout */
+            flex-grow: 1; /* Allow cards to grow and fill space */
+            overflow-y: auto; /* Add scrollbar to this card if content overflows */
+            position: relative; /* Needed for absolute positioning of connection status */
+        }
+        /* Specific styling for the iframe's parent card to control its height and overflow */
+        .main-wrapper > .section-wrapper:first-child .section-card {
+            /* overflow-y: auto is already on .section-card, no need to duplicate */
+        }
+
+        /* Stylish Title for main sections */
+        .stylish-section-title {
+            font-size: 2rem; /* Larger title */
+            font-weight: 800; /* Extra bold */
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex; /* Use flexbox for image and text alignment */
+            align-items: center; /* Vertically align items */
+            justify-content: center; /* Horizontally center content */
+            gap: 10px; /* Space between image and text */
+            padding-bottom: 10px; /* Space for a subtle border/shadow */
+            border-bottom: 3px solid #3498db; /* Accent border */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow below the title */
+            border-radius: 4px; /* Slightly rounded bottom border */
+            flex-shrink: 0; /* Prevent title from shrinking */
+        }
+        .stylish-section-title img {
+            height: 40px; /* Adjust image size */
+            width: auto;
+            border-radius: 8px; /* Slightly rounded image */
+        }
+
+        .post-card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid #3498db; /* Accent color */
+        }
+        .post-author {
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        .post-content {
+            color: #444;
+            line-height: 1.5;
+        }
+        .post-timestamp {
+            font-size: 0.85rem;
+            color: #777;
+            margin-top: 10px;
+            text-align: right;
+        }
+        /* Adjusted analysis-item for general use, but link-cards will override */
+        .analysis-item {
+            display: flex;
+            align-items: flex-start; /* Align items to the top if label wraps */
+            padding: 4px 0; /* Changed: Smaller vertical padding for hashtags */
+            border-bottom: 1px dashed #eee;
+            gap: 10px; /* Add a small gap between label and value */
+        }
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+        .analysis-label {
+            font-weight: 500;
+            color: #555;
+            flex-grow: 1; /* Allow it to grow */
+            word-break: break-word; /* Ensure long words break */
+            min-width: 0; /* Important for flex items to shrink properly */
+        }
+        .analysis-value {
+            font-weight: bold;
+            color: #2c3e50;
+            flex-shrink: 0; /* Prevent it from shrinking */
+            white-space: nowrap; /* Keep the count on one line */
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+            color: #666;
+        }
+        .feed-name-display { /* This class is no longer used for display, but kept for consistency */
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #555;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .iframe-embed {
+            width: 100%;
+            height: 100%; /* Make iframe take full height of its container */
+            min-height: 500px; /* Ensure a minimum height for the iframe */
+            border: none;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            flex-grow: 1; /* Allow iframe to grow within its container */
+            /* The iframe itself will handle its own scrolling if its content overflows */
+        }
+        .timeframe-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px; /* Changed: Reduced margin-bottom */
+            margin-top: 10px; /* Added: Small margin-top to separate from title/status */
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            flex-shrink: 0; /* Prevent selector from shrinking */
+        }
+        .timeframe-selector label {
+            background-color: #e2e8f0;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #4a5568;
+            transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap; /* Prevent text from wrapping inside label */
+        }
+        .timeframe-selector input[type="radio"] {
+            display: none;
+        }
+        .timeframe-selector input[type="radio"]:checked + label {
+            background-color: #3498db;
+            color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        /* Modern Link Card Styling */
+        .link-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            padding: 10px; /* Changed: Smaller vertical padding */
+            margin-bottom: 8px; /* Changed: Smaller margin-bottom */
+            transition: all 0.3s ease; /* Smooth transitions for hover effects */
+            display: block; /* Ensure it behaves like a block for full clickability */
+            text-decoration: none; /* Remove underline from link */
+            color: inherit; /* Inherit text color */
+            border: 1px solid #e2e8f0; /* Subtle border */
+        }
+        .link-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+            border-color: #3498db; /* Highlight border on hover */
+        }
+        .link-card-headline {
+            font-weight: 600; /* Slightly bolder */
+            font-size: 1rem; /* Slightly smaller headline for compactness */
+            color: #2c3e50; /* Darker text for headline */
+            margin-bottom: 4px; /* Reduced margin */
+            line-height: 1.3;
+            white-space: nowrap; /* Added for truncation */
+            overflow: hidden; /* Added for truncation */
+            text-overflow: ellipsis; /* Added for truncation */
+        }
+        .link-card-description { /* New style for description */
+            font-size: 0.75rem; /* Smaller font for description */
+            color: #777;
+            margin-bottom: 6px; /* Space below description */
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-box-orient: vertical;
+        }
+        .link-card-url {
+            font-size: 0.8rem; /* Smaller URL text */
+            color: #666;
+            white-space: nowrap; /* Keep URL on one line */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            margin-bottom: 6px; /* Reduced margin */
+        }
+        .link-card-count {
+            font-size: 0.9rem; /* Slightly smaller count */
+            font-weight: bold;
+            color: #3498db; /* Accent color for count */
+            text-align: right;
+        }
+
+        /* Modern Domain Card Styling (similar to link-card) */
+        .domain-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            padding: 10px; /* Changed: Smaller vertical padding */
+            margin-bottom: 8px; /* Changed: Smaller margin-bottom */
+            transition: all 0.3s ease; /* Smooth transitions for hover effects */
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid #e2e8f0; /* Subtle border */
+        }
+        .domain-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+            border-color: #3498db; /* Highlight border on hover */
+        }
+        .domain-card-name {
+            font-weight: 600;
+            font-size: 1rem; /* Slightly smaller name for compactness */
+            color: #2c3e50;
+            margin-bottom: 4px; /* Reduced margin */
+            line-height: 1.3;
+            white-space: nowrap; /* Keep on one line */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+        }
+        .domain-card-count {
+            font-size: 0.9rem; /* Slightly smaller count */
+            font-weight: bold;
+            color: #3498db;
+            text-align: right;
+        }
+        /* Style for connected status text */
+        .text-green-600 {
+            font-weight: 600;
+        }
+
+        /* Stylish sub-headers for analysis sections */
+        .stylish-subheader {
+            font-size: 1.5rem; /* Slightly larger than before */
+            font-weight: 700; /* Bolder */
+            color: #34495e; /* Darker grey for contrast */
+            margin-bottom: 15px;
+            text-align: center;
+            position: relative; /* For pseudo-elements if needed */
+            padding-bottom: 8px;
+            flex-shrink: 0; /* Prevent subheader from shrinking */
+        }
+        .stylish-subheader::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            width: 50px; /* Short underline */
+            height: 3px;
+            background-color: #3498db; /* Accent color */
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <!-- Section for Iframe Embed (Visual Feed) - Now on the left -->
+        <div class="section-wrapper">
+            <div class="section-card">
+                <h2 class="stylish-section-title">
+                    <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Urbanism+ Logo">
+                    Urbanism+
+                </h2>
+                <iframe
+                    src="https://graze.social/feeds/embed/3654"
+                    title="Urbanism+ Social Feed"
+                    class="iframe-embed"
+                    allowFullScreen
+                ></iframe>
+            </div>
+        </div>
+
+        <!-- Section for Live Analysis (Contrails data processed in background) - Now on the right -->
+        <div class="section-wrapper">
+            <div class="section-card">
+                <h2 class="stylish-section-title">Rankings</h2>
+                <!-- Connection status moved to top right within the card -->
+                <div id="connectionStatus" class="absolute top-4 right-4 text-sm text-gray-600">
+                    Initializing...
+                </div>
+                
+                <!-- The actual live posts container is now hidden, but still updated -->
+                <div id="postsContainer" class="flex-grow overflow-y-auto border border-gray-200 rounded-md p-2" style="max-height: 500px; display: none;">
+                    <p id="noPostsMessage" class="text-gray-500 text-center py-4" style="display: none;">Waiting for new posts...</p>
+                </div>
+                <div id="loadingIndicator" class="loading-indicator" style="display: none;">Connecting to feed...</div>
+
+                <!-- Timeframe Selector - Moved up and spacing adjusted -->
+                <div class="timeframe-selector">
+                    <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
+                    <label for="timeframeAllTime">All Time</label>
+                    <input type="radio" id="timeframeDay" name="timeframe" value="day">
+                    <label for="timeframeDay">Day</label>
+                    <input type="radio" id="timeframeWeek" name="timeframe" value="week">
+                    <label for="timeframeWeek">Week</label>
+                    <input type="radio" id="timeframeMonth" name="timeframe" value="month">
+                    <label for="timeframeMonth">Month</label>
+                </div>
+
+                <!-- Changed: Grid for rankings to support 2x2 layout on medium screens and above -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div>
+                        <h3 class="stylish-subheader">Top Hashtags</h3>
+                        <div id="topTerms">
+                            <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="stylish-subheader">Top Links</h3>
+                        <div id="topLinks">
+                            <p class="text-gray-500 text-center">No links yet to analyze.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="stylish-subheader">Top Sites</h3>
+                        <div id="topDomains">
+                            <p class="text-gray-500 text-center">No domains yet to analyze.</p>
+                        </div>
+                    </div>
+                    <!-- New section for Content Type Breakdown -->
+                    <div>
+                        <h3 class="stylish-subheader">Content Type Breakdown</h3>
+                        <div id="contentTypeBreakdown">
+                            <p class="text-gray-500 text-center">No content types yet to analyze.</p>
+                        </div>
+                    </div>
+                    <!-- New section for Link Cards -->
+                    <div>
+                        <h3 class="stylish-subheader">Link Cards (with Title & Description)</h3>
+                        <div id="linkCards">
+                            <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
+                        </div>
+                    </div>
+                    <!-- New section for Image Cards -->
+                    <div>
+                        <h3 class="stylish-subheader">Top Images</h3>
+                        <div id="imageCards">
+                            <p class="text-gray-500 text-center">No image posts yet to display.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase CDN imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration (Provided by User) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR1S1n8FPwuzeKgNhcRuMwjEEAAsEA9FE",
+            authDomain: "uplus-7b091.firebaseapp.com",
+            projectId: "uplus-7b091",
+            storageBucket: "uplus-7b091.firebasestorage.app",
+            messagingSenderId: "1085519102068",
+            appId: "1:1085519102068:web:5c66ffc28323dbb7981121",
+            measurementId: "G-SHJ3T3PWXW"
+        };
+
+        // --- Global variables (derived from firebaseConfig or defaults) ---
+        const appId = firebaseConfig.projectId; 
+
+        // --- Firebase Instances ---
+        let app;
+        let db;
+        let auth;
+        let currentUserId = null;
+        let isFirebaseReady = false; 
+
+        // --- Configuration ---
+        const GRAZE_FEED_URI = 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaotfjzjplna';
+        const WEBSOCKET_URL = `wss://api.graze.social/app/contrail?feed=${GRAZE_FEED_URI}`;
+        const RECONNECT_DELAY = 5000; 
+
+        // --- DOM Elements ---
+        const postsContainer = document.getElementById('postsContainer');
+        const connectionStatusElem = document.getElementById('connectionStatus');
+        const loadingIndicatorElem = document.getElementById('loadingIndicator');
+        const topTermsDiv = document.getElementById('topTerms'); 
+        const topLinksDiv = document.getElementById('topLinks'); 
+        const topDomainsDiv = document.getElementById('topDomains'); 
+        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown');
+        const linkCardsDiv = document.getElementById('linkCards');
+        const imageCardsDiv = document.getElementById('imageCards');
+        const noPostsMessage = document.getElementById('noPostsMessage');
+
+        // --- Analysis Data (synced with Firestore) ---
+        // These will hold the ALL-TIME cumulative counts from the 'summary' docum
