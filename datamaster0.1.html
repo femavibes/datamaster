@@ -356,7 +356,7 @@
                 const match = text.match(/<title[^>]*>([^<]+)<\/title>/i);
                 return match && match[1] ? match[1].trim() : null;
             } catch (e) {
-                console.error(`Error fetching headline for ${url}:`, e);
+                console.warn(`CORS or network error fetching headline for ${url}:`, e.message);
                 // Important: Log a warning about CORS if it's likely the cause
                 if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
                     console.warn(`CORS likely prevented fetching headline for ${url}. Headline will not be displayed.`);
@@ -594,7 +594,11 @@
                 // Initialize or update the link entry in accumulatedUpdates
                 if (!accumulatedUpdates.linkCounts[extractedLink]) {
                     accumulatedUpdates.linkCounts[extractedLink] = { count: 0, headline: null };
-                    // Asynchronously fetch headline for new links
+                }
+                accumulatedUpdates.linkCounts[extractedLink].count += 1; // Increment count
+
+                // Asynchronously fetch headline for new links, but only if not already present
+                if (accumulatedUpdates.linkCounts[extractedLink].headline === null) {
                     fetchHeadline(extractedLink).then(headline => {
                         if (headline) {
                             // Update the headline in accumulatedUpdates once fetched
@@ -603,7 +607,6 @@
                         }
                     });
                 }
-                accumulatedUpdates.linkCounts[extractedLink].count += 1; // Increment count
 
                 const baseDomain = getBaseDomain(extractedLink);
                 if (baseDomain && baseDomain !== 'Invalid Domain') {
@@ -657,7 +660,7 @@
                         }
                         currentSummaryData.linkCounts[url].count = (currentSummaryData.linkCounts[url].count || 0) + count;
                         // Only update headline if a new one was fetched and it's not null,
-                        // or if the existing one is null.
+                        // or if the existing one in Firestore is null.
                         if (headline && currentSummaryData.linkCounts[url].headline === null) {
                             currentSummaryData.linkCounts[url].headline = headline;
                         }
@@ -690,6 +693,8 @@
                             currentDailyData.linkCounts[url] = { count: 0, headline: null };
                         }
                         currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
+                        // Only update headline if a new one was fetched and it's not null,
+                        // or if the existing one in Firestore is null.
                         if (headline && currentDailyData.linkCounts[url].headline === null) {
                             currentDailyData.linkCounts[url].headline = headline;
                         }
