@@ -9,12 +9,13 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #e9ecef; /* New modern background color for the whole page */
+            background-color: #dae2e8; /* Changed: New modern background color for the whole page */
             color: #333;
             padding: 20px;
             display: flex;
-            justify-content: center;
-            min-height: 100vh;
+            flex-direction: column; /* Arrange children vertically */
+            height: 100vh; /* Ensure body takes full viewport height */
+            overflow: hidden; /* Hide body scrollbar, internal elements will scroll */
             box-sizing: border-box;
         }
         .main-wrapper {
@@ -25,6 +26,7 @@
             max-width: 1200px; /* Wider max-width for dual content */
             margin: auto;
             flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
+            /* Removed overflow-y: auto here, as individual cards will handle their own scrolling */
         }
         @media (min-width: 1024px) { /* Side-by-side on larger screens */
             .main-wrapper {
@@ -45,13 +47,14 @@
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
             padding: 25px;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* Crucial for internal flex layout */
             flex-grow: 1; /* Allow cards to grow and fill space */
+            overflow-y: auto; /* Add scrollbar to this card if content overflows */
         }
         /* Specific styling for the iframe's parent card to control its height and overflow */
-        /* Removed max-height to allow it to expand to the bottom of the page */
+        /* No specific max-height needed here, flex-grow will handle it */
         .main-wrapper > .section-wrapper:first-child .section-card {
-            overflow-y: auto; /* Add scrollbar to this card if content overflows */
+            /* overflow-y: auto is already on .section-card, no need to duplicate */
         }
 
         /* Stylish Title for main sections */
@@ -69,6 +72,7 @@
             border-bottom: 3px solid #3498db; /* Accent border */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow below the title */
             border-radius: 4px; /* Slightly rounded bottom border */
+            flex-shrink: 0; /* Prevent title from shrinking */
         }
         .stylish-section-title img {
             height: 40px; /* Adjust image size */
@@ -139,12 +143,13 @@
         }
         .iframe-embed {
             width: 100%;
-            /* Removed height: 100%; to avoid potential double scrollbars */
+            height: 100%; /* Make iframe take full height of its container */
             min-height: 500px; /* Ensure a minimum height for the iframe */
             border: none;
             border-radius: 8px;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
             flex-grow: 1; /* Allow iframe to grow within its container */
+            /* The iframe itself will handle its own scrolling if its content overflows */
         }
         .timeframe-selector {
             display: flex;
@@ -152,6 +157,7 @@
             gap: 10px;
             margin-bottom: 20px;
             flex-wrap: wrap; /* Allow wrapping on small screens */
+            flex-shrink: 0; /* Prevent selector from shrinking */
         }
         .timeframe-selector label {
             background-color: #e2e8f0;
@@ -254,6 +260,7 @@
             text-align: center;
             position: relative; /* For pseudo-elements if needed */
             padding-bottom: 8px;
+            flex-shrink: 0; /* Prevent subheader from shrinking */
         }
         .stylish-subheader::after {
             content: '';
@@ -283,7 +290,6 @@
                     class="iframe-embed"
                     allowFullScreen
                 ></iframe>
-                <!-- Removed the text paragraph here -->
             </div>
         </div>
 
