@@ -7,16 +7,23 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Ensure html and body take full viewport height and remove default margins/paddings */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #dae2e8; /* Changed: New modern background color for the whole page */
+            background-color: #dae2e8; /* New modern background color for the whole page */
             color: #333;
-            padding: 20px;
+            padding: 20px; /* Padding around the main content area */
             display: flex;
             flex-direction: column; /* Arrange children vertically */
-            height: 100vh; /* Ensure body takes full viewport height */
-            overflow: hidden; /* Hide body scrollbar, internal elements will scroll */
-            box-sizing: border-box;
+            box-sizing: border-box; /* Include padding in height calculation */
+            /* Removed height: 100vh; and overflow: hidden; from body.
+               Instead, let main-wrapper handle the height and overflow. */
         }
         .main-wrapper {
             display: flex;
@@ -26,7 +33,7 @@
             max-width: 1200px; /* Wider max-width for dual content */
             margin: auto;
             flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
-            /* Removed overflow-y: auto here, as individual cards will handle their own scrolling */
+            overflow: hidden; /* Hide scrollbar for main-wrapper, let cards handle it */
         }
         @media (min-width: 1024px) { /* Side-by-side on larger screens */
             .main-wrapper {
