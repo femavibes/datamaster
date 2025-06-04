@@ -9,7 +9,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
+            background-color: #e9ecef; /* Changed: New modern background color for the whole page */
             color: #333;
             padding: 20px;
             display: flex;
@@ -38,7 +38,7 @@
         }
 
         .section-card {
-            background-color: #ffffff;
+            background-color: #f0f0f3; /* Background color for the cards */
             border-radius: 12px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
             padding: 25px;
@@ -46,13 +46,28 @@
             flex-direction: column;
             flex-grow: 1; /* Allow cards to grow and fill space */
         }
-        .section-title {
-            font-size: 1.75rem; /* Larger title */
-            font-weight: bold;
+        /* Stylish Title for main sections */
+        .stylish-section-title {
+            font-size: 2rem; /* Larger title */
+            font-weight: 800; /* Extra bold */
             color: #2c3e50;
             margin-bottom: 20px;
             text-align: center;
+            display: flex; /* Use flexbox for image and text alignment */
+            align-items: center; /* Vertically align items */
+            justify-content: center; /* Horizontally center content */
+            gap: 10px; /* Space between image and text */
+            padding-bottom: 10px; /* Space for a subtle border/shadow */
+            border-bottom: 3px solid #3498db; /* Accent border */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow below the title */
+            border-radius: 4px; /* Slightly rounded bottom border */
         }
+        .stylish-section-title img {
+            height: 40px; /* Adjust image size */
+            width: auto;
+            border-radius: 8px; /* Slightly rounded image */
+        }
+
         .post-card {
             background-color: #f9f9f9;
             border-radius: 8px;
@@ -220,6 +235,28 @@
         .text-green-600 {
             font-weight: 600;
         }
+
+        /* Stylish sub-headers for analysis sections */
+        .stylish-subheader {
+            font-size: 1.5rem; /* Slightly larger than before */
+            font-weight: 700; /* Bolder */
+            color: #34495e; /* Darker grey for contrast */
+            margin-bottom: 15px;
+            text-align: center;
+            position: relative; /* For pseudo-elements if needed */
+            padding-bottom: 8px;
+        }
+        .stylish-subheader::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            width: 50px; /* Short underline */
+            height: 3px;
+            background-color: #3498db; /* Accent color */
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
@@ -227,7 +264,10 @@
         <!-- Section for Iframe Embed (Visual Feed) - Now on the left -->
         <div class="section-wrapper">
             <div class="section-card">
-                <h2 class="section-title">Urbanism+ Feed</h2>
+                <h2 class="stylish-section-title">
+                    <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Urbanism+ Logo">
+                    Urbanism+
+                </h2>
                 <iframe
                     src="https://graze.social/feeds/embed/3654"
                     title="Urbanism+ Social Feed"
@@ -243,7 +283,7 @@
         <!-- Section for Live Analysis (Contrails data processed in background) - Now on the right -->
         <div class="section-wrapper">
             <div class="section-card">
-                <h2 class="section-title">Urbanism+</h2>
+                <h2 class="stylish-section-title">Rankings</h2>
                 <!-- Connection status moved here -->
                 <div id="connectionStatus" class="text-center mt-4 mb-6 text-sm text-gray-600">
                     Initializing...
@@ -269,19 +309,19 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Top Hashtags</h3>
+                        <h3 class="stylish-subheader">Top Hashtags</h3>
                         <div id="topTerms">
                             <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
                         </div>
                     </div>
                     <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Top Links</h3>
+                        <h3 class="stylish-subheader">Top Links</h3>
                         <div id="topLinks">
                             <p class="text-gray-500 text-center">No links yet to analyze.</p>
                         </div>
                     </div>
                     <div class="md:col-span-2">
-                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Top Websites (Domains)</h3>
+                        <h3 class="stylish-subheader">Top Websites (Domains)</h3>
                         <div id="topDomains">
                             <p class="text-gray-500 text-center">No domains yet to analyze.</p>
                         </div>
@@ -893,7 +933,6 @@
                 termsToDisplay = allTimeTermCounts;
                 linksToDisplay = allTimeLinkCounts;
                 domainsToDisplay = allTimeDomainCounts;
-                // Changed to just 'Connected'
                 connectionStatusElem.textContent = 'Connected';
             } else {
                 const today = new Date();
@@ -936,7 +975,7 @@
                             domainsToDisplay[domain] = (domainsToDisplay[domain] || 0) + dailyDomains[domain];
                         }
                     });
-                    connectionStatusElem.textContent = `Connected (${timeframe} Data)`;
+                    connectionStatusElem.textContent = 'Connected'; // Changed to just 'Connected'
                 } catch (error) {
                     console.error(`Error fetching ${timeframe} data:`, error);
                     connectionStatusElem.textContent = `Error fetching ${timeframe} data: ${error.message}`;
