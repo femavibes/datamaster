@@ -215,6 +215,20 @@
             color: #2c3e50; /* Darker text for headline */
             margin-bottom: 4px; /* Reduced margin */
             line-height: 1.3;
+            white-space: nowrap; /* Added for truncation */
+            overflow: hidden; /* Added for truncation */
+            text-overflow: ellipsis; /* Added for truncation */
+        }
+        .link-card-description { /* New style for description */
+            font-size: 0.75rem; /* Smaller font for description */
+            color: #777;
+            margin-bottom: 6px; /* Space below description */
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-box-orient: vertical;
         }
         .link-card-url {
             font-size: 0.8rem; /* Smaller URL text */
@@ -339,8 +353,8 @@
                     <label for="timeframeMonth">Month</label>
                 </div>
 
-                <!-- Changed: Grid for rankings to support 3 columns on medium screens and above -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <!-- Changed: Grid for rankings to support 2x2 layout on medium screens and above -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div>
                         <h3 class="stylish-subheader">Top Hashtags</h3>
                         <div id="topTerms">
@@ -353,11 +367,17 @@
                             <p class="text-gray-500 text-center">No links yet to analyze.</p>
                         </div>
                     </div>
-                    <!-- Changed: Renamed header and removed md:col-span-2 to make it occupy 1 column -->
                     <div>
                         <h3 class="stylish-subheader">Top Sites</h3>
                         <div id="topDomains">
                             <p class="text-gray-500 text-center">No domains yet to analyze.</p>
+                        </div>
+                    </div>
+                    <!-- New section for Content Type Breakdown -->
+                    <div>
+                        <h3 class="stylish-subheader">Content Type Breakdown</h3>
+                        <div id="contentTypeBreakdown">
+                            <p class="text-gray-500 text-center">No content types yet to analyze.</p>
                         </div>
                     </div>
                 </div>
@@ -404,18 +424,21 @@
         const topTermsDiv = document.getElementById('topTerms'); 
         const topLinksDiv = document.getElementById('topLinks'); 
         const topDomainsDiv = document.getElementById('topDomains'); 
+        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown'); // New DOM element
         const noPostsMessage = document.getElementById('noPostsMessage');
 
         // --- Analysis Data (synced with Firestore) ---
         // These will hold the ALL-TIME cumulative counts from the 'summary' document
         let allTimeTermCounts = {}; 
-        let allTimeLinkCounts = {}; // Now stores { count: number, headline: string | null }
+        let allTimeLinkCounts = {}; // Now stores { count: number, headline: string | null, description: string | null, originalTitle: string | null }
         let allTimeDomainCounts = {}; 
+        let allTimeContentTypeCounts = {}; // New: All-time content type counts
 
         // These will hold the counts for the CURRENTLY SELECTED timeframe
         let currentDisplayTermCounts = {};
         let currentDisplayLinkCounts = {};
         let currentDisplayDomainCounts = {};
+        let currentDisplayContentTypeCounts = {}; // New: Current display content type counts
 
         let currentSelectedTimeframe = 'allTime'; // Default timeframe
 
@@ -572,19 +595,22 @@
                     allTimeTermCounts = data.termCounts || {}; 
                     allTimeLinkCounts = data.linkCounts || {}; 
                     allTimeDomainCounts = data.domainCounts || {}; 
+                    allTimeContentTypeCounts = data.contentTypeCounts || {}; // New: Get content type counts
 
-                    console.log("Firestore All-Time data received via onSnapshot:", { allTimeTermCounts, allTimeLinkCounts, allTimeDomainCounts }); 
+                    console.log("Firestore All-Time data received via onSnapshot:", { allTimeTermCounts, allTimeLinkCounts, allTimeDomainCounts, allTimeContentTypeCounts }); 
                 } else {
                     console.log("All-Time summary document does not exist, initializing with empty counts.");
                     setDoc(analysisDocRef, { 
                         termCounts: {},
                         linkCounts: {},
-                        domainCounts: {}
+                        domainCounts: {},
+                        contentTypeCounts: {} // New: Initialize content type counts
                     }, { merge: true })
                         .catch(e => console.error("Error creating all-time summary document:", e));
                     allTimeTermCounts = {};
                     allTimeLinkCounts = {};
                     allTimeDomainCounts = {};
+                    allTimeContentTypeCounts = {};
                 }
                 // Only update the view if 'allTime' is currently selected to avoid overwriting other views
                 if (currentSelectedTimeframe === 'allTime') {
@@ -705,15 +731,17 @@
         // --- Debounced Firestore Update Function ---
         let accumulatedUpdates = { 
             termCounts: {},
-            linkCounts: {}, // Now stores { url: { count: number, headline: string | null } }
-            domainCounts: {}
+            linkCounts: {}, // Now stores { url: { count: number, headline: string | null, description: string | null, originalTitle: string | null } }
+            domainCounts: {},
+            contentTypeCounts: {} // New: Accumulated content type counts
         };
 
         async function debouncedUpdateFirestoreAnalysis(authorDid, text, embed) { 
             accumulatedUpdates = {
                 termCounts: accumulatedUpdates.termCounts || {},
                 linkCounts: accumulatedUpdates.linkCounts || {},
-                domainCounts: accumulatedUpdates.domainCounts || {}
+                domainCounts: accumulatedUpdates.domainCounts || {},
+                contentTypeCounts: accumulatedUpdates.contentTypeCounts || {} // Ensure it's initialized
             };
 
             const safeText = String(text || '');
@@ -735,20 +763,35 @@
             let extractedLink = null;
             if (embed && embed.$type === 'app.bsky.embed.external' && embed.external && embed.external.uri) {
                 extractedLink = embed.external.uri;
-                
+                const externalTitle = embed.external.title || null; // Capture external title
+                const externalDescription = embed.external.description || null; // Capture external description
+
                 // Initialize or update the link entry in accumulatedUpdates
                 if (!accumulatedUpdates.linkCounts[extractedLink]) {
-                    accumulatedUpdates.linkCounts[extractedLink] = { count: 0, headline: null };
+                    accumulatedUpdates.linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null }; // New fields
                 }
                 accumulatedUpdates.linkCounts[extractedLink].count += 1; // Increment count
 
-                // Asynchronously fetch headline for new links, but only if not already present
+                // Prioritize externalTitle if present from Contrails
+                if (externalTitle) {
+                    accumulatedUpdates.linkCounts[extractedLink].originalTitle = externalTitle;
+                } else if (externalDescription && accumulatedUpdates.linkCounts[extractedLink].originalTitle === null) {
+                    // If no externalTitle but externalDescription exists, use description as a temporary headline
+                    accumulatedUpdates.linkCounts[extractedLink].originalTitle = externalDescription;
+                }
+
+                // Store the description if available
+                if (externalDescription) {
+                    accumulatedUpdates.linkCounts[extractedLink].description = externalDescription;
+                }
+
+                // Asynchronously fetch headline for new links, but only if no originalTitle is set yet
+                // The fetched headline will be stored in the 'headline' field, which is a fallback for display.
                 if (accumulatedUpdates.linkCounts[extractedLink].headline === null) {
-                    fetchHeadline(extractedLink).then(headline => {
-                        if (headline) {
-                            // Update the headline in accumulatedUpdates once fetched
-                            accumulatedUpdates.linkCounts[extractedLink].headline = headline;
-                            console.log(`Fetched headline for ${extractedLink}: ${headline}`);
+                    fetchHeadline(extractedLink).then(fetchedTitle => {
+                        if (fetchedTitle) {
+                            accumulatedUpdates.linkCounts[extractedLink].headline = fetchedTitle; // This is the <title> tag
+                            console.log(`Fetched <title> for ${extractedLink}: ${fetchedTitle}`);
                         }
                     });
                 }
@@ -758,6 +801,18 @@
                     accumulatedUpdates.domainCounts[baseDomain] = (accumulatedUpdates.domainCounts[baseDomain] || 0) + 1;
                 }
             }
+
+            // --- Content Type Counting (New) ---
+            let contentType = 'Text-only'; // Default to text-only
+            if (embed) {
+                if (embed.$type === 'app.bsky.embed.external') {
+                    contentType = 'Link';
+                } else if (embed.$type === 'app.bsky.embed.images') {
+                    contentType = 'Image';
+                }
+                // Add more types if needed, e.g., 'app.bsky.embed.recordWithMedia' for video/audio
+            }
+            accumulatedUpdates.contentTypeCounts[contentType] = (accumulatedUpdates.contentTypeCounts[contentType] || 0) + 1;
 
 
             // Clear any existing timer
@@ -784,13 +839,15 @@
                     let currentSummaryData = {
                         termCounts: {},
                         linkCounts: {},
-                        domainCounts: {}
+                        domainCounts: {},
+                        contentTypeCounts: {} // New: Initialize if missing
                     };
                     if (summarySnap.exists()) {
                         currentSummaryData = summarySnap.data();
                         currentSummaryData.termCounts = currentSummaryData.termCounts || {};
                         currentSummaryData.linkCounts = currentSummaryData.linkCounts || {};
                         currentSummaryData.domainCounts = currentSummaryData.domainCounts || {};
+                        currentSummaryData.contentTypeCounts = currentSummaryData.contentTypeCounts || {}; // New: Initialize if missing
                     }
 
                     for (const key in accumulatedUpdates.termCounts) {
@@ -798,21 +855,32 @@
                     }
                     // Merge linkCounts, handling the new structure and ensuring consistency
                     for (const url in accumulatedUpdates.linkCounts) {
-                        const { count, headline } = accumulatedUpdates.linkCounts[url];
-                        // Ensure currentSummaryData.linkCounts[url] is an object
+                        const { count, headline, originalTitle, description } = accumulatedUpdates.linkCounts[url];
                         if (typeof currentSummaryData.linkCounts[url] !== 'object' || currentSummaryData.linkCounts[url] === null) {
-                            currentSummaryData.linkCounts[url] = { count: 0, headline: null };
+                            currentSummaryData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
                         }
                         currentSummaryData.linkCounts[url].count = (currentSummaryData.linkCounts[url].count || 0) + count;
-                        // Only update headline if a new one was fetched and it's not null,
-                        // or if the existing one in Firestore is null.
+                        // Update headline (fetched <title>) if new one is present or existing is null
                         if (headline && currentSummaryData.linkCounts[url].headline === null) {
                             currentSummaryData.linkCounts[url].headline = headline;
+                        }
+                        // Update originalTitle (from Contrails) if new one is present or existing is null
+                        if (originalTitle && currentSummaryData.linkCounts[url].originalTitle === null) {
+                            currentSummaryData.linkCounts[url].originalTitle = originalTitle;
+                        }
+                        // Update description (from Contrails) if new one is present or existing is null
+                        if (description && currentSummaryData.linkCounts[url].description === null) {
+                            currentSummaryData.linkCounts[url].description = description;
                         }
                     }
                     for (const key in accumulatedUpdates.domainCounts) {
                         currentSummaryData.domainCounts[key] = (currentSummaryData.domainCounts[key] || 0) + accumulatedUpdates.domainCounts[key];
                     }
+                    // New: Merge contentTypeCounts
+                    for (const key in accumulatedUpdates.contentTypeCounts) {
+                        currentSummaryData.contentTypeCounts[key] = (currentSummaryData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
+                    }
+
                     await setDoc(summaryDocRef, currentSummaryData, { merge: true });
 
                     // 2. Update Daily Aggregate
@@ -820,39 +888,53 @@
                     let currentDailyData = {
                         termCounts: {},
                         linkCounts: {},
-                        domainCounts: {}
+                        domainCounts: {},
+                        contentTypeCounts: {} // New: Initialize if missing
                     };
                     if (dailySnap.exists()) {
                         currentDailyData = dailySnap.data();
                         currentDailyData.termCounts = currentDailyData.termCounts || {};
                         currentDailyData.linkCounts = currentDailyData.linkCounts || {};
                         currentDailyData.domainCounts = currentDailyData.domainCounts || {};
+                        currentDailyData.contentTypeCounts = currentDailyData.contentTypeCounts || {}; // New: Initialize if missing
                     }
 
                     for (const key in accumulatedUpdates.termCounts) {
                         currentDailyData.termCounts[key] = (currentDailyData.termCounts[key] || 0) + accumulatedUpdates.termCounts[key];
                     }
                     for (const url in accumulatedUpdates.linkCounts) {
-                         const { count, headline } = accumulatedUpdates.linkCounts[url];
+                         const { count, headline, originalTitle, description } = accumulatedUpdates.linkCounts[url];
                         if (typeof currentDailyData.linkCounts[url] !== 'object' || currentDailyData.linkCounts[url] === null) {
-                            currentDailyData.linkCounts[url] = { count: 0, headline: null };
+                            currentDailyData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
                         }
                         currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
-                        // Only update headline if a new one was fetched and it's not null,
-                        // or if the existing one in Firestore is null.
+                        // Update headline (fetched <title>) if new one is present or existing is null
                         if (headline && currentDailyData.linkCounts[url].headline === null) {
                             currentDailyData.linkCounts[url].headline = headline;
+                        }
+                        // Update originalTitle (from Contrails) if new one is present or existing is null
+                        if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) {
+                            currentDailyData.linkCounts[url].originalTitle = originalTitle;
+                        }
+                        // Update description (from Contrails) if new one is present or existing is null
+                        if (description && currentDailyData.linkCounts[url].description === null) {
+                            currentDailyData.linkCounts[url].description = description;
                         }
                     }
                     for (const key in accumulatedUpdates.domainCounts) {
                         currentDailyData.domainCounts[key] = (currentDailyData.domainCounts[key] || 0) + accumulatedUpdates.domainCounts[key];
                     }
+                    // New: Merge contentTypeCounts
+                    for (const key in accumulatedUpdates.contentTypeCounts) {
+                        currentDailyData.contentTypeCounts[key] = (currentDailyData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
+                    }
+
                     await setDoc(dailyDocRef, currentDailyData, { merge: true });
 
                     console.log("Firestore analysis updated (debounced).");
 
                     // Reset accumulated updates after successful write
-                    accumulatedUpdates = { termCounts: {}, linkCounts: {}, domainCounts: {} };
+                    accumulatedUpdates = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {} }; // Reset new type too
 
                 } catch (e) {
                     console.error("Error updating Firestore analysis (debounced):", e);
@@ -870,7 +952,7 @@
         }
 
         // --- Render Functions for Analysis ---
-        function renderAnalysis(termData, linkData, domainData) {
+        function renderAnalysis(termData, linkData, domainData, contentTypeData) { // Added contentTypeData
             // Render Top Hashtags
             const sortedTerms = Object.entries(termData)
                 .sort(([, countA], [, countB]) => countB - countA)
@@ -915,12 +997,15 @@
                     item.className = 'link-card'; 
                     item.title = url; // Show full URL on mouseover
                     
-                    const displayHeadline = data.headline || getSimplifiedDomain(url); // Use simplified domain as fallback if no headline
+                    // Determine the headline to display: Contrails originalTitle > Contrails description > fetched <title> > simplified domain
+                    const displayHeadline = data.originalTitle || data.headline || getSimplifiedDomain(url);
+                    const displayDescription = data.description || ''; // Use empty string if no description
                     
                     item.innerHTML = `
                         <div class="link-card-headline">
                             ${displayHeadline}
                         </div>
+                        ${displayDescription ? `<div class="link-card-description">${displayDescription}</div>` : ''} <!-- New description line -->
                         <div class="link-card-url">
                             ${url}
                         </div>
@@ -956,6 +1041,30 @@
                     topDomainsDiv.appendChild(item);
                 });
             }
+
+            // Render Content Type Breakdown (New)
+            const sortedContentTypes = Object.entries(contentTypeData)
+                .sort(([, countA], [, countB]) => countB - countA)
+                .slice(0, 5); // Top 5 content types
+
+            contentTypeBreakdownDiv.innerHTML = '';
+            if (sortedContentTypes.length === 0) {
+                contentTypeBreakdownDiv.innerHTML = '<p class="text-gray-500 text-center">No content types yet to analyze.</p>';
+            } else {
+                sortedContentTypes.forEach(([type, count]) => {
+                    const item = document.createElement('div');
+                    item.className = 'domain-card'; // Use domain-card for consistent styling
+                    item.innerHTML = `
+                        <div class="domain-card-name">
+                            ${type}
+                        </div>
+                        <div class="domain-card-count">
+                            ${count} posts
+                        </div>
+                    `;
+                    contentTypeBreakdownDiv.appendChild(item);
+                });
+            }
         }
 
         // --- Timeframe Selection and Data Fetching/Display ---
@@ -967,11 +1076,13 @@
             let termsToDisplay = {};
             let linksToDisplay = {};
             let domainsToDisplay = {};
+            let contentTypesToDisplay = {}; // New: Initialize for current display
 
             if (timeframe === 'allTime') {
                 termsToDisplay = allTimeTermCounts;
                 linksToDisplay = allTimeLinkCounts;
                 domainsToDisplay = allTimeDomainCounts;
+                contentTypesToDisplay = allTimeContentTypeCounts; // New: Assign all-time data
                 connectionStatusElem.textContent = 'Connected';
             } else {
                 const today = new Date();
@@ -996,22 +1107,33 @@
                         const dailyTerms = data.termCounts || {};
                         const dailyLinks = data.linkCounts || {};
                         const dailyDomains = data.domainCounts || {};
+                        const dailyContentTypes = data.contentTypeCounts || {}; // New: Get daily content types
 
                         for (const term in dailyTerms) {
                             termsToDisplay[term] = (termsToDisplay[term] || 0) + dailyTerms[term];
                         }
                         for (const url in dailyLinks) {
-                            const { count, headline } = dailyLinks[url];
+                            const { count, headline, originalTitle, description } = dailyLinks[url];
                             if (!linksToDisplay[url]) {
-                                linksToDisplay[url] = { count: 0, headline: null };
+                                linksToDisplay[url] = { count: 0, headline: null, description: null, originalTitle: null };
                             }
                             linksToDisplay[url].count += count;
                             if (headline && linksToDisplay[url].headline === null) {
                                 linksToDisplay[url].headline = headline;
                             }
+                            if (originalTitle && linksToDisplay[url].originalTitle === null) {
+                                linksToDisplay[url].originalTitle = originalTitle;
+                            }
+                            if (description && linksToDisplay[url].description === null) {
+                                linksToDisplay[url].description = description;
+                            }
                         }
                         for (const domain in dailyDomains) {
                             domainsToDisplay[domain] = (domainsToDisplay[domain] || 0) + dailyDomains[domain];
+                        }
+                        // New: Aggregate daily content types
+                        for (const type in dailyContentTypes) {
+                            contentTypesToDisplay[type] = (contentTypesToDisplay[type] || 0) + dailyContentTypes[type];
                         }
                     });
                     connectionStatusElem.textContent = 'Connected'; // Changed to just 'Connected'
@@ -1024,7 +1146,8 @@
             currentDisplayTermCounts = termsToDisplay;
             currentDisplayLinkCounts = linksToDisplay;
             currentDisplayDomainCounts = domainsToDisplay;
-            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts);
+            currentDisplayContentTypeCounts = contentTypesToDisplay; // New: Set for current display
+            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts, currentDisplayContentTypeCounts); // Pass new data
             loadingIndicatorElem.style.display = 'none';
         }
 
