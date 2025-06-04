@@ -9,7 +9,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #e9ecef; /* Changed: New modern background color for the whole page */
+            background-color: #e9ecef; /* New modern background color for the whole page */
             color: #333;
             padding: 20px;
             display: flex;
@@ -46,6 +46,12 @@
             flex-direction: column;
             flex-grow: 1; /* Allow cards to grow and fill space */
         }
+        /* Specific styling for the iframe's parent card to control its height and overflow */
+        .main-wrapper > .section-wrapper:first-child .section-card {
+            max-height: 700px; /* Set a max height for the card containing the iframe */
+            overflow-y: auto; /* Add scrollbar to this card if content overflows */
+        }
+
         /* Stylish Title for main sections */
         .stylish-section-title {
             font-size: 2rem; /* Larger title */
@@ -131,7 +137,7 @@
         }
         .iframe-embed {
             width: 100%;
-            height: 100%; /* Make iframe take full height of its container */
+            /* Removed height: 100%; to avoid potential double scrollbars */
             min-height: 500px; /* Ensure a minimum height for the iframe */
             border: none;
             border-radius: 8px;
@@ -274,9 +280,7 @@
                     class="iframe-embed"
                     allowFullScreen
                 ></iframe>
-                <p class="text-sm text-gray-600 mt-4 text-center">
-                    This is the embedded feed from Graze Social, providing a pre-styled view.
-                </p>
+                <!-- Removed the text paragraph here -->
             </div>
         </div>
 
