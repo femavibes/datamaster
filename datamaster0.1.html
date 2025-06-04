@@ -24,6 +24,7 @@
             width: 100%;
             max-width: 1200px; /* Wider max-width for dual content */
             margin: auto;
+            flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
         }
         @media (min-width: 1024px) { /* Side-by-side on larger screens */
             .main-wrapper {
@@ -34,6 +35,7 @@
                 min-width: 45%; /* Ensure they don't get too narrow */
                 display: flex; /* Make section-wrapper a flex container */
                 flex-direction: column; /* Stack cards within it vertically */
+                flex-grow: 1; /* Allow section-wrapper to grow and fill main-wrapper height */
             }
         }
 
@@ -47,8 +49,8 @@
             flex-grow: 1; /* Allow cards to grow and fill space */
         }
         /* Specific styling for the iframe's parent card to control its height and overflow */
+        /* Removed max-height to allow it to expand to the bottom of the page */
         .main-wrapper > .section-wrapper:first-child .section-card {
-            max-height: 700px; /* Set a max height for the card containing the iframe */
             overflow-y: auto; /* Add scrollbar to this card if content overflows */
         }
 
@@ -142,6 +144,7 @@
             border: none;
             border-radius: 8px;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            flex-grow: 1; /* Allow iframe to grow within its container */
         }
         .timeframe-selector {
             display: flex;
