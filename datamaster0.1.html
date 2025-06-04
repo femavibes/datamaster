@@ -77,6 +77,7 @@
             margin-top: 10px;
             text-align: right;
         }
+        /* Adjusted analysis-item for general use, but link-cards will override */
         .analysis-item {
             display: flex;
             align-items: flex-start; /* Align items to the top if label wraps */
@@ -683,10 +684,8 @@
                     for (const key in accumulatedUpdates.termCounts) {
                         currentDailyData.termCounts[key] = (currentDailyData.termCounts[key] || 0) + accumulatedUpdates.termCounts[key];
                     }
-                    // Merge linkCounts for daily data, ensuring consistency
                     for (const url in accumulatedUpdates.linkCounts) {
-                        const { count, headline } = accumulatedUpdates.linkCounts[url];
-                        // Ensure currentDailyData.linkCounts[url] is an object
+                         const { count, headline } = accumulatedUpdates.linkCounts[url];
                         if (typeof currentDailyData.linkCounts[url] !== 'object' || currentDailyData.linkCounts[url] === null) {
                             currentDailyData.linkCounts[url] = { count: 0, headline: null };
                         }
@@ -700,229 +699,191 @@
                     }
                     await setDoc(dailyDocRef, currentDailyData, { merge: true });
 
-                    console.log("Firestore update successful (debounced)!");
+                    console.log("Firestore analysis updated (debounced).");
 
                     // Reset accumulated updates after successful write
-                    accumulatedUpdates = { 
-                        termCounts: {},
-                        linkCounts: {},
-                        domainCounts: {}
-                    };
-
-                    // Re-render the current view to reflect latest data
-                    updateView(currentSelectedTimeframe);
+                    accumulatedUpdates = { termCounts: {}, linkCounts: {}, domainCounts: {} };
 
                 } catch (e) {
                     console.error("Error updating Firestore analysis (debounced):", e);
-                    // Updated error message to reflect the correct paths for security rules
-                    console.error("Firestore Permission Denied: Check your Firestore Security Rules! Ensure authenticated users can write to /artifacts/{appId}/public/data/summaries/grazeFeedAnalysisSummary AND /artifacts/{appId}/public/data/dailyAggregates/{date}");
+                    connectionStatusElem.textContent = `Firestore Update Error: ${e.message}`;
+                } finally {
+                    // Re-render the view with the latest all-time data after update
+                    // or fetch specific daily/weekly/monthly data if that timeframe is selected
+                    if (currentSelectedTimeframe === 'allTime') {
+                        updateView('allTime');
+                    } else {
+                        updateView(currentSelectedTimeframe);
+                    }
                 }
             }, DEBOUNCE_DELAY);
         }
 
-        // --- Data Fetching Functions for different timeframes ---
-
-        async function fetchDailyData() {
-            const today = new Date();
-            const dailyDocId = getYYYYMMDD(today);
-            // Corrected path for daily aggregates
-            const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'dailyAggregates', dailyDocId); 
-            try {
-                const docSnap = await getDoc(dailyDocRef);
-                if (docSnap.exists()) {
-                    return docSnap.data();
-                }
-                return { termCounts: {}, linkCounts: {}, domainCounts: {} };
-            } catch (e) {
-                console.error("Error fetching daily data:", e);
-                return { termCounts: {}, linkCounts: {}, domainCounts: {} };
-            }
-        }
-
-        async function fetchTimeframeData(days) {
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(endDate.getDate() - days);
-
-            // Corrected path for daily aggregates collection
-            const dailyAggregatesRef = collection(db, 'artifacts', appId, 'public', 'data', 'dailyAggregates'); 
-            const q = query(dailyAggregatesRef); 
-            
-            try {
-                const querySnapshot = await getDocs(q);
-                let aggregatedTermCounts = {};
-                let aggregatedLinkCounts = {};
-                let aggregatedDomainCounts = {};
-
-                querySnapshot.forEach((doc) => {
-                    const docDateStr = doc.id; //YYYY-MM-DD
-                    const [year, month, day] = docDateStr.split('-').map(Number);
-                    const docDate = new Date(year, month - 1, day); // Month is 0-indexed
-
-                    // Only include documents within the specified date range
-                    if (docDate >= startDate && docDate <= endDate) {
-                        const data = doc.data();
-                        const terms = data.termCounts || {};
-                        const links = data.linkCounts || {};
-                        const domains = data.domainCounts || {};
-
-                        for (const term in terms) {
-                            aggregatedTermCounts[term] = (aggregatedTermCounts[term] || 0) + terms[term];
-                        }
-                        // Aggregate linkCounts, preserving headlines and ensuring consistency
-                        for (const url in links) {
-                            const { count, headline } = links[url];
-                            if (typeof aggregatedLinkCounts[url] !== 'object' || aggregatedLinkCounts[url] === null) {
-                                aggregatedLinkCounts[url] = { count: 0, headline: null };
-                            }
-                            aggregatedLinkCounts[url].count = (aggregatedLinkCounts[url].count || 0) + count;
-                            if (headline && aggregatedLinkCounts[url].headline === null) {
-                                aggregatedLinkCounts[url].headline = headline;
-                            }
-                        }
-                        for (const domain in domains) {
-                            aggregatedDomainCounts[domain] = (aggregatedDomainCounts[domain] || 0) + domains[domain];
-                        }
-                    }
-                });
-                return { 
-                    termCounts: aggregatedTermCounts, 
-                    linkCounts: aggregatedLinkCounts, 
-                    domainCounts: aggregatedDomainCounts 
-                };
-            } catch (e) {
-                console.error(`Error fetching data for last ${days} days:`, e);
-                return { termCounts: {}, linkCounts: {}, domainCounts: {} };
-            }
-        }
-
-
-        // --- Update View Function based on Timeframe ---
-        async function updateView(timeframe) {
-            currentSelectedTimeframe = timeframe;
-            let dataToDisplay = { termCounts: {}, linkCounts: {}, domainCounts: {} };
-
-            if (!isFirebaseReady) {
-                console.warn("Firebase not ready for view update.");
-                return;
-            }
-
-            switch (timeframe) {
-                case 'allTime':
-                    dataToDisplay = {
-                        termCounts: allTimeTermCounts,
-                        linkCounts: allTimeLinkCounts,
-                        domainCounts: allTimeDomainCounts
-                    };
-                    break;
-                case 'day':
-                    dataToDisplay = await fetchDailyData();
-                    break;
-                case 'week':
-                    dataToDisplay = await fetchTimeframeData(7);
-                    break;
-                case 'month':
-                    dataToDisplay = await fetchTimeframeData(30);
-                    break;
-                default:
-                    dataToDisplay = {
-                        termCounts: allTimeTermCounts,
-                        linkCounts: allTimeLinkCounts,
-                        domainCounts: allTimeDomainCounts
-                    };
-            }
-
-            currentDisplayTermCounts = dataToDisplay.termCounts;
-            currentDisplayLinkCounts = dataToDisplay.linkCounts;
-            currentDisplayDomainCounts = dataToDisplay.domainCounts;
-
-            renderTopTerms(currentDisplayTermCounts);
-            renderTopLinks(currentDisplayLinkCounts);
-            renderTopDomains(currentDisplayDomainCounts);
-        }
-
         // --- Render Functions for Analysis ---
-        // These now accept the specific counts object to render
-        function renderTopTerms(counts) { 
-            const sortedTerms = Object.entries(counts)
+        function renderAnalysis(termData, linkData, domainData) {
+            // Render Top Hashtags
+            const sortedTerms = Object.entries(termData)
                 .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 20); 
+                .slice(0, 10); // Top 10 terms/hashtags
 
-            topTermsDiv.innerHTML = ''; 
+            topTermsDiv.innerHTML = '';
             if (sortedTerms.length === 0) {
                 topTermsDiv.innerHTML = '<p class="text-gray-500 text-center">No hashtags yet to analyze.</p>';
-                return;
+            } else {
+                sortedTerms.forEach(([term, count]) => {
+                    const item = document.createElement('div');
+                    item.className = 'analysis-item';
+                    item.innerHTML = `
+                        <span class="analysis-label">${term}</span>
+                        <span class="analysis-value">${count} uses</span>
+                    `;
+                    topTermsDiv.appendChild(item);
+                });
             }
-            sortedTerms.forEach(([term, count], index) => { 
-                const item = document.createElement('div');
-                item.className = 'analysis-item';
-                const displayTerm = term.startsWith('#') ? term : `#${term}`; 
-                item.innerHTML = `
-                    <span class="analysis-label">${index + 1}. ${displayTerm}</span>
-                    <span class="analysis-value">${count} uses</span>
-                `;
-                topTermsDiv.appendChild(item);
-            });
-        }
 
-        function renderTopLinks(counts) { 
-            // Sort by count, assuming counts is an object { url: { count, headline } }
-            const sortedLinks = Object.entries(counts)
-                .sort(([, linkDataA], [, linkDataB]) => linkDataB.count - linkDataA.count)
-                .slice(0, 20); 
+            // Render Top Links (as cards)
+            const sortedLinks = Object.entries(linkData)
+                .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
+                .slice(0, 10); // Top 10 links
 
-            topLinksDiv.innerHTML = ''; 
+            topLinksDiv.innerHTML = '';
             if (sortedLinks.length === 0) {
                 topLinksDiv.innerHTML = '<p class="text-gray-500 text-center">No links yet to analyze.</p>';
-                return;
+            } else {
+                sortedLinks.forEach(([url, data]) => {
+                    const item = document.createElement('a'); // Changed to <a> for full card clickability
+                    item.href = url;
+                    item.target = "_blank";
+                    item.rel = "noopener noreferrer";
+                    item.className = 'block bg-white rounded-lg shadow-md p-4 mb-3 hover:shadow-lg transition-shadow duration-200'; // Tailwind classes for card styling
+                    
+                    const displayHeadline = data.headline || new URL(url).hostname; // Use hostname as fallback if no headline
+                    
+                    item.innerHTML = `
+                        <div class="font-semibold text-lg text-blue-700 mb-1">
+                            ${displayHeadline}
+                        </div>
+                        <div class="text-sm text-gray-600 truncate mb-2">
+                            ${url}
+                        </div>
+                        <div class="text-right text-gray-800 font-bold">
+                            ${data.count} clicks
+                        </div>
+                    `;
+                    topLinksDiv.appendChild(item);
+                });
             }
-            sortedLinks.forEach(([url, linkData], index) => { 
-                const item = document.createElement('div');
-                item.className = 'analysis-item';
-                // Use headline if available, otherwise fallback to truncated URL
-                const displayText = linkData.headline || (url.length > 50 ? url.substring(0, 47) + '...' : url);
-                item.innerHTML = `
-                    <span class="analysis-label"><a href="${url}" target="_blank" class="text-blue-500 hover:underline">${index + 1}. ${displayText}</a></span>
-                    <span class="analysis-value">${linkData.count} shares</span>
-                `;
-                topLinksDiv.appendChild(item); 
-            });
-        }
 
-        function renderTopDomains(counts) { 
-            const sortedDomains = Object.entries(counts)
+            // Render Top Domains
+            const sortedDomains = Object.entries(domainData)
                 .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 20); 
+                .slice(0, 10); // Top 10 domains
 
-            topDomainsDiv.innerHTML = ''; 
+            topDomainsDiv.innerHTML = '';
             if (sortedDomains.length === 0) {
                 topDomainsDiv.innerHTML = '<p class="text-gray-500 text-center">No domains yet to analyze.</p>';
-                return;
+            } else {
+                sortedDomains.forEach(([domain, count]) => {
+                    const item = document.createElement('div');
+                    item.className = 'analysis-item';
+                    item.innerHTML = `
+                        <span class="analysis-label">${domain}</span>
+                        <span class="analysis-value">${count} visits</span>
+                    `;
+                    topDomainsDiv.appendChild(item);
+                });
             }
-            sortedDomains.forEach(([domain, count], index) => { 
-                const item = document.createElement('div');
-                item.className = 'analysis-item';
-                item.innerHTML = `
-                    <span class="analysis-label"><a href="http://${domain}" target="_blank" class="text-blue-500 hover:underline">${index + 1}. ${domain}</a></span>
-                    <span class="analysis-value">${count} shares</span>
-                `;
-                topDomainsDiv.appendChild(item); 
-            });
+        }
+
+        // --- Timeframe Selection and Data Fetching/Display ---
+        async function updateView(timeframe) {
+            currentSelectedTimeframe = timeframe;
+            loadingIndicatorElem.style.display = 'block';
+            connectionStatusElem.textContent = `Fetching data for ${timeframe}...`;
+
+            let termsToDisplay = {};
+            let linksToDisplay = {};
+            let domainsToDisplay = {};
+
+            if (timeframe === 'allTime') {
+                termsToDisplay = allTimeTermCounts;
+                linksToDisplay = allTimeLinkCounts;
+                domainsToDisplay = allTimeDomainCounts;
+                connectionStatusElem.textContent = 'Connected (All Time Data)';
+            } else {
+                const today = new Date();
+                let startDate;
+
+                if (timeframe === 'day') {
+                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                } else if (timeframe === 'week') {
+                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay()); // Start of the current week (Sunday)
+                } else if (timeframe === 'month') {
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1); // Start of the current month
+                }
+
+                // Fetch data for the selected timeframe
+                const dailyAggregatesRef = collection(db, 'artifacts', appId, 'public', 'data', 'dailyAggregates');
+                const q = query(dailyAggregatesRef, where('__name__', '>=', getYYYYMMDD(startDate)));
+
+                try {
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((docSnap) => {
+                        const data = docSnap.data();
+                        const dailyTerms = data.termCounts || {};
+                        const dailyLinks = data.linkCounts || {};
+                        const dailyDomains = data.domainCounts || {};
+
+                        for (const term in dailyTerms) {
+                            termsToDisplay[term] = (termsToDisplay[term] || 0) + dailyTerms[term];
+                        }
+                        for (const url in dailyLinks) {
+                            const { count, headline } = dailyLinks[url];
+                            if (!linksToDisplay[url]) {
+                                linksToDisplay[url] = { count: 0, headline: null };
+                            }
+                            linksToDisplay[url].count += count;
+                            if (headline && linksToDisplay[url].headline === null) {
+                                linksToDisplay[url].headline = headline;
+                            }
+                        }
+                        for (const domain in dailyDomains) {
+                            domainsToDisplay[domain] = (domainsToDisplay[domain] || 0) + dailyDomains[domain];
+                        }
+                    });
+                    connectionStatusElem.textContent = `Connected (${timeframe} Data)`;
+                } catch (error) {
+                    console.error(`Error fetching ${timeframe} data:`, error);
+                    connectionStatusElem.textContent = `Error fetching ${timeframe} data: ${error.message}`;
+                }
+            }
+
+            currentDisplayTermCounts = termsToDisplay;
+            currentDisplayLinkCounts = linksToDisplay;
+            currentDisplayDomainCounts = domainsToDisplay;
+            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts);
+            loadingIndicatorElem.style.display = 'none';
         }
 
         // --- Event Listeners for Timeframe Selector ---
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('input[name="timeframe"]').forEach(radio => {
-                radio.addEventListener('change', (event) => {
-                    updateView(event.target.value);
-                });
+        document.querySelectorAll('input[name="timeframe"]').forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                updateView(event.target.value);
             });
         });
 
-        // --- Initialize on Window Load ---
-        window.onload = function () {
-            initializeFirebase(); 
-        };
+        // --- Initialize on DOMContentLoaded ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase(); // Start Firebase initialization and auth
+        });
+
+        // Cleanup WebSocket on window unload
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.close();
+            }
+            clearInterval(reconnectInterval);
+        });
     </script>
 </body>
 </html>
