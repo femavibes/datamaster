@@ -39,7 +39,7 @@
         @media (min-width: 1024px) { /* Side-by-side on larger screens */
             .main-wrapper {
                 flex-direction: row;
-                max-width: 1200px; /* Constrain overall width on very large screens, centered by body */
+                max-width: 1500px; /* Changed: Increased available space by 25% (1200 * 1.25 = 1500) */
                 /* width: 100%; removed from here as body's align-items: center and flex properties handle this */
                 flex-grow: 1; /* Ensure main-wrapper can grow within body */
             }
@@ -349,16 +349,16 @@
                 </div>
                 <div id="loadingIndicator" class="loading-indicator" style="display: none;">Connecting to feed...</div>
 
-                <!-- Timeframe Selector - Moved up and spacing adjusted -->
+                <!-- Timeframe Selector - Changed order -->
                 <div class="timeframe-selector">
-                    <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
-                    <label for="timeframeAllTime">All Time</label>
                     <input type="radio" id="timeframeDay" name="timeframe" value="day">
                     <label for="timeframeDay">Day</label>
                     <input type="radio" id="timeframeWeek" name="timeframe" value="week">
                     <label for="timeframeWeek">Week</label>
                     <input type="radio" id="timeframeMonth" name="timeframe" value="month">
                     <label for="timeframeMonth">Month</label>
+                    <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
+                    <label for="timeframeAllTime">All Time</label>
                 </div>
 
                 <!-- Changed: Grid for rankings to support 3 columns on medium screens and above -->
@@ -1516,8 +1516,9 @@
 
                     item.innerHTML = `
                         <div class="link-card-headline">
-                            ${resolvedInfo.displayName} <span class="text-gray-500 text-sm">(@${resolvedInfo.handle})</span>
+                            ${resolvedInfo.displayName}
                         </div>
+                        <div class="text-gray-500 text-sm">(@${resolvedInfo.handle})</div>
                         <div class="link-card-description">
                             ${did}
                         </div>
