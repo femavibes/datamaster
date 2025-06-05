@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urbanism+ Feed & Hashtag Analysis</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Ensure html and body take full viewport height and remove default margins/paddings */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #dae2e8; /* Changed: New modern background color for the whole page */
+            color: #333;
+            padding: 20px; /* Padding around the main content area */
+            display: flex;
+            flex-direction: column; /* Arrange children vertically */
+            box-sizing: border-box; /* Include padding in height calculation */
+        }
+        .main-wrapper {
+            display: flex;
+            flex-direction: column; /* Stack sections on small screens */
+            gap: 30px; /* Space between the two main sections */
+            width: 100%;
+            max-width: 1200px; /* Wider max-width for dual content */
+            margin: auto;
+            flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
+            overflow: hidden; /* Hide scrollbar for main-wrapper, let cards handle it */
+        }
+        @media (min-width: 1024px) { /* Side-by-side on larger screens */
+            .main-wrapper {
+                flex-direction: row;
+            }
+            /* Adjusted flex-grow values for different widths */
+            .section-wrapper:first-child { /* Iframe section */
+                flex: 0.7; /* Adjusted to make right panel wider */
+                min-width: 45%;
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+            }
+            .section-wrapper:last-child { /* Rankings section */
+                flex: 2; /* Adjusted to be ~50% wider relative to previous proportion */
+                min-width: 45%; /* Ensure it doesn't get too narrow */
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+            }
+        }
+
+        .section-card {
+            background-color: #f0f0f3; /* Background color for the cards */
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            padding: 25px;
+            display: flex;
+            flex-direction: column; /* Crucial for internal flex layout */
+            flex-grow: 1; /* Allow cards to grow and fill space */
+            overflow-y: auto; /* Add scrollbar to this card if content overflows */
+            position: relative; /* Needed for absolute positioning of connection status */
+        }
+        /* Specific styling for the iframe's parent card to control its height and overflow */
+        .main-wrapper > .section-wrapper:first-child .section-card {
+            /* overflow-y: auto is already on .section-card, no need to duplicate */
+        }
+
+        /* Stylish Title for main sections */
+        .stylish-section-title {
+            font-size: 2rem; /* Larger title */
+            font-weight: 800; /* Extra bold */
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex; /* Use flexbox for image and text alignment */
+            align-items: center; /* Vertically align items */
+            justify-content: flex-start; /* Changed: Left-align content within the title */
+            gap: 10px; /* Space between image and text */
+            padding-bottom: 10px; /* Space for a subtle border/shadow */
+            border-bottom: 3px solid #3498db; /* Accent border */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow below the title */
+            border-radius: 4px; /* Slightly rounded bottom border */
+            flex-shrink: 0; /* Prevent title from shrinking */
+        }
+        .stylish-section-title img {
+            height: 40px; /* Adjust image size */
+            width: auto;
+            border-radius: 8px; /* Slightly rounded image */
+        }
+
+        .post-card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid #3498db; /* Accent color */
+        }
+        .post-author {
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        .post-content {
+            color: #444;
+            line-height: 1.5;
+        }
+        .post-timestamp {
+            font-size: 0.85rem;
+            color: #777;
+            margin-top: 10px;
+            text-align: right;
+        }
+        /* Adjusted analysis-item for general use, but link-cards will override */
+        .analysis-item {
+            display: flex;
+            align-items: flex-start; /* Align items to the top if label wraps */
+            padding: 4px 0; /* Changed: Smaller vertical padding for hashtags */
+            border-bottom: 1px dashed #eee;
+            gap: 10px; /* Add a small gap between label and value */
+        }
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+        .analysis-label {
+            font-weight: 500;
+            color: #555;
+            flex-grow: 1; /* Allow it to grow */
+            word-break: break-word; /* Ensure long words break */
+            min-width: 0; /* Important for flex items to shrink properly */
+        }
+        .analysis-value {
+            font-weight: bold;
+            color: #2c3e50;
+            flex-shrink: 0; /* Prevent it from shrinking */
+            white-space: nowrap; /* Keep the count on one line */
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+            color: #666;
+        }
+        .feed-name-display { /* This class is no longer used for display, but kept for consistency */
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #555;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .iframe-embed {
+            width: 100%;
+            height: 100%; /* Make iframe take full height of its container */
+            min-height: 500px; /* Ensure a minimum height for the iframe */
+            border: none;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            flex-grow: 1; /* Allow iframe to grow within its container */
+            /* The iframe itself will handle its own scrolling if its content overflows */
+        }
+        .timeframe-selector {
+            display: flex;
+            justify-content: flex-start; /* Changed: Left-align buttons within the selector */
+            gap: 10px;
+            margin-bottom: 15px; /* Changed: Reduced margin-bottom */
+            margin-top: 10px; /* Added: Small margin-top to separate from title/status */
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            flex-shrink: 0; /* Prevent selector from shrinking */
+        }
+        .timeframe-selector label {
+            background-color: #e2e8f0;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #4a5568;
+            transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap; /* Prevent text from wrapping inside label */
+        }
+        .timeframe-selector input[type="radio"] {
+            display: none;
+        }
+        .timeframe-selector input[type="radio"]:checked + label {
+            background-color: #3498db;
+            color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        /* Modern Link Card Styling */
+        .link-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            padding: 10px; /* Changed: Smaller vertical padding */
+            margin-bottom: 8px; /* Changed: Smaller margin-bottom */
+            transition: all 0.3s ease; /* Smooth transitions for hover effects */
+            display: block; /* Ensure it behaves like a block for full clickability */
+            text-decoration: none; /* Remove underline from link */
+            color: inherit; /* Inherit text color */
+            border: 1px solid #e2e8f0; /* Subtle border */
+        }
+        .link-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+            border-color: #3498db; /* Highlight border on hover */
+        }
+        .link-card-headline {
+            font-weight: 600; /* Slightly bolder */
+            font-size: 1rem; /* Slightly smaller headline for compactness */
+            color: #2c3e50; /* Darker text for headline */
+            margin-bottom: 4px; /* Reduced margin */
+            line-height: 1.3;
+            white-space: nowrap; /* Added for truncation */
+            overflow: hidden; /* Added for truncation */
+            text-overflow: ellipsis; /* Added for truncation */
+        }
+        .link-card-description { /* New style for description */
+            font-size: 0.75rem; /* Smaller font for description */
+            color: #777;
+            margin-bottom: 6px; /* Space below description */
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-box-orient: vertical;
+        }
+        .link-card-url {
+            font-size: 0.8rem; /* Smaller URL text */
+            color: #666;
+            white-space: nowrap; /* Keep URL on one line */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            margin-bottom: 6px; /* Reduced margin */
+        }
+        .link-card-count {
+            font-size: 0.9rem; /* Slightly smaller count */
+            font-weight: bold;
+            color: #3498db; /* Accent color for count */
+            text-align: right;
+        }
+
+        /* Modern Domain Card Styling (similar to link-card) */
+        .domain-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            padding: 10px; /* Changed: Smaller vertical padding */
+            margin-bottom: 8px; /* Changed: Smaller margin-bottom */
+            transition: all 0.3s ease; /* Smooth transitions for hover effects */
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid #e2e8f0; /* Subtle border */
+        }
+        .domain-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+            border-color: #3498db; /* Highlight border on hover */
+        }
+        .domain-card-name {
+            font-weight: 600;
+            font-size: 1rem; /* Slightly smaller name for compactness */
+            color: #2c3e50;
+            margin-bottom: 4px; /* Reduced margin */
+            line-height: 1.3;
+            white-space: nowrap; /* Keep on one line */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+        }
+        .domain-card-count {
+            font-size: 0.9rem; /* Slightly smaller count */
+            font-weight: bold;
+            color: #3498db;
+            text-align: right;
+        }
+        /* Style for connected status text */
+        .text-green-600 {
+            font-weight: 600;
+        }
+
+        /* Stylish sub-headers for analysis sections */
+        .stylish-subheader {
+            font-size: 1.5rem; /* Slightly larger than before */
+            font-weight: 700; /* Bolder */
+            color: #34495e; /* Darker grey for contrast */
+            margin-bottom: 15px;
+            text-align: left; /* Changed: Left-align subheaders */
+            position: relative; /* For pseudo-elements if needed */
+            padding-bottom: 8px;
+            flex-shrink: 0; /* Prevent subheader from shrinking */
+        }
+        .stylish-subheader::after {
+            content: '';
+            position: absolute;
+            left: 0; /* Changed: Align underline to the left */
+            /* transform: translateX(-50%); Removed: No need to translate for left-alignment */
+            bottom: 0;
+            width: 50px; /* Short underline */
+            height: 3px;
+            background-color: #3498db; /* Accent color */
+            border-radius: 2px;
+        }
+
+        /* Added for the rankings section to align its content to the left */
+        .section-wrapper:last-child .section-card {
+            align-items: flex-start;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <!-- Section for Iframe Embed (Visual Feed) - Now on the left -->
+        <div class="section-wrapper">
+            <div class="section-card">
+                <h2 class="stylish-section-title">
+                    <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Urbanism+ Logo">
+                    Urbanism+
+                </h2>
+                <iframe
+                    src="https://graze.social/feeds/embed/3654"
+                    title="Urbanism+ Social Feed"
+                    class="iframe-embed"
+                    allowFullScreen
+                ></iframe>
+            </div>
+        </div>
+
+        <!-- Section for Live Analysis (Contrails data processed in background) - Now on the right -->
+        <div class="section-wrapper">
+            <div class="section-card">
+                <h2 class="stylish-section-title">Rankings</h2>
+                <!-- Connection status moved to top right within the card -->
+                <div id="connectionStatus" class="absolute top-4 right-4 text-sm text-gray-600">
+                    Initializing...
+                </div>
+                
+                <!-- The actual live posts container is now hidden, but still updated -->
+                <div id="postsContainer" class="flex-grow overflow-y-auto border border-gray-200 rounded-md p-2" style="max-height: 500px; display: none;">
+                    <p id="noPostsMessage" class="text-gray-500 text-center py-4" style="display: none;">Waiting for new posts...</p>
+                </div>
+                <div id="loadingIndicator" class="loading-indicator" style="display: none;">Connecting to feed...</div>
+
+                <!-- Timeframe Selector - Moved up and spacing adjusted -->
+                <div class="timeframe-selector">
+                    <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
+                    <label for="timeframeAllTime">All Time</label>
+                    <input type="radio" id="timeframeDay" name="timeframe" value="day">
+                    <label for="timeframeDay">Day</label>
+                    <input type="radio" id="timeframeWeek" name="timeframe" value="week">
+                    <label for="timeframeWeek">Week</label>
+                    <input type="radio" id="timeframeMonth" name="timeframe" value="month">
+                    <label for="timeframeMonth">Month</label>
+                </div>
+
+                <!-- Changed: Grid for rankings to support 2x2 layout on medium screens and above -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div>
+                        <h3 class="stylish-subheader">Top Hashtags</h3>
+                        <div id="topTerms">
+                            <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
+                        </div>
+                    </div>
+                    <div> <!-- Removed md:col-span-2 to place it beside Top Hashtags -->
+                        <h3 class="stylish-subheader">Top Links</h3>
+                        <div id="topLinks">
+                            <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="stylish-subheader">Top Sites</h3>
+                        <div id="topDomains">
+                            <p class="text-gray-500 text-center">No domains yet to analyze.</p>
+                        </div>
+                    </div>
+                    <!-- New section for Content Type Breakdown -->
+                    <div>
+                        <h3 class="stylish-subheader">Content Type Breakdown</h3>
+                        <div id="contentTypeBreakdown">
+                            <p class="text-gray-500 text-center">No content types yet to analyze.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- New section for Resolved DIDs -->
+                <div class="mt-8">
+                    <h3 class="stylish-subheader">Resolved User DIDs</h3>
+                    <div id="resolvedDidsList" class="space-y-3">
+                        <p class="text-gray-500 text-center">No DIDs resolved yet from the feed.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase CDN imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // FIX: Added signInWithCustomToken to the import list
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Helper function to fetch headline from a URL (Moved to top for scope visibility) ---
+        async function fetchHeadline(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.warn(`Failed to fetch ${url} for headline: ${response.status} ${response.statusText}`);
+                    return null;
+                }
+                // Check if content type is HTML before parsing
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('text/html')) {
+                    console.warn(`Skipping headline fetch for non-HTML content at ${url}. Content-Type: ${contentType}`);
+                    return null;
+                }
+
+                const text = await response.text();
+                const match = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+                return match && match[1] ? match[1].trim() : null;
+            } catch (e) {
+                console.warn(`CORS or network error fetching headline for ${url}:`, e.message);
+                // Important: Log a warning about CORS if it's likely the cause
+                if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
+                    console.warn(`CORS likely prevented fetching headline for ${url}. Headline will not be displayed.`);
+                }
+                return null; // Return null if fetching fails
+            }
+        }
+
+        // Helper function to extract simplified base domain from a URL
+        function getSimplifiedDomain(url) {
+            let hostname;
+            try {
+                // Attempt to create a URL object. If it fails, prepend 'http://' and try again.
+                // This handles cases where the link might just be a domain string (e.g., "example.com")
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    hostname = new URL(`http://${url}`).hostname.toLowerCase();
+                } else {
+                    hostname = new URL(url).hostname.toLowerCase();
+                }
+            } catch (e) {
+                console.warn(`Could not parse URL "${url}", returning as is for domain extraction attempt:`, e);
+                // Fallback: If URL parsing fails, try to extract something sensible from the raw string
+                // This is a last resort to avoid 'Invalid Domain' for potentially malformed but recognizable strings
+                const parts = url.toLowerCase().split('.');
+                if (parts.length > 1) {
+                    // Take the last part before the TLD (e.g., 'streetsblog' from 'streetsblog.org')
+                    // This is a heuristic and might not be perfect for all TLDs (e.g., .co.uk)
+                    const potentialDomain = parts[parts.length - 2] || parts[0];
+                    return potentialDomain.replace(/^www\./, ''); // Ensure www is also removed from this fallback
+                }
+                return 'Invalid Domain'; // If all attempts fail
+            }
+
+            let domain = hostname.replace(/^www\./, ''); // Remove www. prefix from the hostname
+
+            // List of common multi-part TLDs and then single-part TLDs.
+            // Sorted by length descending to ensure longer TLDs (like .co.uk) are matched first.
+            const knownTlds = [
+                '.co.uk', '.com.au', '.org.uk', '.net.au', '.ac.uk', '.gov.uk',
+                '.co.nz', '.org.nz', '.net.nz', '.ac.nz',
+                '.co.jp', '.ne.jp', '.or.jp', '.ac.jp', '.ad.jp', '.ed.jp', '.go.jp', '.gr.jp', '.lg.jp',
+                '.com.br', '.net.br', '.org.br',
+                '.com.cn', '.net.cn', '.org.cn',
+                '.com.hk', '.net.hk', '.org.hk',
+                '.com', '.org', '.net', '.info', '.biz', '.co', '.io', '.app', '.news', '.blog', '.tech', '.store', '.online', '.site', '.xyz'
+            ].sort((a, b) => b.length - a.length);
+
+            // Attempt to strip the longest matching known TLD from the end of the domain
+            for (const tld of knownTlds) {
+                if (domain.endsWith(tld)) {
+                    domain = domain.substring(0, domain.length - tld.length);
+                    break; // Stop after stripping the most specific TLD
+                }
+            }
+
+            // After stripping TLDs, the remaining 'domain' might still have subdomains (e.g., 'cal.streetsblog').
+            // We want the part before the last dot (the registrable domain name).
+            const parts = domain.split('.');
+            if (parts.length > 1) {
+                // If there are multiple parts (e.g., "cal.streetsblog"), take the last one.
+                // This effectively removes subdomains.
+                return parts[parts.length - 1];
+            } else {
+                // If there's only one part remaining (e.g., "streetsblog", "bbc"),
+                // it means we've successfully isolated the main domain.
+                return domain;
+            }
+        }
+
+        // Function to canonicalize domain names for display, merging known duplicates and preserving original sources
+        function canonicalizeDisplayDomains(rawDomainDataWithSources) {
+            const canonicalMap = {
+                "streetsblog.org": "streetsblog",
+                "theguardian.com": "theguardian",
+                "bbc.co.uk": "bbc",
+                "bbc.com": "bbc" 
+                // Add more canonical mappings here as needed
+            };
+
+            const finalDisplayData = {}; // Will store { "canonical_domain": { count: N, original_full_domains_list: ["orig1.com", "orig2.co.uk"] } }
+
+            for (const simplifiedDomainKey in rawDomainDataWithSources) {
+                const domainEntry = rawDomainDataWithSources[simplifiedDomainKey]; // { count: N, sources: { "orig.com": X, ... } }
+                
+                let canonicalName = simplifiedDomainKey;
+                // Apply the canonical map for the main display key
+                for (const mapKey in canonicalMap) {
+                    if (simplifiedDomainKey === mapKey) {
+                        canonicalName = canonicalMap[mapKey];
+                        break;
+                    }
+                }
+
+                if (!finalDisplayData[canonicalName]) {
+                    finalDisplayData[canonicalName] = { count: 0, original_full_domains_list: new Set() }; // Use Set to avoid duplicates
+                }
+
+                // Aggregate count
+                finalDisplayData[canonicalName].count += domainEntry.count;
+
+                // Add all original source domains from the `sources` object to the set
+                for (const sourceDomain in domainEntry.sources) {
+                    finalDisplayData[canonicalName].original_full_domains_list.add(sourceDomain);
+                }
+            }
+
+            // Convert Set to Array and sort for consistent tooltip display
+            for (const canonicalName in finalDisplayData) {
+                finalDisplayData[canonicalName].original_full_domains_list = 
+                    Array.from(finalDisplayData[canonicalName].original_full_domains_list).sort();
+            }
+            
+            return finalDisplayData;
+        }
+
+        // Helper function to getYYYY-MM-DD format for daily aggregate document IDs
+        function getYYYYMMDD(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // --- Firebase Configuration (Provided by User) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR1S1n8FPwuzeKgNhcRuMwjEEAAsEA9FE",
+            authDomain: "uplus-7b091.firebaseapp.com",
+            projectId: "uplus-7b091",
+            storageBucket: "uplus-7b091.firebasestorage.app",
+            messagingSenderId: "1085519102068",
+            appId: "1:1085519102068:web:5c66ffc28323dbb7981121",
+            measurementId: "G-SHJ3T3PWXW"
+        };
+
+        // --- Global variables (derived from firebaseConfig or defaults) ---
+        // __app_id is automatically provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId; 
+
+        // --- Firebase Instances ---
+        let app;
+        let db;
+        let auth;
+        let currentUserId = null;
+        let isFirebaseReady = false; 
+
+        // --- Configuration ---
+        const GRAZE_FEED_URI = 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaotfjzjplna';
+        const WEBSOCKET_URL = `wss://api.graze.social/app/contrail?feed=${GRAZE_FEED_URI}`;
+        const RECONNECT_DELAY = 5000; 
+
+        // --- DOM Elements ---
+        const postsContainer = document.getElementById('postsContainer');
+        const connectionStatusElem = document.getElementById('connectionStatus');
+        const loadingIndicatorElem = document.getElementById('loadingIndicator');
+        const topTermsDiv = document.getElementById('topTerms'); 
+        const topLinksDiv = document.getElementById('topLinks'); // Now used for Link Cards (with Title & Description)
+        const topDomainsDiv = document.getElementById('topDomains'); 
+        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown');
+        const resolvedDidsListDiv = document.getElementById('resolvedDidsList'); // New element for resolved DIDs
+        const noPostsMessage = document.getElementById('noPostsMessage');
+
+        // --- Analysis Data (synced with Firestore) ---
+        // These will hold the ALL-TIME cumulative counts from the 'summary' document
+        let allTimeTermCounts = {}; 
+        let allTimeLinkCounts = {}; // Original link data (might still be useful for other analysis)
+        let allTimeDomainCounts = {}; // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
+        let allTimeContentTypeCounts = {}; 
+        let allTimeLinkCardsData = {}; // Data specifically for rich link cards
+        let allTimeImageCardsData = {}; // Data for image cards (still tracked, but not displayed)
+        let resolvedDidsCache = {}; // Cache for already resolved DIDs { did: { handle, displayName, timestamp } }
+
+        // These will hold the counts for the CURRENTLY SELECTED timeframe
+        let currentDisplayTermCounts = {};
+        let currentDisplayLinkCounts = {}; // This will now hold rich link card data for display
+        let currentDisplayDomainCounts = {}; // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
+        let currentDisplayContentTypeCounts = {}; 
+        let currentDisplayResolvedDids = {}; // For displaying in the new section
+
+        let currentSelectedTimeframe = 'allTime'; // Default timeframe
+
+        // --- WebSocket Variables ---
+        let ws = null;
+        let reconnectInterval = null;
+
+        // Debounce variables for Firestore updates
+        let debounceTimer = null;
+        const DEBOUNCE_DELAY = 1000; 
+
+        // Stop words for term analysis (still relevant for hashtags)
+        const stopWords = new Set([
+            'a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by',
+            'with', 'in', 'of', 'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have',
+            'has', 'had', 'do', 'does', 'did', 'not', 'no', 'yes', 'it', 'its', 'he', 'she', 'they',
+            'we', 'you', 'i', 'me', 'him', 'her', 'us', 'them', 'this', 'that', 'these', 'those',
+            'my', 'your', 'his', 'her', 'our', 'their', 'which', 'who', 'whom', 'where', 'when',
+            'why', 'how', 'what', 'then', 'than', 'as', 'so', 'if', 'else', 'about', 'just', 'can',
+            'will', 'would', 'should', 'could', 'get', 'like', 'one', 'two', 'new', 'time', 'good',
+            'great', 'very', 'much', 'more', 'also', 'up', 'down', 'out', 'in', 'on', 'off', 'all',
+            'any', 'some', 'such', 'only', 'very', 'through', 'into', 'from', 'here', 'there', 'when',
+            'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other',
+            'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+            's', 't', 'can', 'will', 'just', 'don', 'should', 'now'
+        ]);
+
+        // --- Firebase Initialization ---
+        function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Use the __initial_auth_token if available, otherwise sign in anonymously.
+                // This ensures authentication works correctly in the Canvas environment.
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        isFirebaseReady = true;
+                        console.log("Firebase authenticated and ready. User ID:", currentUserId);
+                        setupFirestoreListener(); // Setup listener for all-time data
+                        setupResolvedDidsListener(); // Setup listener for resolved DIDs
+                        connectWebSocket(); // Connect WebSocket once Firebase is ready
+                        updateView(currentSelectedTimeframe); // Initial render based on default timeframe
+                    } else {
+                        // FIX: Added more robust error handling for signInWithCustomToken.
+                        // If signInWithCustomToken fails (e.g., token mismatch/expired),
+                        // it will fall back to signInAnonymously.
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (signInError) {
+                            console.warn("Attempted signInWithCustomToken failed, falling back to signInAnonymously:", signInError);
+                            // If custom token sign-in fails, try anonymous sign-in as a fallback
+                            try {
+                                await signInAnonymously(auth);
+                            } catch (anonymousSignInError) {
+                                console.error("Firebase Auth error (after fallback):", anonymousSignInError);
+                                let errorMessage = `Auth Error: ${anonymousSignInError.message}`;
+                                if (anonymousSignInError.code === 'auth/configuration-not-found') {
+                                    errorMessage += ". This usually means Anonymous Authentication is not enabled in your Firebase project. Please go to Firebase Console > Authentication > Sign-in method, and enable 'Anonymous' provider.";
+                                } else if (anonymousSignInError.code === 'auth/network-request-failed') {
+                                    errorMessage += ". Please check your internet connection and ensure Firebase services are not blocked by a firewall or proxy.";
+                                }
+                                connectionStatusElem.textContent = errorMessage;
+                                isFirebaseReady = false;
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                connectionStatusElem.textContent = `Firebase Init Error: ${error.message}`;
+            }
+        }
+
+        // --- Firestore Data Listener (onSnapshot for All-Time Summary) ---
+        function setupFirestoreListener() {
+            if (!db || !isFirebaseReady || !currentUserId) {
+                console.warn("Firestore listener cannot be set up: Firebase not ready or user not authenticated.");
+                return;
+            }
+
+            // Path for summary document: artifacts/{appId}/public/data/summaries/grazeFeedAnalysisSummary
+            const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'summaries', 'grazeFeedAnalysisSummary');
+
+            onSnapshot(analysisDocRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    allTimeTermCounts = data.termCounts || {}; 
+                    allTimeLinkCounts = data.linkCounts || {}; 
+                    allTimeDomainCounts = data.domainCounts || {}; 
+                    allTimeContentTypeCounts = data.contentTypeCounts || {}; 
+                    allTimeLinkCardsData = data.linkCardsData || {}; 
+                    allTimeImageCardsData = data.imageCardsData || {}; 
+
+                    console.log("Firestore All-Time data received via onSnapshot:", { allTimeTermCounts, allTimeLinkCounts, allTimeDomainCounts, allTimeContentTypeCounts, allTimeLinkCardsData, allTimeImageCardsData }); 
+                } else {
+                    console.log("All-Time summary document does not exist, initializing with empty counts.");
+                    setDoc(analysisDocRef, { 
+                        termCounts: {},
+                        linkCounts: {},
+                        domainCounts: {},
+                        contentTypeCounts: {},
+                        linkCardsData: {},
+                        imageCardsData: {}
+                    }, { merge: true })
+                        .catch(e => console.error("Error creating all-time summary document:", e));
+                    allTimeTermCounts = {};
+                    allTimeLinkCounts = {};
+                    allTimeDomainCounts = {};
+                    allTimeContentTypeCounts = {};
+                    allTimeLinkCardsData = {};
+                    allTimeImageCardsData = {};
+                }
+                // Only update the view if 'allTime' is currently selected to avoid overwriting other views
+                if (currentSelectedTimeframe === 'allTime') {
+                    updateView('allTime'); 
+                }
+            }, (error) => {
+                console.error("Error listening to Firestore (All-Time Summary):", error);
+                connectionStatusElem.textContent = `Firestore Listener Error: ${error.message}`;
+            });
+        }
+
+        // --- New Firestore Listener for Resolved DIDs ---
+        function setupResolvedDidsListener() {
+            if (!db || !isFirebaseReady || !currentUserId) {
+                console.warn("Resolved DIDs listener cannot be set up: Firebase not ready or user not authenticated.");
+                return;
+            }
+
+            // Corrected collection path: artifacts/{appId}/public/data/resolvedBlueskyDIDs
+            const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
+            const q = query(resolvedDidsCollectionRef);
+
+            onSnapshot(q, (snapshot) => {
+                const fetchedDids = {};
+                snapshot.forEach(docSnap => {
+                    fetchedDids[docSnap.id] = docSnap.data();
+                });
+                resolvedDidsCache = fetchedDids; // Update the cache
+                renderResolvedDidsList(resolvedDidsCache); // Render the list
+                console.log("Fetched resolved DIDs from Firestore:", resolvedDidsCache);
+            }, (error) => {
+                console.error("Error listening to resolved DIDs:", error);
+                // Optionally update a UI status for this specific section
+            });
+        }
+
+        // --- DID Resolution Function (extracted from React App logic) ---
+        async function resolveBlueskyDidAndProfile(did) {
+            // Only did:plc DIDs are supported here.
+            if (!did || !did.startsWith('did:plc:')) {
+                console.warn(`Attempted to resolve unsupported DID type or invalid DID: ${did}`);
+                return null;
+            }
+
+            // Check if already in cache
+            if (resolvedDidsCache[did]) {
+                console.log(`DID ${did} already in cache. Using cached data.`);
+                return resolvedDidsCache[did];
+            }
+
+            let resolvedHandle = '';
+            let resolvedDisplayName = '';
+
+            try {
+                // Step 1: Resolve DID to Handle using plc.directory
+                const plcApiUrl = `https://plc.directory/${did}`;
+                const plcResponse = await fetch(plcApiUrl);
+
+                if (!plcResponse.ok) {
+                    const errorText = await plcResponse.text();
+                    console.error(`Failed to fetch DID document from plc.directory for ${did}: HTTP status ${plcResponse.status} - ${errorText}`);
+                    return null;
+                }
+
+                const didDocument = await plcResponse.json();
+                if (didDocument && Array.isArray(didDocument.alsoKnownAs) && didDocument.alsoKnownAs.length > 0) {
+                    const potentialHandleUri = didDocument.alsoKnownAs[0];
+                    if (potentialHandleUri.startsWith('at://')) {
+                        resolvedHandle = potentialHandleUri.substring(5); // Remove 'at://' prefix
+                    } else {
+                        console.warn(`Found "alsoKnownAs" for ${did} but not in expected "at://" format: ${potentialHandleUri}`);
+                        resolvedHandle = `[Invalid Format]`;
+                    }
+                } else {
+                    console.warn(`No handle found in "alsoKnownAs" for DID: ${did}`);
+                    resolvedHandle = `[No Handle]`;
+                }
+
+                // Step 2: Fetch Display Name using Bluesky AppView API
+                const profileApiUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`;
+                const profileResponse = await fetch(profileApiUrl);
+
+                if (!profileResponse.ok) {
+                    const errorText = await profileResponse.text();
+                    console.warn(`Failed to fetch profile from Bluesky AppView for ${did}: HTTP status ${profileResponse.status} - ${errorText}`);
+                    resolvedDisplayName = 'Display name not available';
+                } else {
+                    const profileData = await profileResponse.json();
+                    if (profileData && profileData.displayName) {
+                        resolvedDisplayName = profileData.displayName;
+                    } else {
+                        resolvedDisplayName = 'Display name not set';
+                    }
+                }
+
+                // Step 3: Save to Firestore
+                if (db && currentUserId) { // Ensure Firebase is ready before saving
+                    // Corrected collection name here
+                    const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
+                    // Use setDoc with DID as document ID to ensure uniqueness and allow updates
+                    await setDoc(doc(resolvedDidsCollectionRef, did), {
+                        did: did,
+                        handle: resolvedHandle,
+                        displayName: resolvedDisplayName,
+                        timestamp: serverTimestamp() // Add a timestamp for ordering
+                    }, { merge: true }); // Use merge to avoid overwriting existing fields if they exist
+                    console.log(`Successfully saved resolved DID ${did} to Firestore.`);
+
+                    // Update local cache immediately after successful save
+                    resolvedDidsCache[did] = { handle: resolvedHandle, displayName: resolvedDisplayName, timestamp: new Date() };
+                } else {
+                    console.warn("Firestore not ready for saving resolved DID. Data not persisted.");
+                }
+
+                return { handle: resolvedHandle, displayName: resolvedDisplayName };
+
+            } catch (err) {
+                console.error(`Error resolving DID ${did} or fetching profile:`, err);
+                return null;
+            }
+        }
+
+
+        // --- WebSocket Connection Logic ---
+        function connectWebSocket() {
+            if (!isFirebaseReady) { 
+                console.warn("Firebase is not ready, delaying WebSocket connection.");
+                setTimeout(connectWebSocket, 1000); 
+                return;
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                return; 
+            }
+
+            loadingIndicatorElem.style.display = 'block';
+            connectionStatusElem.textContent = 'Connecting to feed...';
+
+            ws = new WebSocket(WEBSOCKET_URL);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected!');
+                connectionStatusElem.textContent = 'Connected'; 
+                connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
+                connectionStatusElem.classList.add('text-green-600');
+                loadingIndicatorElem.style.display = 'none';
+                clearInterval(reconnectInterval);
+                reconnectInterval = null;
+            };
+
+            ws.onmessage = async (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    let authorDisplayName = 'User'; 
+                    let authorDid = data.did; // Renamed for clarity: this is the DID
+                    let postText = '';
+                    let timestamp = ''; 
+
+                    if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
+                        const commitData = data.commit;
+                        const post = commitData.record; 
+                        
+                        if (typeof post.text === 'string') {
+                            postText = post.text;
+                        } else {
+                            console.warn("Post record text is not a string or is missing, defaulting to empty string:", post.text);
+                            postText = ''; 
+                        }
+                        
+                        timestamp = post.createdAt; 
+
+                        // --- Resolve and Save DID automatically ---
+                        const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid);
+                        if (resolvedInfo) {
+                            authorDisplayName = resolvedInfo.displayName;
+                            // Use the resolved handle for display, adding '@'
+                            addPostToDisplay(postText, authorDisplayName, `@${resolvedInfo.handle}`, new Date(timestamp).toLocaleString()); 
+                        } else {
+                            // If resolution failed, use the raw DID for handle display
+                            addPostToDisplay(postText, authorDisplayName, authorDid, new Date(timestamp).toLocaleString()); 
+                        }
+                        
+                        // --- Existing analysis update ---
+                        let postEmbed = post.embed; // Re-assign postEmbed as it was part of original logic
+                        console.log("Scheduling Firestore analysis update via debounce.");
+                        debouncedUpdateFirestoreAnalysis(authorDid, postText, postEmbed); 
+
+                    } else {
+                        console.log("WebSocket message is not a recognized post type or missing expected fields.");
+                    }
+
+                } catch (e) {
+                    console.error('Failed to parse message or process data:', e);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                connectionStatusElem.textContent = 'WebSocket error. Trying to reconnect...';
+                connectionStatusElem.classList.remove('text-green-600', 'text-orange-600');
+                connectionStatusElem.classList.add('text-red-600');
+                loadingIndicatorElem.style.display = 'none';
+            };
+
+            ws.onclose = (event) => {
+                console.warn('WebSocket closed:', event);
+                connectionStatusElem.textContent = `Disconnected. Code: ${event.code}, Reason: ${event.reason}. Reconnecting in ${RECONNECT_DELAY / 1000}s...`;
+                connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
+                connectionStatusElem.classList.add('text-orange-600');
+                loadingIndicatorElem.style.display = 'none';
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(connectWebSocket, RECONNECT_DELAY);
+                }
+            };
+        }
+
+        // --- UI Update Functions ---
+        function addPostToDisplay(content, displayName, handle, timestamp) {
+            const postCard = document.createElement('div');
+            postCard.className = 'post-card';
+            postCard.innerHTML = `
+                <div class="post-author">
+                    <div class="text-gray-700">${displayName}</div> 
+                    <div class="text-blue-600 text-sm">${handle}</div> 
+                </div>
+                <div class="post-content">${content}</div>
+                <div class="post-timestamp">${timestamp}</div>
+            `;
+            if (postsContainer.firstChild) {
+                postsContainer.insertBefore(postCard, postsContainer.firstChild);
+            } else {
+                postsContainer.appendChild(postCard);
+            }
+            while (postsContainer.children.length > 50) {
+                postsContainer.removeChild(postsContainer.lastChild);
+            }
+        }
+
+        function renderResolvedDidsList(resolvedDidsMap) {
+            resolvedDidsListDiv.innerHTML = ''; // Clear previous content
+            // Convert the map to an array for sorting, using timestamp from the stored data
+            const sortedDids = Object.values(resolvedDidsMap).sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0));
+
+            if (sortedDids.length === 0) {
+                resolvedDidsListDiv.innerHTML = '<p class="text-gray-500 text-center">No DIDs resolved yet from the feed.</p>';
+            } else {
+                sortedDids.forEach(entry => {
+                    const item = document.createElement('div');
+                    item.className = 'bg-gray-100 p-3 rounded-md border border-gray-200 flex flex-col';
+                    item.innerHTML = `
+                        <p class="text-blue-700 font-semibold text-sm break-all mb-1">${entry.did}</p>
+                        <p class="text-gray-900 text-base font-mono">@${entry.handle}</p>
+                        <p class="text-gray-700 text-sm">${entry.displayName}</p>
+                    `;
+                    resolvedDidsListDiv.appendChild(item);
+                });
+            }
+        }
+
+        // --- Debounced Firestore Update Function (Existing logic) ---
+        let accumulatedUpdates = { 
+            termCounts: {},
+            linkCounts: {}, // Original link data (still tracked)
+            domainCounts: {}, // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
+            contentTypeCounts: {},
+            linkCardsData: {}, // Data for rich link cards (still tracked)
+            imageCardsData: {} // Data for image cards (still tracked)
+        };
+
+        async function debouncedUpdateFirestoreAnalysis(authorDid, text, embed) { 
+            accumulatedUpdates = {
+                termCounts: accumulatedUpdates.termCounts || {},
+                linkCounts: accumulatedUpdates.linkCounts || {},
+                domainCounts: accumulatedUpdates.domainCounts || {},
+                contentTypeCounts: accumulatedUpdates.contentTypeCounts || {},
+                linkCardsData: accumulatedUpdates.linkCardsData || {},
+                imageCardsData: accumulatedUpdates.imageCardsData || {}
+            };
+
+            const safeText = String(text || '');
+            
+            // --- Hashtag Counting ---
+            let hashtags = [];
+            try {
+                const matchedHashtags = safeText.toLowerCase().match(/#\b\w+\b/g);
+                hashtags = matchedHashtags ? [...matchedHashtags] : []; 
+            } catch (e) {
+                console.error("Error during hashtag matching:", e, "Text:", safeText);
+                hashtags = []; 
+            }
+            hashtags.forEach(tag => {
+                accumulatedUpdates.termCounts[tag] = (accumulatedUpdates.termCounts[tag] || 0) + 1;
+            });
+
+            // --- Link and Domain Counting ---
+            let extractedLink = null;
+            if (embed && embed.$type === 'app.bsky.embed.external' && embed.external && embed.external.uri) {
+                extractedLink = embed.external.uri;
+                const externalTitle = embed.external.title || null;
+                const externalDescription = embed.external.description || null;
+
+                // Update linkCounts (for Top Links - still tracked in DB, but not displayed)
+                if (!accumulatedUpdates.linkCounts[extractedLink]) {
+                    accumulatedUpdates.linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null };
+                }
+                accumulatedUpdates.linkCounts[extractedLink].count += 1;
+                if (externalTitle) {
+                    accumulatedUpdates.linkCounts[extractedLink].originalTitle = externalTitle;
+                }
+                if (externalDescription) {
+                    accumulatedUpdates.linkCounts[extractedLink].description = externalDescription;
+                }
+                if (accumulatedUpdates.linkCounts[extractedLink].headline === null) {
+                    // Call fetchHeadline here. It's now defined at the top.
+                    fetchHeadline(extractedLink).then(fetchedTitle => {
+                        if (fetchedTitle) {
+                            accumulatedUpdates.linkCounts[extractedLink].headline = fetchedTitle;
+                        }
+                    });
+                }
+
+                // Update linkCardsData (for new "Link Cards" section - now displayed in topLinksDiv)
+                if (externalTitle && externalDescription) { // Only add if both title and description are present
+                    if (!accumulatedUpdates.linkCardsData[extractedLink]) {
+                        accumulatedUpdates.linkCardsData[extractedLink] = { count: 0, title: externalTitle, description: externalDescription };
+                    }
+                    accumulatedUpdates.linkCardsData[extractedLink].count += 1;
+                }
+
+                const baseDomain = getSimplifiedDomain(extractedLink);
+                if (baseDomain && baseDomain !== 'Invalid Domain') {
+                    const originalHost = new URL(extractedLink).hostname.toLowerCase();
+                    // Initialize if not exists
+                    if (!accumulatedUpdates.domainCounts[baseDomain]) {
+                        accumulatedUpdates.domainCounts[baseDomain] = { count: 0, sources: {} };
+                    }
+                    // Increment count for the simplified domain
+                    accumulatedUpdates.domainCounts[baseDomain].count++;
+                    // Increment count for the specific original host under this simplified domain
+                    accumulatedUpdates.domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates.domainCounts[baseDomain].sources[originalHost] || 0) + 1;
+                }
+            } else if (embed && embed.$type === 'app.bsky.embed.images' && embed.images && embed.images.length > 0) {
+                const firstImage = embed.images[0];
+                const imageAlt = firstImage.alt || 'Image without description';
+                const imageKey = imageAlt; 
+
+                if (!accumulatedUpdates.imageCardsData[imageKey]) {
+                    accumulatedUpdates.imageCardsData[imageKey] = { count: 0, alt: imageAlt };
+                }
+                accumulatedUpdates.imageCardsData[imageKey].count += 1;
+            }
+
+            // --- Content Type Counting ---
+            let contentType = 'Text-only';
+            if (embed) {
+                if (embed.$type === 'app.bsky.embed.external') {
+                    contentType = 'Link';
+                } else if (embed.$type === 'app.bsky.embed.images') {
+                    contentType = 'Image';
+                }
+            }
+            accumulatedUpdates.contentTypeCounts[contentType] = (accumulatedUpdates.contentTypeCounts[contentType] || 0) + 1;
+
+
+            // Clear any existing timer
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+
+            debounceTimer = setTimeout(async () => {
+                if (!db || !isFirebaseReady) {
+                    console.warn("Firestore not ready for update after debounce. Cannot update analysis.");
+                    return;
+                }
+
+                const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'summaries', 'grazeFeedAnalysisSummary');
+                const today = new Date();
+                const dailyDocId = getYYYYMMDD(today);
+                const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'dailyAggregates', dailyDocId); 
+
+                try {
+                    // 1. Update All-Time Summary
+                    const summarySnap = await getDoc(summaryDocRef);
+                    let currentSummaryData = {
+                        termCounts: {},
+                        linkCounts: {},
+                        domainCounts: {},
+                        contentTypeCounts: {},
+                        linkCardsData: {},
+                        imageCardsData: {}
+                    };
+                    if (summarySnap.exists()) {
+                        currentSummaryData = summarySnap.data();
+                        currentSummaryData.termCounts = currentSummaryData.termCounts || {};
+                        currentSummaryData.linkCounts = currentSummaryData.linkCounts || {};
+                        currentSummaryData.domainCounts = currentSummaryData.domainCounts || {};
+                        currentSummaryData.contentTypeCounts = currentSummaryData.contentTypeCounts || {};
+                        currentSummaryData.linkCardsData = currentSummaryData.linkCardsData || {};
+                        currentSummaryData.imageCardsData = currentSummaryData.imageCardsData || {};
+                    }
+
+                    for (const key in accumulatedUpdates.termCounts) {
+                        currentSummaryData.termCounts[key] = (currentSummaryData.termCounts[key] || 0) + accumulatedUpdates.termCounts[key];
+                    }
+                    for (const url in accumulatedUpdates.linkCounts) {
+                        const { count, headline, originalTitle, description } = accumulatedUpdates.linkCounts[url];
+                        if (typeof currentSummaryData.linkCounts[url] !== 'object' || currentSummaryData.linkCounts[url] === null) {
+                            currentSummaryData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
+                        }
+                        currentSummaryData.linkCounts[url].count = (currentSummaryData.linkCounts[url].count || 0) + count;
+                        if (headline && currentSummaryData.linkCounts[url].headline === null) {
+                            currentSummaryData.linkCounts[url].headline = headline;
+                        }
+                        if (originalTitle && currentSummaryData.linkCounts[url].originalTitle === null) {
+                            currentSummaryData.linkCounts[url].originalTitle = originalTitle;
+                        }
+                        if (description && currentSummaryData.linkCounts[url].description === null) {
+                            currentSummaryData.linkCounts[url].description = description;
+                        }
+                    }
+                    for (const simplifiedDomain in accumulatedUpdates.domainCounts) {
+                        const updateData = accumulatedUpdates.domainCounts[simplifiedDomain];
+                        if (!currentSummaryData.domainCounts[simplifiedDomain]) {
+                            currentSummaryData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
+                        }
+                        currentSummaryData.domainCounts[simplifiedDomain].count = (currentSummaryData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
+                        for (const originalHost in updateData.sources) {
+                            currentSummaryData.domainCounts[simplifiedDomain].sources[originalHost] = 
+                                (currentSummaryData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                        }
+                    }
+                    for (const key in accumulatedUpdates.contentTypeCounts) {
+                        currentSummaryData.contentTypeCounts[key] = (currentSummaryData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
+                    }
+                    for (const url in accumulatedUpdates.linkCardsData) {
+                        const { count, title, description } = accumulatedUpdates.linkCardsData[url];
+                        if (typeof currentSummaryData.linkCardsData[url] !== 'object' || currentSummaryData.linkCardsData[url] === null) {
+                            currentSummaryData.linkCardsData[url] = { count: 0, title: null, description: null };
+                        }
+                        currentSummaryData.linkCardsData[url].count = (currentSummaryData.linkCardsData[url].count || 0) + count;
+                        if (title && currentSummaryData.linkCardsData[url].title === null) {
+                            currentSummaryData.linkCardsData[url].title = title;
+                        }
+                        if (description && currentSummaryData.linkCardsData[url].description === null) {
+                            currentSummaryData.linkCardsData[url].description = description;
+                        }
+                    }
+                    for (const key in accumulatedUpdates.imageCardsData) {
+                        const { count, alt } = accumulatedUpdates.imageCardsData[key];
+                        if (typeof currentSummaryData.imageCardsData[key] !== 'object' || currentSummaryData.imageCardsData[key] === null) {
+                            currentSummaryData.imageCardsData[key] = { count: 0, alt: null };
+                        }
+                        currentSummaryData.imageCardsData[key].count = (currentSummaryData.imageCardsData[key].count || 0) + count;
+                        if (alt && currentSummaryData.imageCardsData[key].alt === null) {
+                            currentSummaryData.imageCardsData[key].alt = alt;
+                        }
+                    }
+
+                    await setDoc(summaryDocRef, currentSummaryData, { merge: true });
+
+                    // 2. Update Daily Aggregate
+                    const dailySnap = await getDoc(dailyDocRef);
+                    let currentDailyData = {
+                        termCounts: {},
+                        linkCounts: {},
+                        domainCounts: {},
+                        contentTypeCounts: {},
+                        linkCardsData: {},
+                        imageCardsData: {}
+                    };
+                    if (dailySnap.exists()) {
+                        currentDailyData = dailySnap.data();
+                        currentDailyData.termCounts = currentDailyData.termCounts || {};
+                        currentDailyData.linkCounts = currentDailyData.linkCounts || {};
+                        currentDailyData.domainCounts = currentDailyData.domainCounts || {};
+                        currentDailyData.contentTypeCounts = currentDailyData.contentTypeCounts || {};
+                        currentDailyData.linkCardsData = currentDailyData.linkCardsData || {};
+                        currentDailyData.imageCardsData = currentDailyData.imageCardsData || {};
+                    }
+
+                    for (const key in accumulatedUpdates.termCounts) {
+                        currentDailyData.termCounts[key] = (currentDailyData.termCounts[key] || 0) + accumulatedUpdates.termCounts[key];
+                    }
+                    for (const url in accumulatedUpdates.linkCounts) {
+                         const { count, headline, originalTitle, description } = accumulatedUpdates.linkCounts[url];
+                        if (typeof currentDailyData.linkCounts[url] !== 'object' || currentDailyData.linkCounts[url] === null) {
+                            currentDailyData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
+                        }
+                        currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
+                        if (headline && currentDailyData.linkCounts[url].headline === null) {
+                            currentDailyData.linkCounts[url].headline = headline;
+                        }
+                        if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) {
+                            currentDailyData.linkCounts[url].originalTitle = originalTitle;
+                        }
+                        if (description && currentDailyData.linkCounts[url].description === null) {
+                            currentDailyData.linkCardsData[url].description = description;
+                        }
+                    }
+                    for (const simplifiedDomain in accumulatedUpdates.domainCounts) {
+                        const updateData = accumulatedUpdates.domainCounts[simplifiedDomain];
+                        if (!currentDailyData.domainCounts[simplifiedDomain]) {
+                            currentDailyData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
+                        }
+                        currentDailyData.domainCounts[simplifiedDomain].count = (currentDailyData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
+                        for (const originalHost in updateData.sources) {
+                            currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
+                                (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                        }
+                    }
+                    for (const key in accumulatedUpdates.contentTypeCounts) {
+                        currentDailyData.contentTypeCounts[key] = (currentDailyData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
+                    }
+                    for (const url in accumulatedUpdates.linkCardsData) {
+                        const { count, title, description } = accumulatedUpdates.linkCardsData[url];
+                        if (typeof currentDailyData.linkCardsData[url] !== 'object' || currentDailyData.linkCardsData[url] === null) {
+                            currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null };
+                        }
+                        currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url].count || 0) + count;
+                        if (title && currentDailyData.linkCardsData[url].title === null) {
+                            currentDailyData.linkCardsData[url].title = title;
+                        }
+                        if (description && currentDailyData.linkCardsData[url].description === null) {
+                            currentDailyData.linkCardsData[url].description = description;
+                        }
+                    }
+                    for (const key in accumulatedUpdates.imageCardsData) {
+                        const { count, alt } = accumulatedUpdates.imageCardsData[key];
+                        if (typeof currentDailyData.imageCardsData[key] !== 'object' || currentDailyData.imageCardsData[key] === null) {
+                            currentDailyData.imageCardsData[key] = { count: 0, alt: null };
+                        }
+                        currentDailyData.imageCardsData[key].count = (currentDailyData.imageCardsData[key].count || 0) + count;
+                        if (alt && currentDailyData.imageCardsData[key].alt === null) {
+                            currentDailyData.imageCardsData[key].alt = alt;
+                        }
+                    }
+
+                    await setDoc(dailyDocRef, currentDailyData, { merge: true });
+
+                    console.log("Firestore analysis updated (debounced).");
+
+                    // Reset accumulated updates after successful write
+                    accumulatedUpdates = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {} };
+
+                } catch (e) {
+                    console.error("Error updating Firestore analysis (debounced):", e);
+                    connectionStatusElem.textContent = `Firestore Update Error: ${e.message}`;
+                } finally {
+                    // Re-render the view with the latest all-time data after update
+                    // or fetch specific daily/weekly/monthly data if that timeframe is selected
+                    if (currentSelectedTimeframe === 'allTime') {
+                        updateView('allTime');
+                    } else {
+                        updateView(currentSelectedTimeframe);
+                    }
+                }
+            }, DEBOUNCE_DELAY);
+        }
+
+        // --- Render Functions for Analysis ---
+        function renderAnalysis(termData, richLinkCardsData, domainData, contentTypeData) { // Adjusted signature
+            // Render Top Hashtags
+            const sortedTerms = Object.entries(termData)
+                .sort(([, countA], [, countB]) => countB - countA)
+                .slice(0, 20);
+
+            topTermsDiv.innerHTML = '';
+            if (sortedTerms.length === 0) {
+                topTermsDiv.innerHTML = '<p class="text-gray-500 text-center">No hashtags yet to analyze.</p>';
+            } else {
+                sortedTerms.forEach(([term, count], index) => {
+                    const item = document.createElement('div');
+                    item.className = 'domain-card'; 
+                    item.title = term;
+                    item.innerHTML = `
+                        <div class="domain-card-name">
+                            ${index + 1}. ${term}
+                        </div>
+                        <div class="domain-card-count">
+                            ${count} uses
+                        </div>
+                    `;
+                    topTermsDiv.appendChild(item);
+                });
+            }
+
+            // Render Link Cards (with Title & Description) in the topLinksDiv
+            const sortedRichLinkCards = Object.entries(richLinkCardsData)
+                .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
+                .slice(0, 10);
+
+            topLinksDiv.innerHTML = ''; // Clear topLinksDiv
+            if (sortedRichLinkCards.length === 0) {
+                topLinksDiv.innerHTML = '<p class="text-gray-500 text-center">No rich link cards yet to display.</p>';
+            } else {
+                sortedRichLinkCards.forEach(([url, data]) => {
+                    const item = document.createElement('a');
+                    item.href = url;
+                    item.target = "_blank";
+                    item.rel = "noopener noreferrer";
+                    item.className = 'link-card'; 
+                    item.title = `URL: ${url}\nTitle: ${data.title}\nDescription: ${data.description}`;
+                    
+                    item.innerHTML = `
+                        <div class="link-card-headline">
+                            ${data.title}
+                        </div>
+                        <div class="link-card-description">
+                            ${data.description}
+                        </div>
+                        <div class="link-card-url">
+                            ${url}
+                        </div>
+                        <div class="link-card-count">
+                            ${data.count} clicks
+                        </div>
+                    `;
+                    topLinksDiv.appendChild(item);
+                });
+            }
+
+            // Render Top Domains - Apply canonicalization here for display
+            const canonicalizedDomainData = canonicalizeDisplayDomains(domainData);
+
+            const sortedDomains = Object.entries(canonicalizedDomainData)
+                .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
+                .slice(0, 10);
+
+            topDomainsDiv.innerHTML = '';
+            if (sortedDomains.length === 0) {
+                topDomainsDiv.innerHTML = '<p class="text-gray-500 text-center">No domains yet to analyze.</p>';
+            } else {
+                sortedDomains.forEach(([domain, data]) => {
+                    const item = document.createElement('div');
+                    item.className = 'domain-card';
+                    
+                    // Construct the tooltip string with original full domains
+                    let tooltipText = `Website: ${domain}`;
+                    if (data.original_full_domains_list && data.original_full_domains_list.length > 0) {
+                        tooltipText += `\nIncludes: ${data.original_full_domains_list.join(', ')}`;
+                    }
+                    item.title = tooltipText;
+
+                    item.innerHTML = `
+                        <div class="domain-card-name">
+                            ${domain}
+                        </div>
+                        <div class="domain-card-count">
+                            ${data.count} visits
+                        </div>
+                    `;
+                    topDomainsDiv.appendChild(item);
+                });
+            }
+
+            // Render Content Type Breakdown
+            const sortedContentTypes = Object.entries(contentTypeData)
+                .sort(([, countA], [, countB]) => countB - countA)
+                .slice(0, 5);
+
+            contentTypeBreakdownDiv.innerHTML = '';
+            if (sortedContentTypes.length === 0) {
+                contentTypeBreakdownDiv.innerHTML = '<p class="text-gray-500 text-center">No content types yet to analyze.</p>';
+            } else {
+                sortedContentTypes.forEach(([type, count]) => {
+                    const item = document.createElement('div');
+                    item.className = 'domain-card';
+                    item.innerHTML = `
+                        <div class="domain-card-name">
+                            ${type}
+                        </div>
+                        <div class="domain-card-count">
+                            ${count} posts
+                        </div>
+                    `;
+                    contentTypeBreakdownDiv.appendChild(item);
+                });
+            }
+
+            // Removed rendering for Link Cards (with Title & Description) from its old div
+            // Removed rendering for Image Cards
+        }
+
+        // --- Timeframe Selection and Data Fetching/Display ---
+        async function updateView(timeframe) {
+            currentSelectedTimeframe = timeframe;
+            loadingIndicatorElem.style.display = 'block';
+            connectionStatusElem.textContent = `Fetching data for ${timeframe}...`;
+
+            let termsToDisplay = {};
+            let linksToDisplay = {}; // This will now hold rich link card data for display
+            let domainsToDisplay = {}; // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
+            let contentTypesToDisplay = {};
+
+            if (timeframe === 'allTime') {
+                termsToDisplay = allTimeTermCounts;
+                linksToDisplay = allTimeLinkCardsData; // Assign rich link card data to linksToDisplay
+                domainsToDisplay = allTimeDomainCounts;
+                contentTypesToDisplay = allTimeContentTypeCounts;
+                connectionStatusElem.textContent = 'Connected';
+            } else {
+                const today = new Date();
+                let startDate;
+
+                if (timeframe === 'day') {
+                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                } else if (timeframe === 'week') {
+                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+                } else if (timeframe === 'month') {
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                }
+
+                // Fetch data for the selected timeframe
+                const dailyAggregatesRef = collection(db, 'artifacts', appId, 'public', 'data', 'dailyAggregates');
+                const q = query(dailyAggregatesRef, where('__name__', '>=', getYYYYMMDD(startDate)));
+
+                try {
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((docSnap) => {
+                        const data = docSnap.data();
+                        const dailyTerms = data.termCounts || {};
+                        const dailyLinks = data.linkCounts || {}; 
+                        const dailyDomains = data.domainCounts || {};
+                        const dailyContentTypes = data.contentTypeCounts || {};
+                        const dailyLinkCards = data.linkCardsData || {}; 
+                        const dailyImageCards = data.imageCardsData || {}; 
+
+                        for (const term in dailyTerms) {
+                            termsToDisplay[term] = (termsToDisplay[term] || 0) + dailyTerms[term];
+                        }
+                        // Aggregate rich link card data for display
+                        for (const url in dailyLinkCards) {
+                            const { count, title, description } = dailyLinkCards[url];
+                            if (!linksToDisplay[url]) { 
+                                linksToDisplay[url] = { count: 0, title: null, description: null };
+                            }
+                            linksToDisplay[url].count += count;
+                            if (title && linksToDisplay[url].title === null) {
+                                linksToDisplay[url].title = title;
+                            }
+                            if (description && linksToDisplay[url].description === null) {
+                                linksToDisplay[url].description = description;
+                            }
+                        }
+                        // Aggregate domains (with new structure)
+                        for (const simplifiedDomain in dailyDomains) {
+                            const dailyEntry = dailyDomains[simplifiedDomain];
+                            if (!domainsToDisplay[simplifiedDomain]) {
+                                domainsToDisplay[simplifiedDomain] = { count: 0, sources: {} };
+                            }
+                            domainsToDisplay[simplifiedDomain].count += dailyEntry.count;
+                            for (const originalHost in dailyEntry.sources) {
+                                domainsToDisplay[simplifiedDomain].sources[originalHost] = 
+                                    (domainsToDisplay[simplifiedDomain].sources[originalHost] || 0) + dailyEntry.sources[originalHost];
+                            }
+                        }
+                        for (const type in dailyContentTypes) {
+                            contentTypesToDisplay[type] = (contentTypesToDisplay[type] || 0) + dailyContentTypes[type];
+                        }
+                    });
+                    connectionStatusElem.textContent = 'Connected';
+                } catch (error) {
+                    console.error(`Error fetching ${timeframe} data:`, error);
+                    connectionStatusElem.textContent = `Error fetching ${timeframe} data: ${error.message}`;
+                }
+            }
+
+            currentDisplayTermCounts = termsToDisplay;
+            currentDisplayLinkCounts = linksToDisplay; 
+            currentDisplayDomainCounts = domainsToDisplay;
+            currentDisplayContentTypeCounts = contentTypesToDisplay;
+            
+            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts, currentDisplayContentTypeCounts); 
+            loadingIndicatorElem.style.display = 'none';
+        }
+
+        // --- Event Listeners for Timeframe Selector ---
+        document.querySelectorAll('input[name="timeframe"]').forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                updateView(event.target.value);
+            });
+        });
+
+        // --- Initialize on DOMContentLoaded ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase(); // Start Firebase initialization and auth
+        });
+
+        // Cleanup WebSocket on window unload
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.close();
+            }
+            clearInterval(reconnectInterval);
+        });
+    </script>
+</body>
+</html>
