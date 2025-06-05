@@ -361,36 +361,34 @@
                     <label for="timeframeAllTime">All Time</label>
                 </div>
 
-                <!-- Changed: Grid for rankings to support 3 columns on medium screens and above -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                    <div>
+                <!-- Changed: Grid for rankings to support 4 columns on medium screens and above -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+                    <div class="md:col-span-1">
                         <h3 class="stylish-subheader">Top Hashtags</h3>
                         <div id="topTerms">
                             <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
                         </div>
                     </div>
-                    <div>
+                    <div class="md:col-span-2">
                         <h3 class="stylish-subheader">Top Links</h3>
                         <div id="topLinks">
                             <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
                         </div>
                     </div>
-                    <!-- Moved Top Posters here to be logically next to Top Links -->
-                    <div> 
+                    <div class="md:col-span-1"> 
                         <h3 class="stylish-subheader">Top Posters</h3>
                         <div id="topPostersList" class="space-y-3">
                             <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
                         </div>
                     </div>
-                    <!-- The next two divs will automatically wrap to the next row in a 3-column grid -->
-                    <div>
+                    <!-- The next two divs will automatically wrap to the next row in a 4-column grid -->
+                    <div class="md:col-span-2">
                         <h3 class="stylish-subheader">Top Sites</h3>
                         <div id="topDomains">
                             <p class="text-gray-500 text-center">No domains yet to analyze.</p>
                         </div>
                     </div>
-                    <!-- New section for Content Type Breakdown -->
-                    <div>
+                    <div class="md:col-span-2">
                         <h3 class="stylish-subheader">Content Type Breakdown</h3>
                         <div id="contentTypeBreakdown">
                             <p class="text-gray-500 text-center">No content types yet to analyze.</p>
