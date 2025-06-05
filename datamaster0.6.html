@@ -48,20 +48,20 @@
                 min-width: 0; /* CRITICAL: Allows flex items to shrink below their content size */
                 height: 100%; /* Ensure each section-wrapper fills the height of main-wrapper */
             }
-            /* Specific flex properties for the three columns (5% / 40% / 55% of original content area, with extra space to rankings) */
-            /* Calculated based on 1590px original content width:
-               Nav: 1590 * 0.05 = 79.5px
-               Urbanism+: 1590 * 0.40 = 636px
-               Rankings: 1590 * 0.55 = 874.5px (plus 30px extra space = 904.5px)
+            /* Specific flex properties for the three columns (4% / 38% / 58% of original content area) */
+            /* Calculated based on 1620px total content width (1650px max-width - 30px total gap):
+               Nav: 1620 * 0.04 = 64.8px
+               Urbanism+: 1620 * 0.38 = 615.6px
+               Rankings: 1620 * 0.58 = 940.6px
             */
             .section-wrapper:nth-child(1) { /* Navigation Box */
-                flex: 0 0 79.5px; /* Fixed width for content */
+                flex: 0 0 64.8px; /* Fixed width for content */
             }
             .section-wrapper:nth-child(2) { /* Urbanism+ Box */
-                flex: 0 0 636px; /* Fixed width for content */
+                flex: 0 0 615.6px; /* Fixed width for content */
             }
             .section-wrapper:nth-child(3) { /* Rankings Box - takes all remaining space */
-                flex: 1; /* This will automatically expand to 904.5px content width */
+                flex: 1; /* This will automatically expand to 940.6px content width */
             }
             /* Ensure section-cards inside are also full height */
             .section-wrapper .section-card {
@@ -321,6 +321,21 @@
         /* Added for the rankings section to align its content to the left */
         .section-wrapper:last-child .section-card {
             align-items: flex-start;
+        }
+        /* Specific styling for the handle and DID in Top Posters */
+        .poster-handle {
+            white-space: nowrap; /* Prevent line breaks */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            display: inline-block; /* Essential for overflow properties to work */
+            max-width: 100%; /* Ensure it respects parent's width */
+        }
+        .poster-did {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            max-width: 100%;
         }
     </style>
 </head>
@@ -1537,10 +1552,8 @@
                         <div class="link-card-headline">
                             ${resolvedInfo.displayName}
                         </div>
-                        <div class="text-gray-500 text-sm">(@${resolvedInfo.handle})</div>
-                        <div class="link-card-description">
-                            ${did}
-                        </div>
+                        <div class="text-gray-500 text-sm poster-handle">@${resolvedInfo.handle}</div>
+                        <div class="text-gray-500 text-xs poster-did">${did}</div>
                         <div class="link-card-count">
                             ${countLabel}
                         </div>
