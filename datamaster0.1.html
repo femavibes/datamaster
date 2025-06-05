@@ -361,9 +361,9 @@
                             <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
                         </div>
                     </div>
-                    <div>
-                        <h3 class="stylish-subheader">Link Cards (with Title & Description)</h3>
-                        <div id="topLinks"> <!-- Re-using topLinks ID for the new content -->
+                    <div class="md:col-span-2"> <!-- This div now spans two columns -->
+                        <h3 class="stylish-subheader">Top Links</h3> <!-- Changed text here -->
+                        <div id="topLinks"> <!-- This div will contain the wider link cards -->
                             <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
                         </div>
                     </div>
@@ -380,8 +380,6 @@
                             <p class="text-gray-500 text-center">No content types yet to analyze.</p>
                         </div>
                     </div>
-                    <!-- Removed Link Cards (with Title & Description) section as it's now at Top Links spot -->
-                    <!-- Removed Top Images section -->
                 </div>
             </div>
         </div>
@@ -427,8 +425,7 @@
         const topLinksDiv = document.getElementById('topLinks'); // Now used for Link Cards (with Title & Description)
         const topDomainsDiv = document.getElementById('topDomains'); 
         const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown');
-        // const linkCardsDiv = document.getElementById('linkCards'); // Removed as its content moves to topLinksDiv
-        // const imageCardsDiv = document.getElementById('imageCards'); // Removed
+        const noPostsMessage = document.getElementById('noPostsMessage');
 
         // --- Analysis Data (synced with Firestore) ---
         // These will hold the ALL-TIME cumulative counts from the 'summary' document
@@ -444,8 +441,6 @@
         let currentDisplayLinkCounts = {}; // This will now hold rich link card data for display
         let currentDisplayDomainCounts = {};
         let currentDisplayContentTypeCounts = {}; 
-        // currentDisplayLinkCardsData is effectively renamed to currentDisplayLinkCounts for display
-        // currentDisplayImageCardsData is no longer needed for display
 
         let currentSelectedTimeframe = 'allTime'; // Default timeframe
 
@@ -1140,7 +1135,6 @@
             let linksToDisplay = {}; // This will now hold rich link card data for display
             let domainsToDisplay = {};
             let contentTypesToDisplay = {};
-            // imageCardsToDisplay is no longer relevant for display
 
             if (timeframe === 'allTime') {
                 termsToDisplay = allTimeTermCounts;
