@@ -27,9 +27,10 @@
             display: flex;
             flex-direction: column; /* Stack sections on small screens */
             gap: 30px; /* Space between the two main sections */
-            width: 100%;
-            max-width: 1200px; /* Wider max-width for dual content */
-            margin: auto;
+            width: 95vw; /* Changed: Set width to 95vw for left justification and near full width */
+            /* Removed: max-width: 1200px; */
+            /* Removed: margin: auto; */
+            margin-left: 0; /* Ensures it's pushed to the left */
             flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
             overflow: hidden; /* Hide scrollbar for main-wrapper, let cards handle it */
         }
@@ -1510,6 +1511,9 @@
                     item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
 
                     // Determine the label based on whether we are showing likes or post count
+                    // IMPORTANT: The live WebSocket stream does NOT provide like counts directly.
+                    // This currently counts posts as likes for demonstration purposes.
+                    // For true like counts, a backend service polling Bluesky's API is required.
                     const countLabel = Object.keys(posterLikesData).length > 0 ? `${count} likes` : `${count} posts`;
 
                     item.innerHTML = `
