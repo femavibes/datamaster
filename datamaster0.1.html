@@ -159,7 +159,7 @@
             height: 100%; /* Make iframe take full height of its container */
             min-height: 500px; /* Ensure a minimum height for the iframe */
             border: none;
-            border-radius: 8一層;
+            border-radius: 8px;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
             flex-grow: 1; /* Allow iframe to grow within its container */
             /* The iframe itself will handle its own scrolling if its content overflows */
@@ -485,8 +485,8 @@
             }
         }
 
-        // Function to canonicalize domain names for display, merging known duplicates
-        function canonicalizeDisplayDomains(rawDomainCounts) {
+        // Function to canonicalize domain names for display, merging known duplicates and preserving original sources
+        function canonicalizeDisplayDomains(rawDomainDataWithSources) {
             const canonicalMap = {
                 "streetsblog.org": "streetsblog",
                 "theguardian.com": "theguardian",
@@ -495,16 +495,40 @@
                 // Add more canonical mappings here as needed
             };
 
-            const canonicalizedCounts = {};
+            const finalDisplayData = {}; // Will store { "canonical_domain": { count: N, original_full_domains_list: ["orig1.com", "orig2.co.uk"] } }
 
-            for (const domainKey in rawDomainCounts) {
-                const count = rawDomainCounts[domainKey];
-                // Use canonical if found, otherwise use the original domainKey
-                const canonicalDomain = canonicalMap[domainKey] || domainKey; 
+            for (const simplifiedDomainKey in rawDomainDataWithSources) {
+                const domainEntry = rawDomainDataWithSources[simplifiedDomainKey]; // { count: N, sources: { "orig.com": X, ... } }
+                
+                let canonicalName = simplifiedDomainKey;
+                // Apply the canonical map for the main display key
+                for (const mapKey in canonicalMap) {
+                    if (simplifiedDomainKey === mapKey) {
+                        canonicalName = canonicalMap[mapKey];
+                        break;
+                    }
+                }
 
-                canonicalizedCounts[canonicalDomain] = (canonicalizedCounts[canonicalDomain] || 0) + count;
+                if (!finalDisplayData[canonicalName]) {
+                    finalDisplayData[canonicalName] = { count: 0, original_full_domains_list: new Set() }; // Use Set to avoid duplicates
+                }
+
+                // Aggregate count
+                finalDisplayData[canonicalName].count += domainEntry.count;
+
+                // Add all original source domains from the `sources` object to the set
+                for (const sourceDomain in domainEntry.sources) {
+                    finalDisplayData[canonicalName].original_full_domains_list.add(sourceDomain);
+                }
             }
-            return canonicalizedCounts;
+
+            // Convert Set to Array and sort for consistent tooltip display
+            for (const canonicalName in finalDisplayData) {
+                finalDisplayData[canonicalName].original_full_domains_list = 
+                    Array.from(finalDisplayData[canonicalName].original_full_domains_list).sort();
+            }
+            
+            return finalDisplayData;
         }
 
         // Helper function to getYYYY-MM-DD format for daily aggregate document IDs
@@ -555,7 +579,7 @@
         // These will hold the ALL-TIME cumulative counts from the 'summary' document
         let allTimeTermCounts = {}; 
         let allTimeLinkCounts = {}; // Original link data (might still be useful for other analysis)
-        let allTimeDomainCounts = {}; 
+        let allTimeDomainCounts = {}; // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
         let allTimeContentTypeCounts = {}; 
         let allTimeLinkCardsData = {}; // Data specifically for rich link cards
         let allTimeImageCardsData = {}; // Data for image cards (still tracked, but not displayed)
@@ -563,7 +587,7 @@
         // These will hold the counts for the CURRENTLY SELECTED timeframe
         let currentDisplayTermCounts = {};
         let currentDisplayLinkCounts = {}; // This will now hold rich link card data for display
-        let currentDisplayDomainCounts = {};
+        let currentDisplayDomainCounts = {}; // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
         let currentDisplayContentTypeCounts = {}; 
 
         let currentSelectedTimeframe = 'allTime'; // Default timeframe
@@ -788,7 +812,7 @@
         let accumulatedUpdates = { 
             termCounts: {},
             linkCounts: {}, // Original link data (still tracked)
-            domainCounts: {},
+            domainCounts: {}, // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
             contentTypeCounts: {},
             linkCardsData: {}, // Data for rich link cards (still tracked)
             imageCardsData: {} // Data for image cards (still tracked)
@@ -856,7 +880,15 @@
 
                 const baseDomain = getSimplifiedDomain(extractedLink);
                 if (baseDomain && baseDomain !== 'Invalid Domain') {
-                    accumulatedUpdates.domainCounts[baseDomain] = (accumulatedUpdates.domainCounts[baseDomain] || 0) + 1;
+                    const originalHost = new URL(extractedLink).hostname.toLowerCase();
+                    // Initialize if not exists
+                    if (!accumulatedUpdates.domainCounts[baseDomain]) {
+                        accumulatedUpdates.domainCounts[baseDomain] = { count: 0, sources: {} };
+                    }
+                    // Increment count for the simplified domain
+                    accumulatedUpdates.domainCounts[baseDomain].count++;
+                    // Increment count for the specific original host under this simplified domain
+                    accumulatedUpdates.domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates.domainCounts[baseDomain].sources[originalHost] || 0) + 1;
                 }
             } else if (embed && embed.$type === 'app.bsky.embed.images' && embed.images && embed.images.length > 0) {
                 const firstImage = embed.images[0];
@@ -937,8 +969,16 @@
                             currentSummaryData.linkCounts[url].description = description;
                         }
                     }
-                    for (const key in accumulatedUpdates.domainCounts) {
-                        currentSummaryData.domainCounts[key] = (currentSummaryData.domainCounts[key] || 0) + accumulatedUpdates.domainCounts[key];
+                    for (const simplifiedDomain in accumulatedUpdates.domainCounts) {
+                        const updateData = accumulatedUpdates.domainCounts[simplifiedDomain];
+                        if (!currentSummaryData.domainCounts[simplifiedDomain]) {
+                            currentSummaryData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
+                        }
+                        currentSummaryData.domainCounts[simplifiedDomain].count = (currentSummaryData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
+                        for (const originalHost in updateData.sources) {
+                            currentSummaryData.domainCounts[simplifiedDomain].sources[originalHost] = 
+                                (currentSummaryData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                        }
                     }
                     for (const key in accumulatedUpdates.contentTypeCounts) {
                         currentSummaryData.contentTypeCounts[key] = (currentSummaryData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
@@ -1008,8 +1048,16 @@
                             currentDailyData.linkCounts[url].description = description;
                         }
                     }
-                    for (const key in accumulatedUpdates.domainCounts) {
-                        currentDailyData.domainCounts[key] = (currentDailyData.domainCounts[key] || 0) + accumulatedUpdates.domainCounts[key];
+                    for (const simplifiedDomain in accumulatedUpdates.domainCounts) {
+                        const updateData = accumulatedUpdates.domainCounts[simplifiedDomain];
+                        if (!currentDailyData.domainCounts[simplifiedDomain]) {
+                            currentDailyData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
+                        }
+                        currentDailyData.domainCounts[simplifiedDomain].count = (currentDailyData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
+                        for (const originalHost in updateData.sources) {
+                            currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
+                                (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                        }
                     }
                     for (const key in accumulatedUpdates.contentTypeCounts) {
                         currentDailyData.contentTypeCounts[key] = (currentDailyData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
@@ -1126,23 +1174,30 @@
             const canonicalizedDomainData = canonicalizeDisplayDomains(domainData);
 
             const sortedDomains = Object.entries(canonicalizedDomainData)
-                .sort(([, countA], [, countB]) => countB - countA)
+                .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
                 .slice(0, 10);
 
             topDomainsDiv.innerHTML = '';
             if (sortedDomains.length === 0) {
                 topDomainsDiv.innerHTML = '<p class="text-gray-500 text-center">No domains yet to analyze.</p>';
             } else {
-                sortedDomains.forEach(([domain, count]) => {
+                sortedDomains.forEach(([domain, data]) => {
                     const item = document.createElement('div');
                     item.className = 'domain-card';
-                    item.title = domain;
+                    
+                    // Construct the tooltip string with original full domains
+                    let tooltipText = `Website: ${domain}`;
+                    if (data.original_full_domains_list && data.original_full_domains_list.length > 0) {
+                        tooltipText += `\nIncludes: ${data.original_full_domains_list.join(', ')}`;
+                    }
+                    item.title = tooltipText;
+
                     item.innerHTML = `
                         <div class="domain-card-name">
                             ${domain}
                         </div>
                         <div class="domain-card-count">
-                            ${count} visits
+                            ${data.count} visits
                         </div>
                     `;
                     topDomainsDiv.appendChild(item);
@@ -1185,7 +1240,7 @@
 
             let termsToDisplay = {};
             let linksToDisplay = {}; // This will now hold rich link card data for display
-            let domainsToDisplay = {};
+            let domainsToDisplay = {}; // Updated structure: { simplified_domain: { count: N, sources: { original_host: M, ... } } }
             let contentTypesToDisplay = {};
 
             if (timeframe === 'allTime') {
@@ -1238,8 +1293,17 @@
                                 linksToDisplay[url].description = description;
                             }
                         }
-                        for (const domain in dailyDomains) {
-                            domainsToDisplay[domain] = (domainsToDisplay[domain] || 0) + dailyDomains[domain];
+                        // Aggregate domains (with new structure)
+                        for (const simplifiedDomain in dailyDomains) {
+                            const dailyEntry = dailyDomains[simplifiedDomain];
+                            if (!domainsToDisplay[simplifiedDomain]) {
+                                domainsToDisplay[simplifiedDomain] = { count: 0, sources: {} };
+                            }
+                            domainsToDisplay[simplifiedDomain].count += dailyEntry.count;
+                            for (const originalHost in dailyEntry.sources) {
+                                domainsToDisplay[simplifiedDomain].sources[originalHost] = 
+                                    (domainsToDisplay[simplifiedDomain].sources[originalHost] || 0) + dailyEntry.sources[originalHost];
+                            }
                         }
                         for (const type in dailyContentTypes) {
                             contentTypesToDisplay[type] = (contentTypesToDisplay[type] || 0) + dailyContentTypes[type];
