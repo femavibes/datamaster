@@ -353,7 +353,7 @@
             border: 1px solid var(--link-card-border); /* Use variable */
         }
         .domain-card:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            box_shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
             transform: translateY(-2px); /* Slight lift effect */
             border-color: #3498db; /* Highlight border on hover */
         }
@@ -840,10 +840,7 @@
                 id: 'bandcamp',
                 uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp',
                 displayName: 'Bandcamp Feed',
-                // Note: bsky.app pages are not designed for embedding. Graze.social embeds work better.
-                // Using the direct bsky.app URL as requested, but it might have layout issues or
-                // prevent full interaction if the host page doesn't allow cross-origin framing.
-                iframeSrc: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp', 
+                iframeSrc: 'https://graze.social/feeds/embed/8723', // UPDATED IFRAME SRC
                 icon: 'musicalNote' // Placeholder for SVG icon
             }
             // Add more feeds here
@@ -1845,35 +1842,41 @@
             if (feed.icon.startsWith('http')) {
                 feedTitleIcon.src = feed.icon;
                 feedTitleIcon.style.display = 'inline'; // Show image
-                feedTitleIcon.nextElementSibling.style.display = 'none'; // Hide potential SVG sibling if present
-            } else {
-                // If it's an SVG icon, we need to replace the image with the SVG markup
-                // For simplicity, let's keep the image tag and toggle it,
-                // and for the SVG, we can conditionally render it or use a font icon.
-                // For now, let's just update the alt text and assume a placeholder for SVG.
-                // A better approach for SVGs would be to dynamically inject the SVG element.
-                // Given the current structure, let's try to update the SVG directly if it's there
-                // or fall back to text.
-
-                // For musicalNote SVG, we can directly update the innerHTML of a target element
-                // or if it's already a static SVG element, just update its fill color.
-                // Let's assume the Bandcamp button's SVG is the target.
-                
-                // For title, we'll keep the image and just update alt text, as directly
-                // embedding complex SVGs in the title is more involved without React.
-                feedTitleIcon.src = `https://placehold.co/40x40/cccccc/000000?text=${feed.displayName.charAt(0)}`; // Placeholder image for SVG icons
-                feedTitleIcon.alt = `${feed.displayName} Logo`;
+                // Ensure the SVG element (if any) is hidden when image is shown
+                const svgIcon = feedTitleIcon.nextElementSibling;
+                if (svgIcon && svgIcon.tagName.toLowerCase() === 'svg') {
+                    svgIcon.style.display = 'none';
+                }
+            } else if (feed.icon === 'musicalNote') {
+                feedTitleIcon.style.display = 'none'; // Hide the image
+                // Assuming you have an SVG element sibling or can inject one
+                let svgIcon = feedTitleIcon.nextElementSibling;
+                if (!svgIcon || svgIcon.tagName.toLowerCase() !== 'svg') {
+                    // Create and insert SVG if it doesn't exist
+                    svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svgIcon.setAttribute('class', 'w-10 h-10'); // Apply Tailwind classes
+                    svgIcon.setAttribute('fill', 'currentColor');
+                    svgIcon.setAttribute('viewBox', '0 0 24 24');
+                    feedTitleIcon.parentNode.insertBefore(svgIcon, feedTitleIcon.nextSibling);
+                }
+                svgIcon.innerHTML = `<path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>`;
+                svgIcon.style.display = 'inline'; // Show SVG
             }
 
             // Update active state of feed buttons
             document.querySelectorAll('.feed-select-btn').forEach(btn => {
                 btn.classList.remove('active-feed-btn');
                 btn.style.backgroundColor = ''; // Reset background for non-active
+                // Also reset icon color for non-active SVG buttons
+                const svgInBtn = btn.querySelector('svg');
+                if (svgInBtn) {
+                    svgInBtn.style.color = 'var(--text-color)'; // Default color from CSS variable
+                }
             });
             const activeBtn = document.getElementById(`${feedId}FeedBtn`);
             if (activeBtn) {
                 activeBtn.classList.add('active-feed-btn');
-                // Tailwind utility for bg-blue-500 is handled by active-feed-btn class now
+                // Active button's background and SVG color will be handled by .active-feed-btn CSS
             }
         }
 
