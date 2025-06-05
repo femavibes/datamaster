@@ -79,7 +79,7 @@
             text-align: center;
             display: flex; /* Use flexbox for image and text alignment */
             align-items: center; /* Vertically align items */
-            justify-content: center; /* Horizontally center content */
+            justify-content: flex-start; /* Changed: Left-align content within the title */
             gap: 10px; /* Space between image and text */
             padding-bottom: 10px; /* Space for a subtle border/shadow */
             border-bottom: 3px solid #3498db; /* Accent border */
@@ -166,7 +166,7 @@
         }
         .timeframe-selector {
             display: flex;
-            justify-content: center;
+            justify-content: flex-start; /* Changed: Left-align buttons within the selector */
             gap: 10px;
             margin-bottom: 15px; /* Changed: Reduced margin-bottom */
             margin-top: 10px; /* Added: Small margin-top to separate from title/status */
@@ -290,7 +290,7 @@
             font-weight: 700; /* Bolder */
             color: #34495e; /* Darker grey for contrast */
             margin-bottom: 15px;
-            text-align: center;
+            text-align: left; /* Changed: Left-align subheaders */
             position: relative; /* For pseudo-elements if needed */
             padding-bottom: 8px;
             flex-shrink: 0; /* Prevent subheader from shrinking */
@@ -298,13 +298,18 @@
         .stylish-subheader::after {
             content: '';
             position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0; /* Changed: Align underline to the left */
+            /* transform: translateX(-50%); Removed: No need to translate for left-alignment */
             bottom: 0;
             width: 50px; /* Short underline */
             height: 3px;
             background-color: #3498db; /* Accent color */
             border-radius: 2px;
+        }
+
+        /* Added for the rankings section to align its content to the left */
+        .section-wrapper:last-child .section-card {
+            align-items: flex-start;
         }
     </style>
 </head>
