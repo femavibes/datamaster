@@ -41,7 +41,7 @@
             /* Adjusted flex-grow values for different widths */
             .section-wrapper:first-child { /* Iframe section */
                 flex: 0.35; /* Adjusted to shrink Urbanism+ box by half */
-                min-width: 45%;
+                min-width: 20%; /* Changed: Reduced min-width to allow more shrinking */
                 display: flex;
                 flex-direction: column;
                 flex-grow: 1;
@@ -1150,7 +1150,7 @@
 
 
             // Clear any existing timer
-            WS_debounceTimer = setTimeout(async () => {
+            debounceTimer = setTimeout(async () => {
                 if (!db || !isFirebaseReady) {
                     console.warn("Firestore not ready for update after debounce. Cannot update analysis.");
                     return;
