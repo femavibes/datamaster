@@ -373,6 +373,13 @@
                             <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
                         </div>
                     </div>
+                    <!-- Moved Top Posters here to be logically next to Top Links -->
+                    <div> 
+                        <h3 class="stylish-subheader">Top Posters</h3>
+                        <div id="topPostersList" class="space-y-3">
+                            <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
+                        </div>
+                    </div>
                     <div>
                         <h3 class="stylish-subheader">Top Sites</h3>
                         <div id="topDomains">
@@ -388,14 +395,6 @@
                     </div>
                 </div>
                 
-                <!-- NEW: Top Posters section -->
-                <div class="mt-8">
-                    <h3 class="stylish-subheader">Top Posters</h3>
-                    <div id="topPostersList" class="space-y-3">
-                        <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
-                    </div>
-                </div>
-
                 <!-- HIDDEN: Resolved DIDs List Section -->
                 <div class="mt-8" style="display: none;">
                     <h3 class="stylish-subheader">Resolved User DIDs (Hidden)</h3>
@@ -903,7 +902,7 @@
                     let authorDid = data.did; // Renamed for clarity: this is the DID
                     let postText = '';
                     let timestamp = ''; 
-                    let postUri = ''; // NEW: To capture post URI
+                    let postUri = ''; // To capture post URI (needed for potential like fetching)
 
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
                         const commitData = data.commit;
@@ -1296,7 +1295,7 @@
                         if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) {
                             currentDailyData.linkCounts[url].originalTitle = originalTitle;
                         }
-                        if (description && currentDailyData.linkCounts[url].description === null) {
+                        if (description && currentDailyData.linkCardsData[url].description === null) {
                             currentDailyData.linkCardsData[url].description = description;
                         }
                     }
