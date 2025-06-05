@@ -124,6 +124,7 @@
                 overflow-x: hidden; /* Ensure no horizontal scroll */
                 justify-content: space-between; /* Distribute items top and bottom */
                 align-items: center; /* Center items horizontally */
+                overflow-y: hidden; /* Prevent vertical scroll if content is only a few buttons */
             }
         }
 
@@ -135,10 +136,21 @@
             display: flex;
             flex-direction: column; /* Crucial for internal flex layout */
             flex-grow: 1; /* Allow cards to grow and fill space */
-            overflow-y: auto; /* Add scrollbar to this card if content overflows */
+            /* Default overflow-y: auto removed from here */
             position: relative; /* Needed for absolute positioning of connection status */
             transition: background-color 0.3s ease; /* Smooth transition for dark mode */
         }
+
+        /* Specific rule for Urbanism+ section-card to prevent its own scrolling */
+        .section-wrapper:nth-child(2) .section-card { /* Urbanism+ Box */
+            overflow-y: hidden; /* Ensure only iframe scrolls */
+        }
+
+        /* Specific rule for Rankings section-card (which needs scroll) */
+        .section-wrapper:nth-child(3) .section-card {
+            overflow-y: auto; /* This card needs to scroll for its content */
+        }
+
 
         /* Stylish Title for main sections */
         .stylish-section-title {
@@ -235,12 +247,13 @@
         }
         .iframe-embed {
             width: 100%;
-            height: 100%; /* Make iframe take full height of its container */
+            /* Removed height: 100%; to fix double scrollbar */
             min-height: 500px; /* Ensure a minimum height for the iframe */
             border: none;
             border-radius: 8px;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
             flex-grow: 1; /* Allow iframe to grow within its container */
+            display: block; /* Ensures it respects flex properties better */
             /* The iframe itself will handle its own scrolling if its content overflows */
         }
         .timeframe-selector {
@@ -558,6 +571,8 @@
                 <select id="themeSelect" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                     <option value="none">None</option>
                     <option value="pride">Pride Theme</option>
+                    <option value="transgenderPride">Transgender Pride Theme</option>
+                    <option value="blm">BLM Theme</option>
                     <!-- Add more themes here -->
                 </select>
             </div>
@@ -1441,7 +1456,7 @@
                         if (typeof currentDailyData.linkCounts[url] !== 'object' || currentDailyData.linkCounts[url] === null) {
                             currentDailyData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
                         }
-                        currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
+                        currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url] || 0) + count;
                         if (headline && currentDailyData.linkCounts[url].headline === null) {
                             currentDailyData.linkCounts[url].headline = headline;
                         }
@@ -1836,6 +1851,20 @@
                 backgroundRepeat: 'no-repeat', 
                 backgroundPosition: 'center center', 
                 backgroundAttachment: 'fixed' 
+            },
+            'transgenderPride': {
+                backgroundImage: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/transgender-flag.png)',
+                backgroundSize: 'cover',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center center',
+                backgroundAttachment: 'fixed'
+            },
+            'blm': {
+                backgroundImage: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/BLM_flag.svg.png)',
+                backgroundSize: 'cover',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center center',
+                backgroundAttachment: 'fixed'
             }
             // Add more themes here
         };
