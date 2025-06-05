@@ -40,20 +40,20 @@
             .main-wrapper {
                 flex-direction: row;
                 max-width: 1200px; /* Constrain overall width on very large screens, centered by body */
-                /* margin: 0 auto; removed from here as body's align-items: center handles centering */
+                /* width: 100%; removed from here as body's align-items: center and flex properties handle this */
                 flex-grow: 1; /* Ensure main-wrapper can grow within body */
             }
             /* Adjusted flex properties for precise width distribution (25%/75% of available space) */
             .section-wrapper {
                 display: flex;
                 flex-direction: column;
-                min-width: 0; /* Allow flex items to shrink below their content size */
+                min-width: 0; /* CRITICAL: Allows flex items to shrink below their content size */
             }
             .section-wrapper:first-child { /* Iframe section (Urbanism+) */
-                flex: 1; /* Takes 1 unit of available space (approx. 25% of total 4 units) */
+                flex: 0 0 calc(25% - 15px); /* flex-grow: 0, flex-shrink: 0, flex-basis: 25% minus half the gap */
             }
             .section-wrapper:last-child { /* Rankings section */
-                flex: 3; /* Takes 3 units of available space (approx. 75% of total 4 units) */
+                flex: 0 0 calc(75% - 15px); /* flex-grow: 0, flex-shrink: 0, flex-basis: 75% minus half the gap */
             }
         }
 
@@ -936,8 +936,8 @@
                         // --- Existing analysis update ---
                         let postEmbed = post.embed; 
                         console.log("Scheduling Firestore analysis update via debounce.");
-                        // Pass authorDid and postUri (if available) to the debounced function
-                        debouncedUpdateFirestoreAnalysis(authorDid, postText, postEmbed, postUri); 
+                        // Pass authorDid and postText to the debounced function
+                        debouncedUpdateFirestoreAnalysis(authorDid, postText, postEmbed); 
 
                     } else {
                         console.log("WebSocket message is not a recognized post type or missing expected fields.");
@@ -1029,8 +1029,8 @@
             posterLikes: {} // NEW: Placeholder to track combined likes per user (needs external data)
         };
 
-        // Added postUri parameter for potential future like counting, though not used for live likes from WebSocket
-        async function debouncedUpdateFirestoreAnalysis(authorDid, text, embed, postUri = null) { 
+        // Removed postUri parameter as it's not currently used for live like counting
+        async function debouncedUpdateFirestoreAnalysis(authorDid, text, embed) { 
             // Ensure accumulatedUpdates has all expected keys
             accumulatedUpdates = {
                 termCounts: accumulatedUpdates.termCounts || {},
