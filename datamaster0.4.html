@@ -39,16 +39,16 @@
                 flex-direction: row;
             }
             /* Adjusted flex-grow values for different widths */
-            .section-wrapper:first-child { /* Iframe section */
-                flex: 0.35; /* Adjusted to shrink Urbanism+ box by half */
-                min-width: 20%; /* Changed: Reduced min-width to allow more shrinking */
+            .section-wrapper:first-child { /* Iframe section (Urbanism+) */
+                flex: 1; /* Represents 25% of the flexible space (1 out of 1+3 total units) */
+                min-width: 20%; /* Allows shrinking while preserving a minimum useful size */
                 display: flex;
                 flex-direction: column;
                 flex-grow: 1;
             }
             .section-wrapper:last-child { /* Rankings section */
-                flex: 2; /* Adjusted to be ~50% wider relative to previous proportion */
-                min-width: 45%; /* Ensure it doesn't get too narrow */
+                flex: 3; /* Represents 75% of the flexible space (3 out of 1+3 total units) */
+                min-width: 70%; /* Ensures it can take up the desired space when not fully flexible */
                 display: flex;
                 flex-direction: column;
                 flex-grow: 1;
