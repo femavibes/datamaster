@@ -625,7 +625,7 @@
 
         // Debounce variables for Firestore updates
         let debounceTimer = null;
-        const DEBOUNCE_DELAY = 1000; 
+        const DEBOUNCE_DELAY = 60000; // Changed: Increased debounce delay to 1 minute (60 seconds)
 
         // Stop words for term analysis (still relevant for hashtags)
         const stopWords = new Set([
@@ -1337,7 +1337,7 @@
                     for (const didKey in accumulatedUpdates.posterCounts) {
                         currentDailyData.posterCounts[didKey] = (currentDailyData.posterCounts[didKey] || 0) + accumulatedUpdates.posterCounts[didKey];
                     }
-                    // NEW: Update daily poster likes (currently counts posts as likes)
+                    // NEW: Update daily poster likes
                     for (const didKey in accumulatedUpdates.posterLikes) {
                         currentDailyData.posterLikes[didKey] = (currentDailyData.posterLikes[didKey] || 0) + accumulatedUpdates.posterLikes[didKey];
                     }
