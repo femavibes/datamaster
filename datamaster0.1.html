@@ -391,6 +391,125 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- Helper function to fetch headline from a URL (Moved to top for scope visibility) ---
+        async function fetchHeadline(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.warn(`Failed to fetch ${url} for headline: ${response.status} ${response.statusText}`);
+                    return null;
+                }
+                // Check if content type is HTML before parsing
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('text/html')) {
+                    console.warn(`Skipping headline fetch for non-HTML content at ${url}. Content-Type: ${contentType}`);
+                    return null;
+                }
+
+                const text = await response.text();
+                const match = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+                return match && match[1] ? match[1].trim() : null;
+            } catch (e) {
+                console.warn(`CORS or network error fetching headline for ${url}:`, e.message);
+                // Important: Log a warning about CORS if it's likely the cause
+                if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
+                    console.warn(`CORS likely prevented fetching headline for ${url}. Headline will not be displayed.`);
+                }
+                return null; // Return null if fetching fails
+            }
+        }
+
+        // Helper function to extract simplified base domain from a URL
+        function getSimplifiedDomain(url) {
+            let hostname;
+            try {
+                // Attempt to create a URL object. If it fails, prepend 'http://' and try again.
+                // This handles cases where the link might just be a domain string (e.g., "example.com")
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    hostname = new URL(`http://${url}`).hostname.toLowerCase();
+                } else {
+                    hostname = new URL(url).hostname.toLowerCase();
+                }
+            } catch (e) {
+                console.warn(`Could not parse URL "${url}", returning as is for domain extraction attempt:`, e);
+                // Fallback: If URL parsing fails, try to extract something sensible from the raw string
+                // This is a last resort to avoid 'Invalid Domain' for potentially malformed but recognizable strings
+                const parts = url.toLowerCase().split('.');
+                if (parts.length > 1) {
+                    // Take the last part before the TLD (e.g., 'streetsblog' from 'streetsblog.org')
+                    // This is a heuristic and might not be perfect for all TLDs (e.g., .co.uk)
+                    const potentialDomain = parts[parts.length - 2] || parts[0];
+                    return potentialDomain.replace(/^www\./, ''); // Ensure www is also removed from this fallback
+                }
+                return 'Invalid Domain'; // If all attempts fail
+            }
+
+            let domain = hostname.replace(/^www\./, ''); // Remove www. prefix from the hostname
+
+            // List of common multi-part TLDs and then single-part TLDs.
+            // Sorted by length descending to ensure longer TLDs (like .co.uk) are matched first.
+            const knownTlds = [
+                '.co.uk', '.com.au', '.org.uk', '.net.au', '.ac.uk', '.gov.uk',
+                '.co.nz', '.org.nz', '.net.nz', '.ac.nz',
+                '.co.jp', '.ne.jp', '.or.jp', '.ac.jp', '.ad.jp', '.ed.jp', '.go.jp', '.gr.jp', '.lg.jp',
+                '.com.br', '.net.br', '.org.br',
+                '.com.cn', '.net.cn', '.org.cn',
+                '.com.hk', '.net.hk', '.org.hk',
+                '.com', '.org', '.net', '.info', '.biz', '.co', '.io', '.app', '.news', '.blog', '.tech', '.store', '.online', '.site', '.xyz'
+            ].sort((a, b) => b.length - a.length);
+
+            // Attempt to strip the longest matching known TLD from the end of the domain
+            for (const tld of knownTlds) {
+                if (domain.endsWith(tld)) {
+                    domain = domain.substring(0, domain.length - tld.length);
+                    break; // Stop after stripping the most specific TLD
+                }
+            }
+
+            // After stripping TLDs, the remaining 'domain' might still have subdomains (e.g., 'cal.streetsblog').
+            // We want the part before the last dot (the registrable domain name).
+            const parts = domain.split('.');
+            if (parts.length > 1) {
+                // If there are multiple parts (e.g., "cal.streetsblog"), take the last one.
+                // This effectively removes subdomains.
+                return parts[parts.length - 1];
+            } else {
+                // If there's only one part remaining (e.g., "streetsblog", "bbc"),
+                // it means we've successfully isolated the main domain.
+                return domain;
+            }
+        }
+
+        // Function to canonicalize domain names for display, merging known duplicates
+        function canonicalizeDisplayDomains(rawDomainCounts) {
+            const canonicalMap = {
+                "streetsblog.org": "streetsblog",
+                "theguardian.com": "theguardian",
+                "bbc.co.uk": "bbc",
+                "bbc.com": "bbc" 
+                // Add more canonical mappings here as needed
+            };
+
+            const canonicalizedCounts = {};
+
+            for (const domainKey in rawDomainCounts) {
+                const count = rawDomainCounts[domainKey];
+                // Use canonical if found, otherwise use the original domainKey
+                const canonicalDomain = canonicalMap[domainKey] || domainKey; 
+
+                canonicalizedCounts[canonicalDomain] = (canonicalizedCounts[canonicalDomain] || 0) + count;
+            }
+            return canonicalizedCounts;
+        }
+
+        // Helper function to getYYYY-MM-DD format for daily aggregate document IDs
+        function getYYYYMMDD(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         // --- Firebase Configuration (Provided by User) ---
         const firebaseConfig = {
             apiKey: "AIzaSyAR1S1n8FPwuzeKgNhcRuMwjEEAAsEA9FE",
@@ -463,60 +582,10 @@
             'will', 'would', 'should', 'could', 'get', 'like', 'one', 'two', 'new', 'time', 'good',
             'great', 'very', 'much', 'more', 'also', 'up', 'down', 'out', 'in', 'on', 'off', 'all',
             'any', 'some', 'such', 'only', 'very', 'through', 'into', 'from', 'here', 'there', 'when',
-            'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other',
+            'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other',
             'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
             's', 't', 'can', 'will', 'just', 'don', 'should', 'now'
         ]);
-
-        // Helper function to extract simplified base domain from a URL
-        function getSimplifiedDomain(url) {
-            try {
-                const hostname = new URL(url).hostname.toLowerCase();
-                let domain = hostname.replace(/^www\./, ''); // Remove www.
-
-                // Define a list of common TLDs, including multi-part ones
-                // Sorted by length descending to match longest TLD first for accuracy
-                const knownTlds = [
-                    '.co.uk', '.com.au', '.org.uk', '.net.au', '.ac.uk', '.gov.uk',
-                    '.co.nz', '.org.nz', '.net.nz', '.ac.nz',
-                    '.co.jp', '.ne.jp', '.or.jp', '.ac.jp', '.ad.jp', '.ed.jp', '.go.jp', '.gr.jp', '.lg.jp',
-                    '.com.br', '.net.br', '.org.br',
-                    '.com.cn', '.net.cn', '.org.cn',
-                    '.com.hk', '.net.hk', '.org.hk',
-                    '.com', '.org', '.net', '.info', '.biz', '.co', '.io', '.app', '.news', '.blog', '.tech', '.store', '.online', '.site', '.xyz'
-                ].sort((a, b) => b.length - a.length); 
-
-                // Try to strip TLDs from the end to get to the "registrable domain" or brand name
-                for (const tld of knownTlds) {
-                    if (domain.endsWith(tld)) {
-                        domain = domain.substring(0, domain.length - tld.length);
-                        break; // Stop after finding the longest matching TLD
-                    }
-                }
-
-                // After stripping TLDs, if there are still dots, it implies subdomains or previous TLDs.
-                // We want the last significant part (the brand name).
-                const parts = domain.split('.');
-                if (parts.length > 1) {
-                    return parts[parts.length - 1]; // Return the last part (e.g., 'streetsblog' from 'cal.streetsblog')
-                } else {
-                    return domain; // Already the brand name (e.g., 'bbc')
-                }
-
-            } catch (e) {
-                console.error("Error parsing simplified domain from URL:", url, e);
-                return 'Invalid Domain';
-            }
-        }
-
-
-        // Helper function to getYYYY-MM-DD format for daily aggregate document IDs
-        function getYYYYMMDD(date) {
-            const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const day = date.getDate().toString().padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
 
         // --- Firebase Initialization ---
         function initializeFirebase() {
@@ -764,6 +833,7 @@
                     accumulatedUpdates.linkCounts[extractedLink].description = externalDescription;
                 }
                 if (accumulatedUpdates.linkCounts[extractedLink].headline === null) {
+                    // Call fetchHeadline here. It's now defined at the top.
                     fetchHeadline(extractedLink).then(fetchedTitle => {
                         if (fetchedTitle) {
                             accumulatedUpdates.linkCounts[extractedLink].headline = fetchedTitle;
@@ -1047,8 +1117,10 @@
                 });
             }
 
-            // Render Top Domains
-            const sortedDomains = Object.entries(domainData)
+            // Render Top Domains - Apply canonicalization here for display
+            const canonicalizedDomainData = canonicalizeDisplayDomains(domainData);
+
+            const sortedDomains = Object.entries(canonicalizedDomainData)
                 .sort(([, countA], [, countB]) => countB - countA)
                 .slice(0, 10);
 
