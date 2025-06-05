@@ -10,6 +10,7 @@
         /* Ensure html and body take full viewport height and remove default margins/ paddings */
         html, body {
             height: 100%;
+            min-height: 100vh; /* Ensure minimum viewport height */
             margin: 0;
             padding: 0;
         }
@@ -27,31 +28,26 @@
             display: flex;
             flex-direction: column; /* Stack sections on small screens */
             gap: 30px; /* Space between the two main sections */
-            width: 95vw; /* Changed: Set width to 95vw for left justification and near full width */
-            /* Removed: max-width: 1200px; */
-            /* Removed: margin: auto; */
-            margin-left: 0; /* Ensures it's pushed to the left */
+            width: 95vw; /* Set width to 95vw for left justification and near full width on small screens */
+            margin-left: 0; /* Ensures it's pushed to the left on small screens */
             flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
-            overflow: hidden; /* Hide scrollbar for main-wrapper, let cards handle it */
+            /* Removed overflow: hidden; to allow proper content scaling */
         }
         @media (min-width: 1024px) { /* Side-by-side on larger screens */
             .main-wrapper {
                 flex-direction: row;
-                /* Ensure main-wrapper itself fills available space correctly */
                 width: 100%; /* Changed to 100% to allow flex items to distribute within it */
                 max-width: 1200px; /* Re-added a max-width for better control on very wide screens */
-                margin: 0 auto; /* Center the main-wrapper again if it's less than 100% */
+                margin: 0 auto; /* Center the main-wrapper horizontally */
             }
-            /* Adjusted flex properties for precise width distribution */
+            /* Adjusted flex properties for precise width distribution (25%/75% of available space) */
             .section-wrapper:first-child { /* Iframe section (Urbanism+) */
-                flex: 0 0 25%; /* flex-grow: 0, flex-shrink: 0, flex-basis: 25% */
-                /* Removed min-width to allow flex-basis to dictate size */
+                flex: 1; /* flex-grow: 1, flex-shrink: 1, flex-basis: 0% - takes 1/4 of *available space* */
                 display: flex;
                 flex-direction: column;
             }
             .section-wrapper:last-child { /* Rankings section */
-                flex: 0 0 75%; /* flex-grow: 0, flex-shrink: 0, flex-basis: 75% */
-                /* Removed min-width to allow flex-basis to dictate size */
+                flex: 3; /* flex-grow: 3, flex-shrink: 1, flex-basis: 0% - takes 3/4 of *available space* */
                 display: flex;
                 flex-direction: column;
             }
@@ -908,7 +904,7 @@
                     let postUri = ''; // To capture post URI (needed for potential like fetching)
 
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
-                        const commitData = data.commit;
+                        const commitData = data;
                         const post = commitData.record; 
                         postUri = commitData.uri; // Capture the post URI
 
@@ -1226,7 +1222,7 @@
                         if (typeof currentSummaryData.linkCardsData[url] !== 'object' || currentSummaryData.linkCardsData[url] === null) {
                             currentSummaryData.linkCardsData[url] = { count: 0, title: null, description: null };
                         }
-                        currentSummaryData.linkCardsData[url].count = (currentSummaryData.linkCardsData[url].count || 0) + count;
+                        currentSummaryData.linkCardsData[url].count = (currentSummaryData.linkCardsData[url] || 0) + count;
                         if (title && currentSummaryData.linkCardsData[url].title === null) {
                             currentSummaryData.linkCardsData[url].title = title;
                         }
@@ -1317,7 +1313,7 @@
                         if (typeof currentDailyData.linkCardsData[url] !== 'object' || currentDailyData.linkCardsData[url] === null) {
                             currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null };
                         }
-                        currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url].count || 0) + count;
+                        currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url] || 0) + count;
                         if (title && currentDailyData.linkCardsData[url].title === null) {
                             currentDailyData.linkCardsData[url].title = title;
                         }
@@ -1662,4 +1658,3 @@
     </script>
 </body>
 </html>
- 
