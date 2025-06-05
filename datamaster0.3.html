@@ -359,8 +359,8 @@
                     <label for="timeframeMonth">Month</label>
                 </div>
 
-                <!-- Changed: Grid for rankings to support 2x2 layout on medium screens and above -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <!-- Changed: Grid for rankings to support 3 columns on medium screens and above -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                     <div>
                         <h3 class="stylish-subheader">Top Hashtags</h3>
                         <div id="topTerms">
@@ -380,6 +380,7 @@
                             <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
                         </div>
                     </div>
+                    <!-- The next two divs will automatically wrap to the next row in a 3-column grid -->
                     <div>
                         <h3 class="stylish-subheader">Top Sites</h3>
                         <div id="topDomains">
