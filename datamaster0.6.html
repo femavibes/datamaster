@@ -7,7 +7,55 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Ensure html and body take full viewport height and remove default margins/ paddings */
+        /* Define CSS variables for colors */
+        :root {
+            --bg-color: #dae2e8;
+            --card-bg: #f0f0f3;
+            --text-color: #333;
+            --heading-color: #2c3e50;
+            --link-card-bg: #ffffff;
+            --link-card-border: #e2e8f0;
+            --link-card-headline: #2c3e50;
+            --link-card-description: #777;
+            --link-card-url: #666;
+            --subheader-color: #34495e;
+            --timeframe-label-bg: #e2e8f0;
+            --timeframe-label-color: #4a5568;
+            --post-card-bg: #f9f9f9;
+            --post-author-color: #3498db;
+            --post-content-color: #444;
+            --post-timestamp-color: #777;
+            --no-content-color: #a0aec0; /* For "No hashtags yet" messages */
+            --border-gray-200: #e5e7eb; /* For borders, like postsContainer */
+            --modal-bg: #ffffff; /* Modal background */
+            --modal-text: #333; /* Modal text color */
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            --bg-color: #1a202c; /* Dark background */
+            --card-bg: #2d3748; /* Darker card background */
+            --text-color: #e2e8f0; /* Light text */
+            --heading-color: #e2e8f0;
+            --link-card-bg: #4a5568; /* Dark link card bg */
+            --link-card-border: #2d3748;
+            --link-card-headline: #e2e8f0;
+            --link-card-description: #a0aec0;
+            --link-card-url: #a0aec0;
+            --subheader-color: #e2e8f0;
+            --timeframe-label-bg: #4a5568;
+            --timeframe-label-color: #e2e8f0;
+            --post-card-bg: #374151; /* Darker post card */
+            --post-author-color: #63b3ed; /* Lighter blue for dark mode */
+            --post-content-color: #e2e8f0;
+            --post-timestamp-color: #a0aec0;
+            --no-content-color: #a0aec0;
+            --border-gray-200: #4a5568;
+            --modal-bg: #2d3748; /* Darker modal background */
+            --modal-text: #e2e8f0; /* Lighter modal text */
+        }
+
+        /* Apply variables throughout the existing CSS */
         html, body {
             height: 100%;
             min-height: 100vh; /* Ensure minimum viewport height */
@@ -15,18 +63,23 @@
             padding: 0;
             display: flex; /* Make html a flex container */
             flex-direction: column; /* Stack children vertically */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #dae2e8; /* Changed: New modern background color for the whole page */
-            color: #333;
+            background-color: var(--bg-color); /* Use variable */
+            color: var(--text-color); /* Use variable */
             padding: 20px; /* Padding around the main content area */
             display: flex;
             flex-direction: column; /* Arrange children vertically */
             box-sizing: border-box; /* Include padding in height calculation */
             flex-grow: 1; /* Allow body to grow and fill html height */
             align-items: center; /* Center the main-wrapper horizontally */
+            background-size: cover; /* For theme images */
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
         }
         .main-wrapper {
             display: flex;
@@ -67,10 +120,15 @@
             .section-wrapper .section-card {
                 height: 100%;
             }
+            /* Override padding for the navigation box's card and hide horizontal overflow */
+            .section-wrapper:nth-child(1) .section-card {
+                padding: 10px 5px; /* Reduced horizontal padding */
+                overflow-x: hidden; /* Ensure no horizontal scroll */
+            }
         }
 
         .section-card {
-            background-color: #f0f0f3; /* Background color for the cards */
+            background-color: var(--card-bg); /* Use variable */
             border-radius: 12px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
             padding: 25px;
@@ -79,13 +137,14 @@
             flex-grow: 1; /* Allow cards to grow and fill space */
             overflow-y: auto; /* Add scrollbar to this card if content overflows */
             position: relative; /* Needed for absolute positioning of connection status */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
         }
 
         /* Stylish Title for main sections */
         .stylish-section-title {
             font-size: 2rem; /* Larger title */
             font-weight: 800; /* Extra bold */
-            color: #2c3e50;
+            color: var(--heading-color); /* Use variable */
             margin-bottom: 20px;
             text-align: center;
             display: flex; /* Use flexbox for image and text alignment */
@@ -97,6 +156,7 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow below the title */
             border-radius: 4px; /* Slightly rounded bottom border */
             flex-shrink: 0; /* Prevent title from shrinking */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .stylish-section-title img {
             height: 40px; /* Adjust image size */
@@ -105,35 +165,39 @@
         }
 
         .post-card {
-            background-color: #f9f9f9;
+            background-color: var(--post-card-bg); /* Use variable */
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 15px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-            border-left: 5px solid #3498db; /* Accent color */
+            border-left: 5px solid var(--post-author-color); /* Accent color */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
         }
         .post-author {
             font-weight: bold;
-            color: #3498db;
+            color: var(--post-author-color); /* Use variable */
             margin-bottom: 5px;
             font-size: 1.1rem;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .post-content {
-            color: #444;
+            color: var(--post-content-color); /* Use variable */
             line-height: 1.5;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .post-timestamp {
             font-size: 0.85rem;
-            color: #777;
+            color: var(--post-timestamp-color); /* Use variable */
             margin-top: 10px;
             text-align: right;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         /* Adjusted analysis-item for general use, but link-cards will override */
         .analysis-item {
             display: flex;
             align-items: flex-start; /* Align items to the top if label wraps */
             padding: 4px 0; /* Changed: Smaller vertical padding for hashtags */
-            border-bottom: 1px dashed #eee;
+            border-bottom: 1px dashed #eee; /* This border will need adjustment for dark mode if kept */
             gap: 10px; /* Add a small gap between label and value */
         }
         .analysis-item:last-child {
@@ -141,29 +205,33 @@
         }
         .analysis-label {
             font-weight: 500;
-            color: #555;
+            color: var(--text-color); /* Use variable */
             flex-grow: 1; /* Allow it to grow */
             word-break: break-word; /* Ensure long words break */
             min-width: 0; /* Important for flex items to shrink properly */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .analysis-value {
             font-weight: bold;
-            color: #2c3e50;
+            color: var(--heading-color); /* Use variable */
             flex-shrink: 0; /* Prevent it from shrinking */
             white-space: nowrap; /* Keep the count on one line */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .loading-indicator {
             text-align: center;
             padding: 20px;
             font-size: 1.2rem;
-            color: #666;
+            color: var(--no-content-color); /* Use variable */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .feed-name-display { /* This class is no longer used for display, but kept for consistency */
             font-size: 1.2rem;
             font-weight: 600;
-            color: #555;
+            color: var(--text-color); /* Use variable */
             text-align: center;
             margin-bottom: 15px;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .iframe-embed {
             width: 100%;
@@ -185,12 +253,12 @@
             flex-shrink: 0; /* Prevent selector from shrinking */
         }
         .timeframe-selector label {
-            background-color: #e2e8f0;
+            background-color: var(--timeframe-label-bg); /* Use variable */
             padding: 8px 15px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 500;
-            color: #4a5568;
+            color: var(--timeframe-label-color); /* Use variable */
             transition: background-color 0.2s, color 0.2s;
             white-space: nowrap; /* Prevent text from wrapping inside label */
         }
@@ -198,13 +266,13 @@
             display: none;
         }
         .timeframe-selector input[type="radio"]:checked + label {
-            background-color: #3498db;
+            background-color: #3498db; /* Keep accent blue consistent */
             color: #ffffff;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         /* Modern Link Card Styling */
         .link-card {
-            background-color: #ffffff;
+            background-color: var(--link-card-bg); /* Use variable */
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
             padding: 10px; /* Changed: Smaller vertical padding */
@@ -213,7 +281,7 @@
             display: block; /* Ensure it behaves like a block for full clickability */
             text-decoration: none; /* Remove underline from link */
             color: inherit; /* Inherit text color */
-            border: 1px solid #e2e8f0; /* Subtle border */
+            border: 1px solid var(--link-card-border); /* Use variable */
         }
         .link-card:hover {
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
@@ -223,16 +291,17 @@
         .link-card-headline {
             font-weight: 600; /* Slightly bolder */
             font-size: 1rem; /* Slightly smaller headline for compactness */
-            color: #2c3e50; /* Darker text for headline */
+            color: var(--link-card-headline); /* Use variable */
             margin-bottom: 4px; /* Reduced margin */
             line-height: 1.3;
             white-space: normal; /* Changed: Allow text to wrap */
             overflow: visible; /* Changed: Allow overflow to be visible (text wraps) */
             text-overflow: clip; /* Changed: No ellipsis, clip if necessary after wrap */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .link-card-description { /* New style for description */
             font-size: 0.75rem; /* Smaller font for description */
-            color: #777;
+            color: var(--link-card-description); /* Use variable */
             margin-bottom: 6px; /* Space below description */
             line-height: 1.4;
             overflow: visible; /* Changed: Allow overflow to be visible (text wraps) */
@@ -240,25 +309,26 @@
             display: block; /* Changed: Ensure it behaves like a block, overriding -webkit-box for full wrapping */
             -webkit-line-clamp: unset; /* Changed: Remove line clamp */
             -webkit-box-orient: unset; /* Changed: Remove box orient */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .link-card-url {
             font-size: 0.8rem; /* Smaller URL text */
-            color: #666;
+            color: var(--link-card-url); /* Use variable */
             white-space: nowrap; /* Keep URL on one line */
             overflow: hidden; /* Hide overflow */
             text-overflow: ellipsis; /* Add ellipsis for overflow */
             margin-bottom: 6px; /* Reduced margin */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .link-card-count {
             font-size: 0.9rem; /* Slightly smaller count */
             font-weight: bold;
-            color: #3498db; /* Accent color for count */
-            text-align: right;
+            color: #3498db; /* Accent color for count (stays consistent) */
         }
 
         /* Modern Domain Card Styling (similar to link-card) */
         .domain-card {
-            background-color: #ffffff;
+            background-color: var(--link-card-bg); /* Use variable */
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
             padding: 10px; /* Changed: Smaller vertical padding */
@@ -267,7 +337,7 @@
             display: block;
             text-decoration: none;
             color: inherit;
-            border: 1px solid #e2e8f0; /* Subtle border */
+            border: 1px solid var(--link-card-border); /* Use variable */
         }
         .domain-card:hover {
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
@@ -277,18 +347,18 @@
         .domain-card-name {
             font-weight: 600;
             font-size: 1rem; /* Slightly smaller name for compactness */
-            color: #2c3e50;
+            color: var(--link-card-headline); /* Use variable */
             margin-bottom: 4px; /* Reduced margin */
             line-height: 1.3;
             white-space: nowrap; /* Keep on one line */
             overflow: hidden; /* Hide overflow */
             text-overflow: ellipsis; /* Add ellipsis for overflow */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .domain-card-count {
             font-size: 0.9rem; /* Slightly smaller count */
             font-weight: bold;
-            color: #3498db;
-            text-align: right;
+            color: #3498db; /* Accent color for count (stays consistent) */
         }
         /* Style for connected status text */
         .text-green-600 {
@@ -299,18 +369,18 @@
         .stylish-subheader {
             font-size: 1.5rem; /* Slightly larger than before */
             font-weight: 700; /* Bolder */
-            color: #34495e; /* Darker grey for contrast */
+            color: var(--subheader-color); /* Use variable */
             margin-bottom: 15px;
             text-align: left; /* Changed: Left-align subheaders */
             position: relative; /* For pseudo-elements if needed */
             padding-bottom: 8px;
             flex-shrink: 0; /* Prevent subheader from shrinking */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
         .stylish-subheader::after {
             content: '';
             position: absolute;
             left: 0; /* Changed: Align underline to the left */
-            /* transform: translateX(-50%); Removed: No need to translate for left-alignment */
             bottom: 0;
             width: 50px; /* Short underline */
             height: 3px;
@@ -337,6 +407,27 @@
             display: inline-block;
             max-width: 100%;
         }
+        /* Styling for the modal */
+        #settingsModal .bg-white { /* Target the modal content box */
+            background-color: var(--modal-bg);
+            color: var(--modal-text);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        #settingsModal h3,
+        #settingsModal label,
+        #settingsModal select {
+            color: var(--modal-text); /* Ensure modal text is readable in dark mode */
+        }
+        #settingsModal select {
+            background-color: var(--card-bg); /* Use card-bg for select background */
+            border-color: var(--link-card-border); /* Use link-card-border for select border */
+            color: var(--text-color); /* Use text-color for select text */
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+        #settingsModal select option {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
     </style>
 </head>
 <body>
@@ -345,7 +436,7 @@
         <div class="section-wrapper">
             <div class="section-card flex items-center justify-center p-3 h-full"> <!-- Added h-full and items/justify-center for vertical centering -->
                 <!-- Gearbox button -->
-                <button class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                <button id="openSettingsBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.942 1.89 2.395a1.724 1.724 0 00.01 2.59c1.543 1.453-.294 3.333-1.89 2.395a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.942-1.89-2.395a1.724 1.724 0 00-.01-2.59c-1.543-1.453.294-3.333 1.89-2.395a1.724 1.724 0 002.573-1.066z"></path>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -442,6 +533,29 @@
                 </div>
 
             </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal Structure -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/3 lg:w-1/4">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Settings</h3>
+            <div class="mb-4">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="darkModeToggle" class="sr-only peer">
+                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Dark Mode</span>
+                </label>
+            </div>
+            <div class="mb-4">
+                <label for="themeSelect" class="block text-sm font-medium text-gray-700 mb-2">Select Theme:</label>
+                <select id="themeSelect" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                    <option value="none">None</option>
+                    <option value="pride">Pride Theme</option>
+                    <!-- Add more themes here -->
+                </select>
+            </div>
+            <button id="closeModalBtn" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">Close</button>
         </div>
     </div>
 
@@ -1691,6 +1805,86 @@
                 ws.close();
             }
             clearInterval(reconnectInterval);
+        });
+
+        // --- Settings Modal and Theme/Dark Mode Logic ---
+        const settingsModal = document.getElementById('settingsModal');
+        const openSettingsBtn = document.getElementById('openSettingsBtn'); // Corrected ID
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const themeSelect = document.getElementById('themeSelect');
+
+        // Define themes
+        const themes = {
+            'none': { background: 'none', backgroundSize: 'auto' },
+            'pride': { background: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/flag-36423_1920.png) no-repeat center center fixed', backgroundSize: 'cover' }
+            // Add more themes here if needed
+        };
+
+        // Function to apply theme
+        function applyTheme(themeName) {
+            const theme = themes[themeName];
+            if (theme) {
+                document.body.style.backgroundImage = theme.background.startsWith('url') ? theme.background : 'none';
+                document.body.style.backgroundSize = theme.backgroundSize || 'auto';
+                document.body.style.backgroundRepeat = theme.backgroundRepeat || 'no-repeat';
+                document.body.style.backgroundPosition = theme.backgroundPosition || 'center center';
+                document.body.style.backgroundAttachment = theme.backgroundAttachment || 'fixed';
+            } else {
+                // Reset to no background image if theme is 'none' or invalid
+                document.body.style.backgroundImage = 'none';
+            }
+            localStorage.setItem('selectedTheme', themeName);
+        }
+
+        // Function to apply dark mode
+        function applyDarkMode(isDarkMode) {
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            localStorage.setItem('darkModeEnabled', isDarkMode);
+        }
+
+        // Event listeners for settings modal
+        openSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        darkModeToggle.addEventListener('change', (event) => {
+            applyDarkMode(event.target.checked);
+        });
+
+        themeSelect.addEventListener('change', (event) => {
+            applyTheme(event.target.value);
+        });
+
+        // Load settings on initial page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load Dark mode preference
+            const savedDarkMode = localStorage.getItem('darkModeEnabled');
+            if (savedDarkMode === 'true') {
+                darkModeToggle.checked = true;
+                applyDarkMode(true);
+            } else {
+                darkModeToggle.checked = false;
+                applyDarkMode(false);
+            }
+
+            // Load Theme preference
+            const savedTheme = localStorage.getItem('selectedTheme');
+            if (savedTheme && themes[savedTheme]) {
+                themeSelect.value = savedTheme;
+                applyTheme(savedTheme);
+            } else {
+                themeSelect.value = 'none'; // Default to 'None' if no saved theme or invalid
+                applyTheme('none');
+            }
         });
     </script>
 </body>
