@@ -76,10 +76,8 @@
             box-sizing: border-box; /* Include padding in height calculation */
             flex-grow: 1; /* Allow body to grow and fill html height */
             align-items: center; /* Center the main-wrapper horizontally */
-            background-size: cover; /* For theme images */
-            background-repeat: no-repeat;
-            background-position: center center;
-            background-attachment: fixed;
+            /* Background properties are set by JS now */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
         }
         .main-wrapper {
             display: flex;
@@ -124,6 +122,8 @@
             .section-wrapper:nth-child(1) .section-card {
                 padding: 10px 5px; /* Reduced horizontal padding */
                 overflow-x: hidden; /* Ensure no horizontal scroll */
+                justify-content: space-between; /* Distribute items top and bottom */
+                align-items: center; /* Center items horizontally */
             }
         }
 
@@ -434,8 +434,14 @@
     <div class="main-wrapper">
         <!-- Section for Slim Navigation Box - NEW -->
         <div class="section-wrapper">
-            <div class="section-card flex items-center justify-center p-3 h-full"> <!-- Added h-full and items/justify-center for vertical centering -->
-                <!-- Gearbox button -->
+            <div class="section-card flex flex-col justify-between items-center p-3 h-full"> <!-- Added flex-col justify-between and items-center -->
+                <!-- Plus button at the top -->
+                <button id="plusBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                </button>
+                <!-- Gearbox button at the bottom -->
                 <button id="openSettingsBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.942 1.89 2.395a1.724 1.724 0 00.01 2.59c1.543 1.453-.294 3.333-1.89 2.395a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.942-1.89-2.395a1.724 1.724 0 00-.01-2.59c-1.543-1.453.294-3.333 1.89-2.395a1.724 1.724 0 002.573-1.066z"></path>
@@ -1809,30 +1815,43 @@
 
         // --- Settings Modal and Theme/Dark Mode Logic ---
         const settingsModal = document.getElementById('settingsModal');
-        const openSettingsBtn = document.getElementById('openSettingsBtn'); // Corrected ID
+        const openSettingsBtn = document.getElementById('openSettingsBtn'); 
         const closeModalBtn = document.getElementById('closeModalBtn');
         const darkModeToggle = document.getElementById('darkModeToggle');
         const themeSelect = document.getElementById('themeSelect');
+        const plusBtn = document.getElementById('plusBtn'); // Get the new plus button
 
         // Define themes
         const themes = {
-            'none': { background: 'none', backgroundSize: 'auto' },
-            'pride': { background: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/flag-36423_1920.png) no-repeat center center fixed', backgroundSize: 'cover' }
-            // Add more themes here if needed
+            'none': { 
+                backgroundImage: 'none', 
+                backgroundSize: 'auto', 
+                backgroundRepeat: 'no-repeat', 
+                backgroundPosition: 'center center', 
+                backgroundAttachment: 'fixed' 
+            },
+            'pride': { 
+                backgroundImage: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/flag-36423_1920.png)', 
+                backgroundSize: 'cover', 
+                backgroundRepeat: 'no-repeat', 
+                backgroundPosition: 'center center', 
+                backgroundAttachment: 'fixed' 
+            }
+            // Add more themes here
         };
 
         // Function to apply theme
         function applyTheme(themeName) {
             const theme = themes[themeName];
             if (theme) {
-                document.body.style.backgroundImage = theme.background.startsWith('url') ? theme.background : 'none';
-                document.body.style.backgroundSize = theme.backgroundSize || 'auto';
-                document.body.style.backgroundRepeat = theme.backgroundRepeat || 'no-repeat';
-                document.body.style.backgroundPosition = theme.backgroundPosition || 'center center';
-                document.body.style.backgroundAttachment = theme.backgroundAttachment || 'fixed';
+                document.body.style.backgroundImage = theme.backgroundImage;
+                document.body.style.backgroundSize = theme.backgroundSize;
+                document.body.style.backgroundRepeat = theme.backgroundRepeat;
+                document.body.style.backgroundPosition = theme.backgroundPosition;
+                document.body.style.backgroundAttachment = theme.backgroundAttachment;
             } else {
-                // Reset to no background image if theme is 'none' or invalid
-                document.body.style.backgroundImage = 'none';
+                // Fallback to 'none' theme if themeName is not found
+                applyTheme('none');
             }
             localStorage.setItem('selectedTheme', themeName);
         }
@@ -1862,6 +1881,13 @@
 
         themeSelect.addEventListener('change', (event) => {
             applyTheme(event.target.value);
+        });
+
+        // Event listener for the new plus button
+        plusBtn.addEventListener('click', () => {
+            // Placeholder for future functionality
+            console.log("Plus button clicked!");
+            // You can add a small temporary message or alert here if needed for feedback
         });
 
         // Load settings on initial page load
