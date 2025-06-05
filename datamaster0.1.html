@@ -362,9 +362,9 @@
                         </div>
                     </div>
                     <div>
-                        <h3 class="stylish-subheader">Top Links</h3>
-                        <div id="topLinks">
-                            <p class="text-gray-500 text-center">No links yet to analyze.</p>
+                        <h3 class="stylish-subheader">Link Cards (with Title & Description)</h3>
+                        <div id="topLinks"> <!-- Re-using topLinks ID for the new content -->
+                            <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
                         </div>
                     </div>
                     <div>
@@ -380,6 +380,8 @@
                             <p class="text-gray-500 text-center">No content types yet to analyze.</p>
                         </div>
                     </div>
+                    <!-- Removed Link Cards (with Title & Description) section as it's now at Top Links spot -->
+                    <!-- Removed Top Images section -->
                 </div>
             </div>
         </div>
@@ -422,23 +424,28 @@
         const connectionStatusElem = document.getElementById('connectionStatus');
         const loadingIndicatorElem = document.getElementById('loadingIndicator');
         const topTermsDiv = document.getElementById('topTerms'); 
-        const topLinksDiv = document.getElementById('topLinks'); 
+        const topLinksDiv = document.getElementById('topLinks'); // Now used for Link Cards (with Title & Description)
         const topDomainsDiv = document.getElementById('topDomains'); 
-        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown'); // New DOM element
-        const noPostsMessage = document.getElementById('noPostsMessage');
+        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown');
+        // const linkCardsDiv = document.getElementById('linkCards'); // Removed as its content moves to topLinksDiv
+        // const imageCardsDiv = document.getElementById('imageCards'); // Removed
 
         // --- Analysis Data (synced with Firestore) ---
         // These will hold the ALL-TIME cumulative counts from the 'summary' document
         let allTimeTermCounts = {}; 
-        let allTimeLinkCounts = {}; // Now stores { count: number, headline: string | null, description: string | null, originalTitle: string | null }
+        let allTimeLinkCounts = {}; // Original link data (might still be useful for other analysis)
         let allTimeDomainCounts = {}; 
-        let allTimeContentTypeCounts = {}; // New: All-time content type counts
+        let allTimeContentTypeCounts = {}; 
+        let allTimeLinkCardsData = {}; // Data specifically for rich link cards
+        let allTimeImageCardsData = {}; // Data for image cards (still tracked, but not displayed)
 
         // These will hold the counts for the CURRENTLY SELECTED timeframe
         let currentDisplayTermCounts = {};
-        let currentDisplayLinkCounts = {};
+        let currentDisplayLinkCounts = {}; // This will now hold rich link card data for display
         let currentDisplayDomainCounts = {};
-        let currentDisplayContentTypeCounts = {}; // New: Current display content type counts
+        let currentDisplayContentTypeCounts = {}; 
+        // currentDisplayLinkCardsData is effectively renamed to currentDisplayLinkCounts for display
+        // currentDisplayImageCardsData is no longer needed for display
 
         let currentSelectedTimeframe = 'allTime'; // Default timeframe
 
@@ -593,24 +600,30 @@
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     allTimeTermCounts = data.termCounts || {}; 
-                    allTimeLinkCounts = data.linkCounts || {}; 
+                    allTimeLinkCounts = data.linkCounts || {}; // Still store original link data
                     allTimeDomainCounts = data.domainCounts || {}; 
-                    allTimeContentTypeCounts = data.contentTypeCounts || {}; // New: Get content type counts
+                    allTimeContentTypeCounts = data.contentTypeCounts || {}; 
+                    allTimeLinkCardsData = data.linkCardsData || {}; 
+                    allTimeImageCardsData = data.imageCardsData || {}; // Still store image card data
 
-                    console.log("Firestore All-Time data received via onSnapshot:", { allTimeTermCounts, allTimeLinkCounts, allTimeDomainCounts, allTimeContentTypeCounts }); 
+                    console.log("Firestore All-Time data received via onSnapshot:", { allTimeTermCounts, allTimeLinkCounts, allTimeDomainCounts, allTimeContentTypeCounts, allTimeLinkCardsData, allTimeImageCardsData }); 
                 } else {
                     console.log("All-Time summary document does not exist, initializing with empty counts.");
                     setDoc(analysisDocRef, { 
                         termCounts: {},
                         linkCounts: {},
                         domainCounts: {},
-                        contentTypeCounts: {} // New: Initialize content type counts
+                        contentTypeCounts: {},
+                        linkCardsData: {},
+                        imageCardsData: {}
                     }, { merge: true })
                         .catch(e => console.error("Error creating all-time summary document:", e));
                     allTimeTermCounts = {};
                     allTimeLinkCounts = {};
                     allTimeDomainCounts = {};
                     allTimeContentTypeCounts = {};
+                    allTimeLinkCardsData = {};
+                    allTimeImageCardsData = {};
                 }
                 // Only update the view if 'allTime' is currently selected to avoid overwriting other views
                 if (currentSelectedTimeframe === 'allTime') {
@@ -641,7 +654,6 @@
 
             ws.onopen = () => {
                 console.log('WebSocket connected!');
-                // Changed from 'Connected (All Time Data)' to 'Connected'
                 connectionStatusElem.textContent = 'Connected'; 
                 connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
                 connectionStatusElem.classList.add('text-green-600');
@@ -731,9 +743,11 @@
         // --- Debounced Firestore Update Function ---
         let accumulatedUpdates = { 
             termCounts: {},
-            linkCounts: {}, // Now stores { url: { count: number, headline: string | null, description: string | null, originalTitle: string | null } }
+            linkCounts: {}, // Original link data (still tracked)
             domainCounts: {},
-            contentTypeCounts: {} // New: Accumulated content type counts
+            contentTypeCounts: {},
+            linkCardsData: {}, // Data for rich link cards (still tracked)
+            imageCardsData: {} // Data for image cards (still tracked)
         };
 
         async function debouncedUpdateFirestoreAnalysis(authorDid, text, embed) { 
@@ -741,7 +755,9 @@
                 termCounts: accumulatedUpdates.termCounts || {},
                 linkCounts: accumulatedUpdates.linkCounts || {},
                 domainCounts: accumulatedUpdates.domainCounts || {},
-                contentTypeCounts: accumulatedUpdates.contentTypeCounts || {} // Ensure it's initialized
+                contentTypeCounts: accumulatedUpdates.contentTypeCounts || {},
+                linkCardsData: accumulatedUpdates.linkCardsData || {},
+                imageCardsData: accumulatedUpdates.imageCardsData || {}
             };
 
             const safeText = String(text || '');
@@ -763,54 +779,59 @@
             let extractedLink = null;
             if (embed && embed.$type === 'app.bsky.embed.external' && embed.external && embed.external.uri) {
                 extractedLink = embed.external.uri;
-                const externalTitle = embed.external.title || null; // Capture external title
-                const externalDescription = embed.external.description || null; // Capture external description
+                const externalTitle = embed.external.title || null;
+                const externalDescription = embed.external.description || null;
 
-                // Initialize or update the link entry in accumulatedUpdates
+                // Update linkCounts (for Top Links - still tracked in DB, but not displayed)
                 if (!accumulatedUpdates.linkCounts[extractedLink]) {
-                    accumulatedUpdates.linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null }; // New fields
+                    accumulatedUpdates.linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null };
                 }
-                accumulatedUpdates.linkCounts[extractedLink].count += 1; // Increment count
-
-                // Prioritize externalTitle if present from Contrails
+                accumulatedUpdates.linkCounts[extractedLink].count += 1;
                 if (externalTitle) {
                     accumulatedUpdates.linkCounts[extractedLink].originalTitle = externalTitle;
-                } else if (externalDescription && accumulatedUpdates.linkCounts[extractedLink].originalTitle === null) {
-                    // If no externalTitle but externalDescription exists, use description as a temporary headline
-                    accumulatedUpdates.linkCounts[extractedLink].originalTitle = externalDescription;
                 }
-
-                // Store the description if available
                 if (externalDescription) {
                     accumulatedUpdates.linkCounts[extractedLink].description = externalDescription;
                 }
-
-                // Asynchronously fetch headline for new links, but only if no originalTitle is set yet
-                // The fetched headline will be stored in the 'headline' field, which is a fallback for display.
                 if (accumulatedUpdates.linkCounts[extractedLink].headline === null) {
                     fetchHeadline(extractedLink).then(fetchedTitle => {
                         if (fetchedTitle) {
-                            accumulatedUpdates.linkCounts[extractedLink].headline = fetchedTitle; // This is the <title> tag
-                            console.log(`Fetched <title> for ${extractedLink}: ${fetchedTitle}`);
+                            accumulatedUpdates.linkCounts[extractedLink].headline = fetchedTitle;
                         }
                     });
                 }
 
-                const baseDomain = getSimplifiedDomain(extractedLink); // Changed to simplified domain
+                // Update linkCardsData (for new "Link Cards" section - now displayed in topLinksDiv)
+                if (externalTitle && externalDescription) { // Only add if both title and description are present
+                    if (!accumulatedUpdates.linkCardsData[extractedLink]) {
+                        accumulatedUpdates.linkCardsData[extractedLink] = { count: 0, title: externalTitle, description: externalDescription };
+                    }
+                    accumulatedUpdates.linkCardsData[extractedLink].count += 1;
+                }
+
+                const baseDomain = getSimplifiedDomain(extractedLink);
                 if (baseDomain && baseDomain !== 'Invalid Domain') {
                     accumulatedUpdates.domainCounts[baseDomain] = (accumulatedUpdates.domainCounts[baseDomain] || 0) + 1;
                 }
+            } else if (embed && embed.$type === 'app.bsky.embed.images' && embed.images && embed.images.length > 0) {
+                const firstImage = embed.images[0];
+                const imageAlt = firstImage.alt || 'Image without description';
+                const imageKey = imageAlt; 
+
+                if (!accumulatedUpdates.imageCardsData[imageKey]) {
+                    accumulatedUpdates.imageCardsData[imageKey] = { count: 0, alt: imageAlt };
+                }
+                accumulatedUpdates.imageCardsData[imageKey].count += 1;
             }
 
-            // --- Content Type Counting (New) ---
-            let contentType = 'Text-only'; // Default to text-only
+            // --- Content Type Counting ---
+            let contentType = 'Text-only';
             if (embed) {
                 if (embed.$type === 'app.bsky.embed.external') {
                     contentType = 'Link';
                 } else if (embed.$type === 'app.bsky.embed.images') {
                     contentType = 'Image';
                 }
-                // Add more types if needed, e.g., 'app.bsky.embed.recordWithMedia' for video/audio
             }
             accumulatedUpdates.contentTypeCounts[contentType] = (accumulatedUpdates.contentTypeCounts[contentType] || 0) + 1;
 
@@ -826,11 +847,9 @@
                     return;
                 }
 
-                // Corrected path for summary document: artifacts/{appId}/public/data/summaries/grazeFeedAnalysisSummary
                 const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'summaries', 'grazeFeedAnalysisSummary');
                 const today = new Date();
                 const dailyDocId = getYYYYMMDD(today);
-                // Corrected path for daily aggregates: artifacts/{appId}/public/data/dailyAggregates/{date}
                 const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'dailyAggregates', dailyDocId); 
 
                 try {
@@ -840,35 +859,35 @@
                         termCounts: {},
                         linkCounts: {},
                         domainCounts: {},
-                        contentTypeCounts: {} // New: Initialize if missing
+                        contentTypeCounts: {},
+                        linkCardsData: {},
+                        imageCardsData: {}
                     };
                     if (summarySnap.exists()) {
                         currentSummaryData = summarySnap.data();
                         currentSummaryData.termCounts = currentSummaryData.termCounts || {};
                         currentSummaryData.linkCounts = currentSummaryData.linkCounts || {};
                         currentSummaryData.domainCounts = currentSummaryData.domainCounts || {};
-                        currentSummaryData.contentTypeCounts = currentSummaryData.contentTypeCounts || {}; // New: Initialize if missing
+                        currentSummaryData.contentTypeCounts = currentSummaryData.contentTypeCounts || {};
+                        currentSummaryData.linkCardsData = currentSummaryData.linkCardsData || {};
+                        currentSummaryData.imageCardsData = currentSummaryData.imageCardsData || {};
                     }
 
                     for (const key in accumulatedUpdates.termCounts) {
                         currentSummaryData.termCounts[key] = (currentSummaryData.termCounts[key] || 0) + accumulatedUpdates.termCounts[key];
                     }
-                    // Merge linkCounts, handling the new structure and ensuring consistency
                     for (const url in accumulatedUpdates.linkCounts) {
                         const { count, headline, originalTitle, description } = accumulatedUpdates.linkCounts[url];
                         if (typeof currentSummaryData.linkCounts[url] !== 'object' || currentSummaryData.linkCounts[url] === null) {
                             currentSummaryData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
                         }
                         currentSummaryData.linkCounts[url].count = (currentSummaryData.linkCounts[url].count || 0) + count;
-                        // Update headline (fetched <title>) if new one is present or existing is null
                         if (headline && currentSummaryData.linkCounts[url].headline === null) {
                             currentSummaryData.linkCounts[url].headline = headline;
                         }
-                        // Update originalTitle (from Contrails) if new one is present or existing is null
                         if (originalTitle && currentSummaryData.linkCounts[url].originalTitle === null) {
                             currentSummaryData.linkCounts[url].originalTitle = originalTitle;
                         }
-                        // Update description (from Contrails) if new one is present or existing is null
                         if (description && currentSummaryData.linkCounts[url].description === null) {
                             currentSummaryData.linkCounts[url].description = description;
                         }
@@ -876,9 +895,31 @@
                     for (const key in accumulatedUpdates.domainCounts) {
                         currentSummaryData.domainCounts[key] = (currentSummaryData.domainCounts[key] || 0) + accumulatedUpdates.domainCounts[key];
                     }
-                    // New: Merge contentTypeCounts
                     for (const key in accumulatedUpdates.contentTypeCounts) {
                         currentSummaryData.contentTypeCounts[key] = (currentSummaryData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
+                    }
+                    for (const url in accumulatedUpdates.linkCardsData) {
+                        const { count, title, description } = accumulatedUpdates.linkCardsData[url];
+                        if (typeof currentSummaryData.linkCardsData[url] !== 'object' || currentSummaryData.linkCardsData[url] === null) {
+                            currentSummaryData.linkCardsData[url] = { count: 0, title: null, description: null };
+                        }
+                        currentSummaryData.linkCardsData[url].count = (currentSummaryData.linkCardsData[url].count || 0) + count;
+                        if (title && currentSummaryData.linkCardsData[url].title === null) {
+                            currentSummaryData.linkCardsData[url].title = title;
+                        }
+                        if (description && currentSummaryData.linkCardsData[url].description === null) {
+                            currentSummaryData.linkCardsData[url].description = description;
+                        }
+                    }
+                    for (const key in accumulatedUpdates.imageCardsData) {
+                        const { count, alt } = accumulatedUpdates.imageCardsData[key];
+                        if (typeof currentSummaryData.imageCardsData[key] !== 'object' || currentSummaryData.imageCardsData[key] === null) {
+                            currentSummaryData.imageCardsData[key] = { count: 0, alt: null };
+                        }
+                        currentSummaryData.imageCardsData[key].count = (currentSummaryData.imageCardsData[key].count || 0) + count;
+                        if (alt && currentSummaryData.imageCardsData[key].alt === null) {
+                            currentSummaryData.imageCardsData[key].alt = alt;
+                        }
                     }
 
                     await setDoc(summaryDocRef, currentSummaryData, { merge: true });
@@ -889,14 +930,18 @@
                         termCounts: {},
                         linkCounts: {},
                         domainCounts: {},
-                        contentTypeCounts: {} // New: Initialize if missing
+                        contentTypeCounts: {},
+                        linkCardsData: {},
+                        imageCardsData: {}
                     };
                     if (dailySnap.exists()) {
                         currentDailyData = dailySnap.data();
                         currentDailyData.termCounts = currentDailyData.termCounts || {};
                         currentDailyData.linkCounts = currentDailyData.linkCounts || {};
                         currentDailyData.domainCounts = currentDailyData.domainCounts || {};
-                        currentDailyData.contentTypeCounts = currentDailyData.contentTypeCounts || {}; // New: Initialize if missing
+                        currentDailyData.contentTypeCounts = currentDailyData.contentTypeCounts || {};
+                        currentDailyData.linkCardsData = currentDailyData.linkCardsData || {};
+                        currentDailyData.imageCardsData = currentDailyData.imageCardsData || {};
                     }
 
                     for (const key in accumulatedUpdates.termCounts) {
@@ -908,15 +953,12 @@
                             currentDailyData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
                         }
                         currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
-                        // Update headline (fetched <title>) if new one is present or existing is null
                         if (headline && currentDailyData.linkCounts[url].headline === null) {
                             currentDailyData.linkCounts[url].headline = headline;
                         }
-                        // Update originalTitle (from Contrails) if new one is present or existing is null
                         if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) {
                             currentDailyData.linkCounts[url].originalTitle = originalTitle;
                         }
-                        // Update description (from Contrails) if new one is present or existing is null
                         if (description && currentDailyData.linkCounts[url].description === null) {
                             currentDailyData.linkCounts[url].description = description;
                         }
@@ -924,9 +966,31 @@
                     for (const key in accumulatedUpdates.domainCounts) {
                         currentDailyData.domainCounts[key] = (currentDailyData.domainCounts[key] || 0) + accumulatedUpdates.domainCounts[key];
                     }
-                    // New: Merge contentTypeCounts
                     for (const key in accumulatedUpdates.contentTypeCounts) {
                         currentDailyData.contentTypeCounts[key] = (currentDailyData.contentTypeCounts[key] || 0) + accumulatedUpdates.contentTypeCounts[key];
+                    }
+                    for (const url in accumulatedUpdates.linkCardsData) {
+                        const { count, title, description } = accumulatedUpdates.linkCardsData[url];
+                        if (typeof currentDailyData.linkCardsData[url] !== 'object' || currentDailyData.linkCardsData[url] === null) {
+                            currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null };
+                        }
+                        currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url].count || 0) + count;
+                        if (title && currentDailyData.linkCardsData[url].title === null) {
+                            currentDailyData.linkCardsData[url].title = title;
+                        }
+                        if (description && currentDailyData.linkCardsData[url].description === null) {
+                            currentDailyData.linkCardsData[url].description = description;
+                        }
+                    }
+                    for (const key in accumulatedUpdates.imageCardsData) {
+                        const { count, alt } = accumulatedUpdates.imageCardsData[key];
+                        if (typeof currentDailyData.imageCardsData[key] !== 'object' || currentDailyData.imageCardsData[key] === null) {
+                            currentDailyData.imageCardsData[key] = { count: 0, alt: null };
+                        }
+                        currentDailyData.imageCardsData[key].count = (currentDailyData.imageCardsData[key].count || 0) + count;
+                        if (alt && currentDailyData.imageCardsData[key].alt === null) {
+                            currentDailyData.imageCardsData[key].alt = alt;
+                        }
                     }
 
                     await setDoc(dailyDocRef, currentDailyData, { merge: true });
@@ -934,7 +998,7 @@
                     console.log("Firestore analysis updated (debounced).");
 
                     // Reset accumulated updates after successful write
-                    accumulatedUpdates = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {} }; // Reset new type too
+                    accumulatedUpdates = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {} };
 
                 } catch (e) {
                     console.error("Error updating Firestore analysis (debounced):", e);
@@ -952,21 +1016,20 @@
         }
 
         // --- Render Functions for Analysis ---
-        function renderAnalysis(termData, linkData, domainData, contentTypeData) { // Added contentTypeData
+        function renderAnalysis(termData, richLinkCardsData, domainData, contentTypeData) { // Adjusted signature
             // Render Top Hashtags
             const sortedTerms = Object.entries(termData)
                 .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 20); // Changed: Top 20 terms/hashtags
+                .slice(0, 20);
 
             topTermsDiv.innerHTML = '';
             if (sortedTerms.length === 0) {
                 topTermsDiv.innerHTML = '<p class="text-gray-500 text-center">No hashtags yet to analyze.</p>';
             } else {
-                sortedTerms.forEach(([term, count], index) => { // Added index for numbering
+                sortedTerms.forEach(([term, count], index) => {
                     const item = document.createElement('div');
-                    // Changed: Use domain-card class for hashtags
                     item.className = 'domain-card'; 
-                    item.title = term; // Show full hashtag on mouseover
+                    item.title = term;
                     item.innerHTML = `
                         <div class="domain-card-name">
                             ${index + 1}. ${term}
@@ -979,33 +1042,30 @@
                 });
             }
 
-            // Render Top Links (as cards)
-            const sortedLinks = Object.entries(linkData)
+            // Render Link Cards (with Title & Description) in the topLinksDiv
+            const sortedRichLinkCards = Object.entries(richLinkCardsData)
                 .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
-                .slice(0, 10); // Top 10 links
+                .slice(0, 10);
 
-            topLinksDiv.innerHTML = '';
-            if (sortedLinks.length === 0) {
-                topLinksDiv.innerHTML = '<p class="text-gray-500 text-center">No links yet to analyze.</p>';
+            topLinksDiv.innerHTML = ''; // Clear topLinksDiv
+            if (sortedRichLinkCards.length === 0) {
+                topLinksDiv.innerHTML = '<p class="text-gray-500 text-center">No rich link cards yet to display.</p>';
             } else {
-                sortedLinks.forEach(([url, data]) => {
-                    const item = document.createElement('a'); // Changed to <a> for full card clickability
+                sortedRichLinkCards.forEach(([url, data]) => {
+                    const item = document.createElement('a');
                     item.href = url;
                     item.target = "_blank";
                     item.rel = "noopener noreferrer";
-                    // Using new modern link card classes
                     item.className = 'link-card'; 
-                    item.title = url; // Show full URL on mouseover
-                    
-                    // Determine the headline to display: Contrails originalTitle > Contrails description > fetched <title> > simplified domain
-                    const displayHeadline = data.originalTitle || data.headline || getSimplifiedDomain(url);
-                    const displayDescription = data.description || ''; // Use empty string if no description
+                    item.title = `URL: ${url}\nTitle: ${data.title}\nDescription: ${data.description}`;
                     
                     item.innerHTML = `
                         <div class="link-card-headline">
-                            ${displayHeadline}
+                            ${data.title}
                         </div>
-                        ${displayDescription ? `<div class="link-card-description">${displayDescription}</div>` : ''} <!-- New description line -->
+                        <div class="link-card-description">
+                            ${data.description}
+                        </div>
                         <div class="link-card-url">
                             ${url}
                         </div>
@@ -1020,16 +1080,16 @@
             // Render Top Domains
             const sortedDomains = Object.entries(domainData)
                 .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 10); // Top 10 domains
+                .slice(0, 10);
 
             topDomainsDiv.innerHTML = '';
             if (sortedDomains.length === 0) {
                 topDomainsDiv.innerHTML = '<p class="text-gray-500 text-center">No domains yet to analyze.</p>';
             } else {
                 sortedDomains.forEach(([domain, count]) => {
-                    const item = document.createElement('div'); // Keep as div, not a link
-                    item.className = 'domain-card'; // Use the new class
-                    item.title = domain; // Show full domain on mouseover
+                    const item = document.createElement('div');
+                    item.className = 'domain-card';
+                    item.title = domain;
                     item.innerHTML = `
                         <div class="domain-card-name">
                             ${domain}
@@ -1042,10 +1102,10 @@
                 });
             }
 
-            // Render Content Type Breakdown (New)
+            // Render Content Type Breakdown
             const sortedContentTypes = Object.entries(contentTypeData)
                 .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 5); // Top 5 content types
+                .slice(0, 5);
 
             contentTypeBreakdownDiv.innerHTML = '';
             if (sortedContentTypes.length === 0) {
@@ -1053,7 +1113,7 @@
             } else {
                 sortedContentTypes.forEach(([type, count]) => {
                     const item = document.createElement('div');
-                    item.className = 'domain-card'; // Use domain-card for consistent styling
+                    item.className = 'domain-card';
                     item.innerHTML = `
                         <div class="domain-card-name">
                             ${type}
@@ -1065,6 +1125,9 @@
                     contentTypeBreakdownDiv.appendChild(item);
                 });
             }
+
+            // Removed rendering for Link Cards (with Title & Description) from its old div
+            // Removed rendering for Image Cards
         }
 
         // --- Timeframe Selection and Data Fetching/Display ---
@@ -1074,15 +1137,16 @@
             connectionStatusElem.textContent = `Fetching data for ${timeframe}...`;
 
             let termsToDisplay = {};
-            let linksToDisplay = {};
+            let linksToDisplay = {}; // This will now hold rich link card data for display
             let domainsToDisplay = {};
-            let contentTypesToDisplay = {}; // New: Initialize for current display
+            let contentTypesToDisplay = {};
+            // imageCardsToDisplay is no longer relevant for display
 
             if (timeframe === 'allTime') {
                 termsToDisplay = allTimeTermCounts;
-                linksToDisplay = allTimeLinkCounts;
+                linksToDisplay = allTimeLinkCardsData; // Assign rich link card data to linksToDisplay
                 domainsToDisplay = allTimeDomainCounts;
-                contentTypesToDisplay = allTimeContentTypeCounts; // New: Assign all-time data
+                contentTypesToDisplay = allTimeContentTypeCounts;
                 connectionStatusElem.textContent = 'Connected';
             } else {
                 const today = new Date();
@@ -1091,9 +1155,9 @@
                 if (timeframe === 'day') {
                     startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
                 } else if (timeframe === 'week') {
-                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay()); // Start of the current week (Sunday)
+                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
                 } else if (timeframe === 'month') {
-                    startDate = new Date(today.getFullYear(), today.getMonth(), 1); // Start of the current month
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 }
 
                 // Fetch data for the selected timeframe
@@ -1105,24 +1169,24 @@
                     querySnapshot.forEach((docSnap) => {
                         const data = docSnap.data();
                         const dailyTerms = data.termCounts || {};
-                        const dailyLinks = data.linkCounts || {};
+                        const dailyLinks = data.linkCounts || {}; // Original link data (still tracked)
                         const dailyDomains = data.domainCounts || {};
-                        const dailyContentTypes = data.contentTypeCounts || {}; // New: Get daily content types
+                        const dailyContentTypes = data.contentTypeCounts || {};
+                        const dailyLinkCards = data.linkCardsData || {}; // Rich link card data
+                        const dailyImageCards = data.imageCardsData || {}; // Image card data (still tracked)
 
                         for (const term in dailyTerms) {
                             termsToDisplay[term] = (termsToDisplay[term] || 0) + dailyTerms[term];
                         }
-                        for (const url in dailyLinks) {
-                            const { count, headline, originalTitle, description } = dailyLinks[url];
-                            if (!linksToDisplay[url]) {
-                                linksToDisplay[url] = { count: 0, headline: null, description: null, originalTitle: null };
+                        // Aggregate rich link card data for display
+                        for (const url in dailyLinkCards) {
+                            const { count, title, description } = dailyLinkCards[url];
+                            if (!linksToDisplay[url]) { // Use linksToDisplay for rich link cards
+                                linksToDisplay[url] = { count: 0, title: null, description: null };
                             }
                             linksToDisplay[url].count += count;
-                            if (headline && linksToDisplay[url].headline === null) {
-                                linksToDisplay[url].headline = headline;
-                            }
-                            if (originalTitle && linksToDisplay[url].originalTitle === null) {
-                                linksToDisplay[url].originalTitle = originalTitle;
+                            if (title && linksToDisplay[url].title === null) {
+                                linksToDisplay[url].title = title;
                             }
                             if (description && linksToDisplay[url].description === null) {
                                 linksToDisplay[url].description = description;
@@ -1131,12 +1195,13 @@
                         for (const domain in dailyDomains) {
                             domainsToDisplay[domain] = (domainsToDisplay[domain] || 0) + dailyDomains[domain];
                         }
-                        // New: Aggregate daily content types
                         for (const type in dailyContentTypes) {
                             contentTypesToDisplay[type] = (contentTypesToDisplay[type] || 0) + dailyContentTypes[type];
                         }
+                        // Note: dailyImageCards is still being aggregated to Firestore
+                        // but not assigned to a display variable here as the section is removed.
                     });
-                    connectionStatusElem.textContent = 'Connected'; // Changed to just 'Connected'
+                    connectionStatusElem.textContent = 'Connected';
                 } catch (error) {
                     console.error(`Error fetching ${timeframe} data:`, error);
                     connectionStatusElem.textContent = `Error fetching ${timeframe} data: ${error.message}`;
@@ -1144,10 +1209,11 @@
             }
 
             currentDisplayTermCounts = termsToDisplay;
-            currentDisplayLinkCounts = linksToDisplay;
+            currentDisplayLinkCounts = linksToDisplay; // This now holds the rich link cards for display
             currentDisplayDomainCounts = domainsToDisplay;
-            currentDisplayContentTypeCounts = contentTypesToDisplay; // New: Set for current display
-            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts, currentDisplayContentTypeCounts); // Pass new data
+            currentDisplayContentTypeCounts = contentTypesToDisplay;
+            
+            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts, currentDisplayContentTypeCounts); // Adjusted arguments
             loadingIndicatorElem.style.display = 'none';
         }
 
