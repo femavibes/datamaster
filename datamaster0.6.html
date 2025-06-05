@@ -31,36 +31,37 @@
         .main-wrapper {
             display: flex;
             flex-direction: column; /* Stack sections on small screens */
-            gap: 30px; /* Space between the two main sections */
+            gap: 30px; /* Default gap for smaller screens */
             width: 100%; /* Always take 100% of the parent's content width */
             flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
-            /* Removed overflow: hidden; to allow proper content scaling */
         }
         @media (min-width: 1024px) { /* Side-by-side on larger screens */
             .main-wrapper {
                 flex-direction: row;
                 max-width: 1650px; /* Increased available space by 10% (1500 * 1.10 = 1650) */
                 height: 100%; /* Ensure main-wrapper fills the height of the body */
+                gap: 15px; /* Halved the gap for larger screens */
             }
             .section-wrapper {
                 display: flex;
                 flex-direction: column;
                 min-width: 0; /* CRITICAL: Allows flex items to shrink below their content size */
-                flex-grow: 1; /* Default, overridden by specific nth-child */
-                flex-shrink: 1; /* Default, overridden by specific nth-child */
-                flex-basis: 0; /* Default, overridden by specific nth-child */
                 height: 100%; /* Ensure each section-wrapper fills the height of main-wrapper */
             }
-            /* Specific flex properties for the three columns (5% / 40% / 55%) */
+            /* Specific flex properties for the three columns (5% / 40% / 55% of original content area, with extra space to rankings) */
+            /* Calculated based on 1590px original content width:
+               Nav: 1590 * 0.05 = 79.5px
+               Urbanism+: 1590 * 0.40 = 636px
+               Rankings: 1590 * 0.55 = 874.5px (plus 30px extra space = 904.5px)
+            */
             .section-wrapper:nth-child(1) { /* Navigation Box */
-                flex-grow: 5;
-                flex-shrink: 0; /* Prevent shrinking below its inherent size as it's small */
+                flex: 0 0 79.5px; /* Fixed width for content */
             }
             .section-wrapper:nth-child(2) { /* Urbanism+ Box */
-                flex-grow: 40;
+                flex: 0 0 636px; /* Fixed width for content */
             }
-            .section-wrapper:nth-child(3) { /* Rankings Box */
-                flex-grow: 55;
+            .section-wrapper:nth-child(3) { /* Rankings Box - takes all remaining space */
+                flex: 1; /* This will automatically expand to 904.5px content width */
             }
             /* Ensure section-cards inside are also full height */
             .section-wrapper .section-card {
@@ -78,10 +79,6 @@
             flex-grow: 1; /* Allow cards to grow and fill space */
             overflow-y: auto; /* Add scrollbar to this card if content overflows */
             position: relative; /* Needed for absolute positioning of connection status */
-        }
-        /* Specific styling for the iframe's parent card to control its height and overflow */
-        .main-wrapper > .section-wrapper:first-child .section-card {
-            /* overflow-y: auto is already on .section-card, no need to duplicate */
         }
 
         /* Stylish Title for main sections */
