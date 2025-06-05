@@ -471,66 +471,41 @@
         // Helper function to extract simplified base domain from a URL
         function getSimplifiedDomain(url) {
             try {
-                const hostname = new URL(url).hostname;
-                // Remove 'www.' prefix
-                let domain = hostname.replace(/^www\./, '');
-                
-                // Remove common TLDs and multi-part TLDs
-                const tldPatterns = [
-                    /\.com$/, /\.org$/, /\.net$/, /\.info$/, /\.biz$/, /\.co$/, /\.io$/, /\.app$/,
-                    /\.co\.uk$/, /\.org\.uk$/, /\.net\.uk$/, /\.ac\.uk$/, /\.gov\.uk$/,
-                    /\.com\.au$/, /\.net\.au$/, /\.org\.au$/, /\.edu\.au$/, /\.gov\.au$/,
-                    /\.co\.nz$/, /\.org\.nz$/, /\.net\.nz$/, /\.ac\.nz$/,
-                    /\.co\.jp$/, /\.ne\.jp$/, /\.or\.jp$/, /\.ac\.jp$/, /\.ad\.jp$/, /\.ed\.jp$/, /\.go\.jp$/, /\.gr\.jp$/, /\.lg\.jp$/,
-                    /\.com\.br$/, /\.net\.br$/, /\.org\.br$/,
-                    /\.com\.cn$/, /\.net\.cn$/, /\.org\.cn$/,
-                    /\.com\.hk$/, /\.net\.hk$/, /\.org\.hk$/,
-                    /\.news$/, /\.blog$/, /\.tech$/, /\.store$/, /\.online$/, /\.site$/, /\.xyz$/
-                ];
+                const hostname = new URL(url).hostname.toLowerCase();
+                let domain = hostname.replace(/^www\./, ''); // Remove www.
 
-                for (const pattern of tldPatterns) {
-                    domain = domain.replace(pattern, '');
+                // Define a list of common TLDs, including multi-part ones
+                // Sorted by length descending to match longest TLD first for accuracy
+                const knownTlds = [
+                    '.co.uk', '.com.au', '.org.uk', '.net.au', '.ac.uk', '.gov.uk',
+                    '.co.nz', '.org.nz', '.net.nz', '.ac.nz',
+                    '.co.jp', '.ne.jp', '.or.jp', '.ac.jp', '.ad.jp', '.ed.jp', '.go.jp', '.gr.jp', '.lg.jp',
+                    '.com.br', '.net.br', '.org.br',
+                    '.com.cn', '.net.cn', '.org.cn',
+                    '.com.hk', '.net.hk', '.org.hk',
+                    '.com', '.org', '.net', '.info', '.biz', '.co', '.io', '.app', '.news', '.blog', '.tech', '.store', '.online', '.site', '.xyz'
+                ].sort((a, b) => b.length - a.length); 
+
+                // Try to strip TLDs from the end to get to the "registrable domain" or brand name
+                for (const tld of knownTlds) {
+                    if (domain.endsWith(tld)) {
+                        domain = domain.substring(0, domain.length - tld.length);
+                        break; // Stop after finding the longest matching TLD
+                    }
                 }
-                
-                // If there are still multiple parts (e.g., a subdomain that wasn't a TLD),
-                // take only the last part (the main domain name).
+
+                // After stripping TLDs, if there are still dots, it implies subdomains or previous TLDs.
+                // We want the last significant part (the brand name).
                 const parts = domain.split('.');
                 if (parts.length > 1) {
-                    return parts[parts.length - 1];
+                    return parts[parts.length - 1]; // Return the last part (e.g., 'streetsblog' from 'cal.streetsblog')
+                } else {
+                    return domain; // Already the brand name (e.g., 'bbc')
                 }
 
-                return domain; 
             } catch (e) {
                 console.error("Error parsing simplified domain from URL:", url, e);
                 return 'Invalid Domain';
-            }
-        }
-
-        // New helper function to fetch headline from a URL
-        async function fetchHeadline(url) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn(`Failed to fetch ${url} for headline: ${response.status} ${response.statusText}`);
-                    return null;
-                }
-                // Check if content type is HTML before parsing
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('text/html')) {
-                    console.warn(`Skipping headline fetch for non-HTML content at ${url}. Content-Type: ${contentType}`);
-                    return null;
-                }
-
-                const text = await response.text();
-                const match = text.match(/<title[^>]*>([^<]+)<\/title>/i);
-                return match && match[1] ? match[1].trim() : null;
-            } catch (e) {
-                console.warn(`CORS or network error fetching headline for ${url}:`, e.message);
-                // Important: Log a warning about CORS if it's likely the cause
-                if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
-                    console.warn(`CORS likely prevented fetching headline for ${url}. Headline will not be displayed.`);
-                }
-                return null; // Return null if fetching fails
             }
         }
 
