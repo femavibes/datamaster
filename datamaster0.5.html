@@ -39,21 +39,21 @@
         @media (min-width: 1024px) { /* Side-by-side on larger screens */
             .main-wrapper {
                 flex-direction: row;
-                max-width: 1500px; /* Changed: Increased available space by 25% (1200 * 1.25 = 1500) */
+                max-width: 1500px; /* Increased available space by 25% (1200 * 1.25 = 1500) */
                 /* width: 100%; removed from here as body's align-items: center and flex properties handle this */
                 flex-grow: 1; /* Ensure main-wrapper can grow within body */
             }
-            /* Adjusted flex properties for precise width distribution (23%/77% of available space) */
+            /* Adjusted flex properties for precise width distribution (30%/70% of available space) */
             .section-wrapper {
                 display: flex;
                 flex-direction: column;
                 min-width: 0; /* CRITICAL: Allows flex items to shrink below their content size */
             }
             .section-wrapper:first-child { /* Iframe section (Urbanism+) */
-                flex: 0 0 calc(23% - 15px); /* flex-grow: 0, flex-shrink: 0, flex-basis: 23% minus half the gap */
+                flex: 0 0 calc(30% - 15px); /* flex-grow: 0, flex-shrink: 0, flex-basis: 30% minus half the gap */
             }
             .section-wrapper:last-child { /* Rankings section */
-                flex: 0 0 calc(77% - 15px); /* flex-grow: 0, flex-shrink: 0, flex-basis: 77% minus half the gap */
+                flex: 0 0 calc(70% - 15px); /* flex-grow: 0, flex-shrink: 0, flex-basis: 70% minus half the gap */
             }
         }
 
