@@ -188,11 +188,12 @@
             justify-content: center;
             align-items: center;
             flex-shrink: 0; /* Prevent shrinking */
-            /* Adjusted border to 4px for better anti-aliasing */
-            border: 4px solid rgba(0, 0, 0, 0.15); /* Thicker border for aliasing */
+            /* Reverted border to 2px for header icons */
+            border: 2px solid rgba(0, 0, 0, 0.1); 
         }
         body.dark-mode .feed-title-icon-wrapper {
-            border: 4px solid rgba(255, 255, 255, 0.15); /* Thicker border for dark mode */
+            /* Reverted border to 2px for dark mode header icons */
+            border: 2px solid rgba(255, 255, 255, 0.1);
         }
 
         /* Style for the image inside the feed title icon wrapper */
@@ -518,7 +519,8 @@
             margin-bottom: 15px; /* Space between buttons */
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             transition: all 0.2s ease-in-out;
-            border: 4px solid transparent; /* Default transparent border, increased to 4px */
+            /* Reverted border to 2px for navigation buttons */
+            border: 2px solid transparent; 
             overflow: hidden; /* IMPORTANT: Ensures zoomed images are clipped to the circle */
         }
         .feed-select-btn:last-of-type {
@@ -532,7 +534,8 @@
             background-color: #3498db; /* Blue for active state */
             transform: scale(1.05);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            border: 4px solid #287bbd; /* Stronger border for active, increased to 4px */
+            /* Reverted border to 2px for active navigation buttons */
+            border: 2px solid #287bbd; 
         }
         .feed-select-btn.active-feed-btn svg {
             color: white; /* Ensure SVG icon is white when active */
@@ -665,10 +668,18 @@
         <!-- Section for Live Analysis (Contrails data processed in background) - Now on the right -->
         <div class="section-wrapper">
             <div class="section-card">
-                <!-- New flex container for header and timeframe selector -->
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center w-full mb-4">
-                    <h2 class="stylish-section-title mb-0 md:mb-0 mr-4">Rankings</h2> <!-- Reduced margin-bottom, added right margin -->
-                    <div class="timeframe-selector mt-2 md:mt-0 mb-0 md:mb-0"> <!-- Adjusted margins for new position -->
+                <!-- New flex container for header (Rankings title) and connection status -->
+                <div class="flex justify-between items-center w-full mb-4">
+                    <h2 class="stylish-section-title mb-0 mr-4">Rankings</h2>
+                    <div class="text-sm text-gray-600 flex flex-col items-end">
+                        <span id="connectionStatus">Initializing...</span>
+                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.7.8</span>
+                    </div>
+                </div>
+                
+                <!-- Timeframe selector, centered horizontally below the header -->
+                <div class="flex justify-center w-full mb-4">
+                    <div class="timeframe-selector mt-2 md:mt-0 mb-0 md:mb-0">
                         <input type="radio" id="timeframeDay" name="timeframe" value="day" checked>
                         <label for="timeframeDay">Day</label>
                         <input type="radio" id="timeframeWeek" name="timeframe" value="week">
@@ -679,20 +690,14 @@
                         <label for="timeframeAllTime">All Time</label>
                     </div>
                 </div>
-                <!-- Connection status moved to top right within the card -->
-                <div class="absolute top-4 right-4 text-sm text-gray-600 flex flex-col items-end">
-                    <span id="connectionStatus">Initializing...</span>
-                    <span id="datamasterVersionText" class="text-gray-600">datamaster 0.7.8</span>
-                </div>
                 
-                <!-- The actual live posts container is now hidden, but still updated -->
+                <!-- The actual live posts container (hidden) -->
                 <div id="postsContainer" class="flex-grow overflow-y-auto border border-gray-200 rounded-md p-2" style="max-height: 500px; display: none;">
                     <p id="noPostsMessage" class="text-gray-500 text-center py-4" style="display: none;">Waiting for new posts...</p>
                 </div>
-                <!-- loadingIndicatorElem is now hidden permanently, its text content moved to connectionStatus -->
                 <div id="loadingIndicator" class="loading-indicator" style="display: none;"></div>
 
-                <!-- Changed: Grid for rankings to support 4 columns on medium screens and above -->
+                <!-- Grid for rankings -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
                     <div class="md:col-span-1">
                         <h3 class="stylish-subheader">Top Hashtags</h3>
@@ -979,7 +984,7 @@
                 icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp',
                 // Updated to link to the feed directly
                 blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp', 
-                titleIconScale: '1.15' // Adjusted zoom for header icon (from 2.3 to 1.15)
+                titleIconScale: '1.3225' // Increased by 15% from 1.15 (1.15 * 1.15 = 1.3225)
             },
             'transitSky': { 
                 id: 'transitSky',
@@ -1159,7 +1164,7 @@
             const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
             console.log(`Firestore Listener: Attempting to subscribe to ${analysisDocRef.path}`);
 
-            unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
+            onSnapshot(analysisDocRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     currentFeedData.termCounts = data.termCounts || {}; 
@@ -1250,7 +1255,7 @@
             try {
                 // Step 1: Resolve DID to Handle using plc.directory
                 const plcApiUrl = `https://plc.directory/${did}`;
-                console.log(`DID Resolution: Fetching DID document from: ${plcApiUrl}`);
+                console.log(`Fetching DID document from: ${plcApiUrl}`);
 
                 const plcResponse = await fetch(plcApiUrl);
 
@@ -1279,7 +1284,7 @@
                 // This API call is only for display name and can be rate-limited.
                 // It does NOT provide like counts for individual posts directly from the firehose.
                 const profileApiUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`;
-                console.log(`DID Resolution: Fetching profile from: ${profileApiUrl}`);
+                console.log(`Fetching profile from: ${profileApiUrl}`);
 
                 const profileResponse = await fetch(profileApiUrl);
 
