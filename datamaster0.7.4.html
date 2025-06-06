@@ -455,6 +455,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             transition: all 0.2s ease-in-out;
             border: 2px solid transparent; /* Default transparent border */
+            overflow: hidden; /* IMPORTANT: Ensures zoomed images are clipped to the circle */
         }
         .feed-select-btn:last-of-type {
             margin-bottom: 0; /* No margin after the last button */
@@ -477,7 +478,16 @@
             height: 100%;
             object-fit: cover;
             border-radius: 50%; /* Make image round */
+            /* Default transform, will be overridden by specific rules below */
+            transform: scale(1);
+            transition: transform 0.2s ease-in-out; /* Smooth transition for zoom effect */
         }
+        /* Specific rule for zooming in the images */
+        #urbanismPlusFeedBtn img,
+        #bandcampFeedBtn img {
+            transform: scale(1.5); /* Make image 50% larger than its container */
+        }
+
         .feed-select-btn svg {
             width: 28px; /* Slightly larger SVG icons */
             height: 28px;
@@ -515,7 +525,7 @@
                 </a>
 
                 <!-- Plus button (now below Fema button) -->
-                <button id="plusBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                <button id="plusBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 mb-4">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
@@ -1634,8 +1644,8 @@
                             if (headline && currentDailyData.linkCounts[url].headline === null) {
                                 currentDailyData.linkCounts[url].headline = headline;
                             }
-                            if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) { // Typo fix
-                                currentDailyData.linkCounts[url].originalTitle = originalTitle;
+                            if (originalTitle && currentDailyData.linkCardsData[url].originalTitle === null) { // Typo fix
+                                currentDailyData.linkCardsData[url].originalTitle = originalTitle;
                             }
                             if (description && currentDailyData.linkCardsData[url].description === null) {
                                 currentDailyData.linkCardsData[url].description = description;
