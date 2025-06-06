@@ -1217,31 +1217,27 @@
             newWs.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    console.log("[WS: onmessage] Received raw data:", data); // Log the raw data
+                    
+                    // Safely get authorDid, defaulting if not present
+                    let authorDid = data.did || 'unknown-did'; 
                     let authorDisplayName = 'User'; 
-                    let authorDid = data.did; 
                     let postText = '';
                     let timestamp = ''; 
 
+                    // Check if it's a commit and contains a record of type app.bsky.feed.post
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
                         const commitData = data;
                         const post = commitData.record; 
 
-                        // NEW: Explicitly check if post object is valid before accessing its properties
+                        // Explicitly check if post object is valid before accessing its properties
                         if (!post) {
                             console.warn("WebSocket message contains commit.record of type 'app.bsky.feed.post' but the post object itself is null or undefined. Skipping:", commitData);
                             return; // Skip processing this message
                         }
 
-                        if (typeof post.text === 'string') {
-                            postText = post.text;
-                        } else {
-                            // Log the full post object if text is missing or invalid for better debugging
-                            console.warn("Post record text is not a string or is missing. Post object:", post);
-                            postText = ''; 
-                        }
-                        
-                        // NEW: Safely access createdAt, defaulting to current time if not present
-                        timestamp = post.createdAt || new Date().toISOString(); 
+                        postText = String(post.text || ''); // Ensure text is always a string
+                        timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
 
                         const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid); 
                         if (resolvedInfo) {
@@ -1313,7 +1309,7 @@
 
                 // We cleared the interval in `stopWebSocket` before creating `newWs`.
                 // Now, if `currentActiveFeedId` still matches this `feedId`,
-                // and no new connection has started (`ws` is currently null),
+                // and no new connection has started (`ws` is currently null`),
                 // then set up a new reconnect interval.
                 if (currentActiveFeedId === feedId && !reconnectInterval) { // Double check `!reconnectInterval`
                     console.log(`[WS: ${feedId}] Setting new reconnect interval for active feed.`);
@@ -1384,10 +1380,10 @@
 
             // --- Link and Domain Counting ---
             let extractedLink = null;
-            if (embed && embed.$type === 'app.bsky.embed.external' && embed.external && embed.external.uri) {
+            if (embed?.$type === 'app.bsky.embed.external' && embed.external?.uri) { // Use optional chaining
                 extractedLink = embed.external.uri;
-                const externalTitle = embed.external.title || null;
-                const externalDescription = embed.external.description || null;
+                const externalTitle = embed.external?.title || null; // Use optional chaining
+                const externalDescription = embed.external?.description || null; // Use optional chaining
 
                 // Update linkCounts
                 if (!accumulatedUpdates[feedId].linkCounts[extractedLink]) {
@@ -1400,6 +1396,7 @@
                 if (externalDescription) {
                     accumulatedUpdates[feedId].linkCounts[extractedLink].description = externalDescription;
                 }
+                // Only fetch headline if it's currently null
                 if (accumulatedUpdates[feedId].linkCounts[extractedLink].headline === null) {
                     fetchHeadline(extractedLink).then(fetchedTitle => {
                         if (fetchedTitle) {
@@ -1408,8 +1405,8 @@
                     });
                 }
 
-                // Update linkCardsData
-                if (externalTitle && externalDescription) { 
+                // Update linkCardsData (for display, combining title and description)
+                if (externalTitle || externalDescription) { // Only record if at least one is present
                     if (!accumulatedUpdates[feedId].linkCardsData[extractedLink]) {
                         accumulatedUpdates[feedId].linkCardsData[extractedLink] = { count: 0, title: externalTitle, description: externalDescription };
                     }
@@ -1425,9 +1422,9 @@
                     accumulatedUpdates[feedId].domainCounts[baseDomain].count++;
                     accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] || 0) + 1;
                 }
-            } else if (embed && embed.$type === 'app.bsky.embed.images' && embed.images && embed.images.length > 0) {
-                const firstImage = embed.images[0];
-                const imageAlt = firstImage.alt || 'Image without description';
+            } else if (embed?.$type === 'app.bsky.embed.images' && embed.images?.length > 0) { // Use optional chaining
+                const firstImage = embed.images?.[0]; // Use optional chaining
+                const imageAlt = firstImage?.alt || 'Image without description'; // Use optional chaining
                 const imageKey = imageAlt; 
 
                 if (!accumulatedUpdates[feedId].imageCardsData[imageKey]) {
@@ -1448,12 +1445,11 @@
             accumulatedUpdates[feedId].contentTypeCounts[contentType] = (accumulatedUpdates[feedId].contentTypeCounts[contentType] || 0) + 1;
 
             // --- Poster Counting (by number of posts) ---
-            if (authorDid) {
+            if (authorDid && authorDid !== 'unknown-did') { // Ensure authorDid is valid
                 accumulatedUpdates[feedId].posterCounts[authorDid] = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1;
                 // For demonstration, assume each post adds 1 like.
                 accumulatedUpdates[feedId].posterLikes[authorDid] = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1;
             }
-
 
             // Clear any existing timer
             clearTimeout(debounceTimer); // Clear existing timer, ensuring only one pending update
