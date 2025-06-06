@@ -483,9 +483,11 @@
             transition: transform 0.2s ease-in-out; /* Smooth transition for zoom effect */
         }
         /* Specific rule for zooming in the images */
-        #urbanismPlusFeedBtn img,
+        #urbanismPlusFeedBtn img {
+            transform: scale(2.0); /* Make image 100% larger than its container (200% scale) */
+        }
         #bandcampFeedBtn img {
-            transform: scale(1.8); /* Make image 80% larger than its container */
+            transform: scale(2.15); /* Make image 115% larger than its container (215% scale) */
         }
 
         .feed-select-btn svg {
@@ -1936,7 +1938,34 @@
             let postersToDisplayByLikes = {}; // For ranking by likes
 
             if (timeframe === 'allTime') {
-                // Use the data currently in currentFeedData for allTime
+                // For 'allTime', explicitly re-fetch from Firestore to ensure latest state is used.
+                // This addresses the issue where 'allTime' might not reflect the most recent debounced writes.
+                const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentActiveFeedId, 'summaries', 'allTime');
+                try {
+                    const summarySnap = await getDoc(summaryDocRef);
+                    if (summarySnap.exists()) {
+                        const data = summarySnap.data();
+                        currentFeedData.termCounts = data.termCounts || {};
+                        currentFeedData.linkCounts = data.linkCounts || {};
+                        currentFeedData.domainCounts = data.domainCounts || {};
+                        currentFeedData.contentTypeCounts = data.contentTypeCounts || {};
+                        currentFeedData.linkCardsData = data.linkCardsData || {};
+                        currentFeedData.imageCardsData = data.imageCardsData || {};
+                        currentFeedData.posterCounts = data.posterCounts || {};
+                        currentFeedData.posterLikes = data.posterLikes || {};
+                        console.log("Update View: Refreshed currentFeedData from Firestore for 'allTime'.");
+                    } else {
+                        console.warn(`Update View: All-Time summary doc for ${currentActiveFeedId} does not exist.`);
+                        currentFeedData = {
+                            termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
+                        };
+                    }
+                } catch (error) {
+                    console.error(`Update View: Error fetching allTime data for ${currentActiveFeedId}:`, error);
+                    connectionStatusElem.textContent = `Error fetching allTime data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
+                }
+
                 termsToDisplay = currentFeedData.termCounts;
                 linksToDisplay = currentFeedData.linkCardsData; 
                 domainsToDisplay = currentFeedData.domainCounts;
@@ -1944,7 +1973,7 @@
                 postersToDisplayByCount = currentFeedData.posterCounts;
                 postersToDisplayByLikes = currentFeedData.posterLikes; 
                 connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
-                console.log("Update View: Using currentFeedData for 'allTime'.");
+                console.log("Update View: Using refreshed currentFeedData for 'allTime'.");
 
             } else {
                 const today = new Date();
@@ -2171,8 +2200,8 @@
             },
             'blm': {
                 backgroundImage: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/BLM_flag.svg.png)',
-                backgroundSize: 'cover',
-                backgroundRepeat: 'no-repeat',
+                backgroundSize: '80px 80px', /* Set fixed tile size */
+                backgroundRepeat: 'repeat',  /* Make it repeat */
                 backgroundPosition: 'center center',
                 backgroundAttachment: 'fixed'
             }
