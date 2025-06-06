@@ -513,10 +513,10 @@
         }
         /* Specific rule for zooming in the images */
         #urbanismPlusFeedBtn img {
-            transform: scale(2.0); /* Make image 100% larger than its container (200% scale) */
+            transform: scale(2.20); /* Increased from 2.0 by another 10% */
         }
         #bandcampFeedBtn img {
-            transform: scale(2.15); /* Make image 115% larger than its container (215% scale) */
+            transform: scale(2.80); /* Increased from 2.15 by another 30% */
         }
 
         .feed-select-btn svg {
@@ -2094,21 +2094,30 @@
                 if (timeframe === 'day') {
                     startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
                 } else if (timeframe === 'week') {
+                    // Start of the current week (Sunday)
                     startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
                 } else if (timeframe === 'month') {
+                    // Start of the current month
                     startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 }
-                console.log(`Update View: Fetching daily aggregates from ${getYYYYMMDD(startDate)} for timeframe: ${timeframe}.`);
+                const startYYYYMMDD = getYYYYMMDD(startDate);
+                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe}.`);
 
 
                 // Fetch data for the selected timeframe from the active feed's daily aggregates
                 const dailyAggregatesRef = collection(db, 'artifacts', appId, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
-                const q = query(dailyAggregatesRef, where('__name__', '>=', getYYYYMMDD(startDate)));
+                // Query for documents whose ID (date string) is greater than or equal to the start date
+                const q = query(dailyAggregatesRef, where('__name__', '>=', startYYYYMMDD));
 
                 try {
                     const querySnapshot = await getDocs(q);
                     console.log(`Update View: Found ${querySnapshot.docs.length} daily aggregate documents for ${timeframe}.`);
+                    if (querySnapshot.docs.length === 0) {
+                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD}.`);
+                    }
+
                     querySnapshot.forEach((docSnap) => {
+                        console.log(`Aggregating data from daily doc: ${docSnap.id}`);
                         const data = docSnap.data();
                         const dailyTerms = data.termCounts || {};
                         const dailyLinkCards = data.linkCardsData || {}; // Use dailyLinkCards
@@ -2405,13 +2414,14 @@
         function openLinkPostsModal(url) {
             const linkData = currentDisplayLinkCounts[url];
             if (!linkData || !linkData.recentPosts || linkData.recentPosts.length === 0) {
-                linkPostsModalTitle.textContent = `No posts found for: ${url}`;
+                linkPostsModalTitle.textContent = `No posts found for: ${linkData?.title || url}`; // Use title if available
                 linkPostsContent.innerHTML = '<p class="text-gray-500 text-center p-4">No recent posts found for this link.</p>';
             } else {
                 linkPostsModalTitle.textContent = `Top Posts for: ${linkData.title || url}`;
                 linkPostsContent.innerHTML = ''; // Clear previous content
 
-                // Sort posts by simulatedLikes (descending)
+                // Sort posts by simulatedLikes (descending) - This already happens in debouncedUpdateFirestoreAnalysis
+                // but re-sorting here ensures the very latest order from the current aggregated data.
                 const sortedPosts = [...linkData.recentPosts].sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
 
                 sortedPosts.forEach(post => {
@@ -2426,7 +2436,7 @@
                         <div class="post-content">${post.textPreview}</div>
                         <div class="post-timestamp">
                             ${new Date(post.timestamp).toLocaleString()}
-                            ${post.simulatedLikes !== undefined ? ` (${post.simulatedLikes} posts by author)` : ''}
+                            ${post.simulatedLikes !== undefined ? ` (Simulated Likes: ${post.simulatedLikes})` : ''}
                         </div>
                     `;
                     linkPostsContent.appendChild(postElement);
