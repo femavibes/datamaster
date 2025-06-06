@@ -333,7 +333,7 @@
             border: 1px solid var(--link-card-border); /* Use variable */
         }
         .link-card:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            box_shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
             transform: translateY(-2px); /* Slight lift effect */
             border-color: #3498db; /* Highlight border on hover */
         }
@@ -673,20 +673,20 @@
                     <h2 class="stylish-section-title mb-0 mr-4">Rankings</h2>
                     <div class="text-sm text-gray-600 flex flex-col items-end">
                         <span id="connectionStatus">Initializing...</span>
-                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.7.8</span>
+                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.8.0</span>
                     </div>
                 </div>
                 
                 <!-- Timeframe selector, centered horizontally below the header -->
                 <div class="flex justify-center w-full mb-4">
                     <div class="timeframe-selector mt-2 md:mt-0 mb-0 md:mb-0">
-                        <input type="radio" id="timeframeDay" name="timeframe" value="day" checked>
+                        <input type="radio" id="timeframeDay" name="timeframe" value="day">
                         <label for="timeframeDay">Day</label>
                         <input type="radio" id="timeframeWeek" name="timeframe" value="week">
                         <label for="timeframeWeek">Week</label>
                         <input type="radio" id="timeframeMonth" name="timeframe" value="month">
                         <label for="timeframeMonth">Month</label>
-                        <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime">
+                        <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
                         <label for="timeframeAllTime">All Time</label>
                     </div>
                 </div>
@@ -1059,7 +1059,7 @@
         let currentDisplayPosterCounts = {}; // For displaying current timeframe poster counts
         let currentDisplayPosterLikes = {}; // NEW: For displaying current timeframe poster likes
 
-        let currentSelectedTimeframe = localStorage.getItem('selectedTimeframe') || 'day'; // Default timeframe to 'day'
+        let currentSelectedTimeframe = localStorage.getItem('selectedTimeframe') || 'allTime'; // Default timeframe to 'allTime'
 
         // --- WebSocket Variables ---
         let ws = null; // Global variable for the currently active WebSocket instance
@@ -1107,9 +1107,9 @@
                         // Setup listeners and UI for the initially active feed
                         switchFeed(currentActiveFeedId); // This will handle all setup for the initial feed
                         fetchResolvedDids(); // Fetch resolved DIDs once after auth (was setupResolvedDidsListener)
-                        updateView(currentSelectedTimeframe); // Initial render based on default timeframe
                         // Set the correct radio button checked state on load
                         document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
+                        updateView(currentSelectedTimeframe); // Initial render based on default timeframe
 
                     } else {
                         // FIX: Added more robust error handling for signInWithCustomToken.
@@ -1228,7 +1228,9 @@
                 resolvedDidsCache = fetchedDids; // Update the cache
                 console.log("Fetch Resolved DIDs: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
                 // Trigger view update to ensure Top Posters reflects latest resolved DIDs
-                updateView(currentSelectedTimeframe); 
+                // We're not calling updateView here, as it's called after fetchResolvedDids
+                // within the updateView function itself to prevent infinite loops.
+                // updateView(currentSelectedTimeframe); 
             } catch (error) {
                 console.error("Fetch Resolved DIDs: Error fetching resolved DIDs:", error);
                 // Optionally update a UI status for this specific section
@@ -1562,7 +1564,7 @@
                     accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle = externalTitle;
                 }
                 if (externalDescription && accumulatedUpdates[feedId].linkCounts[extractedLink].description === null) {
-                    accumulatedUpdates[feedId].linkCounts[extractedLink].description = externalDescription;
+                    accumulatedUpdates[feedId].linkCards[extractedLink].description = externalDescription;
                 }
                 // Only fetch headline if it's currently null
                 if (accumulatedUpdates[feedId].linkCounts[extractedLink].headline === null) {
