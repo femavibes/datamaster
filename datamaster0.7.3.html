@@ -980,8 +980,8 @@
                 return;
             }
 
-            // Path for summary document: artifacts/{appId}/public/data/feeds/{feedId}/summary
-            const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summary');
+            // REVISED PATH: /artifacts/{appId}/public/data/feeds/{feedId}/summaries/allTime
+            const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
 
             unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
                 if (docSnap.exists()) {
@@ -998,6 +998,7 @@
                     console.log(`Firestore All-Time data for ${feedId} received via onSnapshot:`, currentFeedData); 
                 } else {
                     console.log(`All-Time summary document for ${feedId} does not exist, initializing with empty counts.`);
+                    // Initialize the document if it doesn't exist at the new path
                     setDoc(analysisDocRef, { 
                         termCounts: {},
                         linkCounts: {},
@@ -1460,7 +1461,8 @@
                 for (const currentFeedIdToProcess in accumulatedUpdates) {
                     const feedUpdates = accumulatedUpdates[currentFeedIdToProcess];
 
-                    const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summary');
+                    // REVISED PATH for summary document
+                    const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
                     const today = new Date();
                     const dailyDocId = getYYYYMMDD(today);
                     const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
