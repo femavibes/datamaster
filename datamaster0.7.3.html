@@ -1226,12 +1226,13 @@
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
                         const commitData = data;
                         const post = commitData.record; 
-                        postUri = commitData.uri; 
 
-                        if (typeof post.text === 'string') {
+                        // REVISED: Add explicit check for 'post' object before accessing 'text'
+                        if (post && typeof post.text === 'string') {
                             postText = post.text;
                         } else {
-                            console.warn("Post record text is not a string or is missing, defaulting to empty string:", post.text);
+                            // Log the full post object if text is missing or invalid for better debugging
+                            console.warn("Post record text is not a string or is missing. Post object:", post);
                             postText = ''; 
                         }
                         
