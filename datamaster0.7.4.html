@@ -485,7 +485,7 @@
         /* Specific rule for zooming in the images */
         #urbanismPlusFeedBtn img,
         #bandcampFeedBtn img {
-            transform: scale(1.5); /* Make image 50% larger than its container */
+            transform: scale(1.8); /* Make image 80% larger than its container */
         }
 
         .feed-select-btn svg {
@@ -511,6 +511,19 @@
             padding-bottom: 10px; /* Small padding from the bottom of the card */
         }
 
+        /* Line spacer styles */
+        .line-spacer {
+            width: 80%; /* Shorter line */
+            height: 2px;
+            background-color: #ddd; /* Light grey line */
+            margin: 10px 0 20px 0; /* Top/bottom margin, 20px on bottom for better separation */
+            border-radius: 1px; /* Rounded ends */
+            opacity: 0.7; /* Slightly transparent */
+        }
+        body.dark-mode .line-spacer {
+            background-color: #4a5568; /* Darker grey for dark mode */
+        }
+
     </style>
 </head>
 <body>
@@ -520,16 +533,20 @@
             <div class="section-card flex flex-col justify-between items-center p-3 h-full">
                 <!-- Fema Button at the very top - NEW -->
                 <a id="femaProfileBtn" href="https://bsky.app/profile/fema.monster" target="_blank" rel="noopener noreferrer" 
-                   class="p-0 bg-transparent rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 mb-4">
+                   class="p-0 bg-transparent rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
                     <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/fema.jpg" alt="Fema Monster" class="w-12 h-12 rounded-full border-2 border-transparent hover:border-blue-500 transition-all duration-300">
                 </a>
+                <!-- Line spacer under Fema button -->
+                <div class="line-spacer"></div>
 
                 <!-- Plus button (now below Fema button) -->
-                <button id="plusBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 mb-4">
+                <button id="plusBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
                 </button>
+                <!-- Line spacer under plus button -->
+                <div class="line-spacer"></div>
 
                 <!-- Container for feed selection buttons -->
                 <div class="nav-buttons-container">
@@ -1709,8 +1726,30 @@
                 accumulatedUpdates = {};
                 console.log("[Debounce] Accumulated updates reset.");
 
+                // After updating Firestore, explicitly re-fetch currentFeedData from Firestore
+                // to ensure the UI updates with the very latest state.
+                if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed
+                    const updatedSummarySnap = await getDoc(summaryDocRef); // Re-fetch the allTime summary
+                    if (updatedSummarySnap.exists()) {
+                        const updatedData = updatedSummarySnap.data();
+                        // Manually update currentFeedData to ensure latest state is used for UI
+                        currentFeedData.termCounts = updatedData.termCounts || {};
+                        currentFeedData.linkCounts = updatedData.linkCounts || {};
+                        currentFeedData.domainCounts = updatedData.domainCounts || {};
+                        currentFeedData.contentTypeCounts = updatedData.contentTypeCounts || {};
+                        currentFeedData.linkCardsData = updatedData.linkCardsData || {};
+                        currentFeedData.imageCardsData = updatedData.imageCardsData || {};
+                        currentFeedData.posterCounts = updatedData.posterCounts || {};
+                        currentFeedData.posterLikes = updatedData.posterLikes || {};
+                        console.log(`[Debounce] currentFeedData manually refreshed from Firestore for active feed ${currentActiveFeedId}.`);
+                    } else {
+                        console.warn(`[Debounce] All-Time summary doc for ${currentActiveFeedId} still doesn't exist after write, cannot refresh currentFeedData.`);
+                        // Ensure currentFeedData is cleared if doc disappeared unexpectedly
+                        currentFeedData = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {} };
+                    }
+                }
+                
                 // Re-render the view with the latest data for the currently active feed
-                // This ensures the UI reflects changes after the debounce.
                 updateView(currentSelectedTimeframe); 
 
             }, DEBOUNCE_DELAY);
@@ -2030,7 +2069,7 @@
                     feedTitleIcon.parentNode.insertBefore(svgIcon, feedTitleIcon.nextSibling);
                 }
                 // Path for a simple train/subway icon (example using a common rail icon shape)
-                svgIcon.innerHTML = `<path d="M12 2c-5.523 0-10 4.477-10 10s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>`;
+                svgIcon.innerHTML = `<path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>`;
                 svgIcon.style.display = 'inline'; // Show SVG
             }
 
