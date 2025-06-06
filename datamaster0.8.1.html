@@ -157,7 +157,7 @@
             font-size: 2rem; /* Larger title */
             font-weight: 800; /* Extra bold */
             color: var(--heading-color); /* Use variable */
-            margin-bottom: 20px; /* Default for titles not in special flex wrappers */
+            /* margin-bottom is handled by the new flex container now */
             text-align: center;
             display: flex; /* Use flexbox for image and text alignment */
             align-items: center; /* Vertically align items */
@@ -647,14 +647,20 @@
         <!-- Section for Iframe Embed (Urbanism+) -->
         <div class="section-wrapper">
             <div class="section-card">
-                <h2 class="stylish-section-title">
-                    <a id="feedTitleLink" href="#" target="_blank" rel="noopener noreferrer" class="feed-title-link">
-                        <div class="feed-title-icon-wrapper">
-                            <img id="feedTitleIcon" src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Feed Logo">
-                        </div>
-                        <span id="feedTitleText">Urbanism+</span>
-                    </a>
-                </h2>
+                <!-- New flex container for title and version buttons -->
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="stylish-section-title mb-0 mr-4">
+                        <a id="feedTitleLink" href="#" target="_blank" rel="noopener noreferrer" class="feed-title-link">
+                            <div class="feed-title-icon-wrapper">
+                                <img id="feedTitleIcon" src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Feed Logo">
+                            </div>
+                            <span id="feedTitleText">Urbanism+</span>
+                        </a>
+                    </h2>
+                    <div id="feedVersionButtons" class="flex gap-2">
+                        <!-- Buttons will be rendered here by JS -->
+                    </div>
+                </div>
                 <iframe
                     id="mainIframe"
                     src="https://graze.social/feeds/embed/3654"
@@ -673,7 +679,7 @@
                     <h2 class="stylish-section-title mb-0 mr-4">Rankings</h2>
                     <div class="text-sm text-gray-600 flex flex-col items-end">
                         <span id="connectionStatus">Initializing...</span>
-                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.8.0</span>
+                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.8.1</span>
                     </div>
                 </div>
                 
@@ -970,31 +976,35 @@
                 id: 'urbanismPlus',
                 uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaotfjzjplna',
                 displayName: 'Urbanism+',
-                iframeSrc: 'https://graze.social/feeds/embed/3654',
+                versions: [
+                    { name: 'Default', src: 'https://graze.social/feeds/embed/3654' }
+                ],
                 icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg',
-                // Updated to link to the feed directly
                 blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaotfjzjplna', 
-                titleIconScale: '1.0' // Adjusted zoom for header icon (from 2.0 to 1.0)
+                titleIconScale: '1.0' 
             },
             'bandcamp': {
                 id: 'bandcamp',
-                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/bandcamp', // Updated URI
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/bandcamp', 
                 displayName: 'Bandcamp', 
-                iframeSrc: 'https://graze.social/feeds/embed/8723', 
+                versions: [
+                    { name: 'Trending', src: 'https://graze.social/feeds/embed/8723' },
+                    { name: 'New', src: 'https://graze.social/feeds/embed/8768' }
+                ],
                 icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp',
-                // Updated to link to the feed directly
                 blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp', 
-                titleIconScale: '1.3225' // Increased by 15% from 1.15 (1.15 * 1.15 = 1.3225)
+                titleIconScale: '1.3225' 
             },
             'transitSky': { 
                 id: 'transitSky',
-                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaic34mdicfg', // Updated URI
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaic34mdicfg', 
                 displayName: 'TransitSky', 
-                iframeSrc: 'https://graze.social/feeds/embed/5511', 
-                icon: 'train', // Using a keyword for an SVG icon
-                // Updated to link to the feed directly
+                versions: [
+                    { name: 'Default', src: 'https://graze.social/feeds/embed/5511' }
+                ],
+                icon: 'train', 
                 blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg', 
-                titleIconScale: '1' // SVG should likely not be scaled initially like images
+                titleIconScale: '1' 
             }
             // Add more feeds here
         };
@@ -1021,6 +1031,7 @@
         const urbanismPlusFeedBtn = document.getElementById('urbanismPlusFeedBtn');
         const bandcampFeedBtn = document.getElementById('bandcampFeedBtn');
         const transitSkyFeedBtn = document.getElementById('transitSkyFeedBtn'); // NEW: Event Listener for TransitSky
+        const feedVersionButtonsContainer = document.getElementById('feedVersionButtons'); // New container for version buttons
 
         // Elements to hide/show
         const topSitesSection = document.getElementById('topSitesSection');
@@ -1118,10 +1129,10 @@
                         try {
                             if (initialAuthToken) {
                                 await signInWithCustomToken(auth, initialAuthToken);
-                                console.log("Firebase: Signed in with custom token.");
+                                console.log("Signed in with custom token.");
                             } else {
                                 await signInAnonymously(auth);
-                                console.log("Firebase: Signed in anonymously.");
+                                console.log("Signed in anonymously.");
                             }
                         } catch (signInError) {
                             console.warn("Firebase: Attempted signInWithCustomToken failed, falling back to signInAnonymously:", signInError);
@@ -1227,10 +1238,6 @@
                 });
                 resolvedDidsCache = fetchedDids; // Update the cache
                 console.log("Fetch Resolved DIDs: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
-                // Trigger view update to ensure Top Posters reflects latest resolved DIDs
-                // We're not calling updateView here, as it's called after fetchResolvedDids
-                // within the updateView function itself to prevent infinite loops.
-                // updateView(currentSelectedTimeframe); 
             } catch (error) {
                 console.error("Fetch Resolved DIDs: Error fetching resolved DIDs:", error);
                 // Optionally update a UI status for this specific section
@@ -1564,7 +1571,7 @@
                     accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle = externalTitle;
                 }
                 if (externalDescription && accumulatedUpdates[feedId].linkCounts[extractedLink].description === null) {
-                    accumulatedUpdates[feedId].linkCards[extractedLink].description = externalDescription;
+                    accumulatedUpdates[feedId].linkCounts[extractedLink].description = externalDescription;
                 }
                 // Only fetch headline if it's currently null
                 if (accumulatedUpdates[feedId].linkCounts[extractedLink].headline === null) {
@@ -2196,7 +2203,7 @@
                             postersToDisplayByCount[didKey] = (postersToDisplayByCount[didKey] || 0) + dailyPosterCounts[didKey];
                         }
                         for (const didKey in dailyPosterLikes) {
-                            postersToDisplayByLikes[didKey] = (postersToDisplayByLikes[didKey] || 0) + dailyPosterLikes[didKey];
+                            postersToDisplayByLikes[didKey] = (postersToplayByLikes[didKey] || 0) + dailyPosterLikes[didKey];
                         }
                     });
                     connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
@@ -2229,8 +2236,10 @@
             }
             console.log(`UI Update: Updating UI for feed: ${feedId}`);
 
-            // Update iframe src
-            mainIframe.src = feed.iframeSrc;
+            // Determine the current version to load for the active feed
+            const activeVersionKey = `activeVersion_${feedId}`;
+            let currentVersionSrc = localStorage.getItem(activeVersionKey) || feed.versions[0].src;
+            mainIframe.src = currentVersionSrc;
 
             // Update title link href
             feedTitleLink.href = feed.blueskyProfileUrl;
@@ -2286,7 +2295,42 @@
                 activeBtn.classList.add('active-feed-btn');
                 // Active button's background and SVG color will be handled by .active-feed-btn CSS
             }
+            renderFeedVersionButtons(feedId); // Render version buttons specific to this feed
         }
+
+        function renderFeedVersionButtons(feedId) {
+            feedVersionButtonsContainer.innerHTML = ''; // Clear previous buttons
+            const feed = feeds[feedId];
+
+            if (feed && feed.versions && feed.versions.length > 1) { // Only render if multiple versions exist
+                const activeVersionKey = `activeVersion_${feedId}`;
+                let currentActiveVersionSrc = localStorage.getItem(activeVersionKey) || feed.versions[0].src;
+
+                feed.versions.forEach((version) => {
+                    const button = document.createElement('button');
+                    button.textContent = version.name;
+                    button.className = 'px-4 py-2 text-sm font-medium rounded-md transition duration-200';
+                    
+                    if (version.src === currentActiveVersionSrc) {
+                        button.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                    } else {
+                        button.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                    }
+
+                    button.addEventListener('click', () => {
+                        mainIframe.src = version.src;
+                        localStorage.setItem(activeVersionKey, version.src);
+                        // Re-render buttons to update active state
+                        renderFeedVersionButtons(feedId);
+                    });
+                    feedVersionButtonsContainer.appendChild(button);
+                });
+                feedVersionButtonsContainer.style.display = 'flex'; // Show the container
+            } else {
+                feedVersionButtonsContainer.style.display = 'none'; // Hide if no multiple versions
+            }
+        }
+
 
         async function switchFeed(newFeedId) {
             if (currentActiveFeedId === newFeedId) {
@@ -2330,6 +2374,8 @@
             initializeFirebase(); // Start Firebase initialization and auth
             // Initial UI update for the feed loaded from localStorage or default
             updateUIForActiveFeed(currentActiveFeedId);
+            // Set the correct radio button checked state on load
+            document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
         });
 
         // Cleanup WebSocket on window unload
