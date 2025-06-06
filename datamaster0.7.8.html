@@ -188,7 +188,13 @@
             justify-content: center;
             align-items: center;
             flex-shrink: 0; /* Prevent shrinking */
+            /* Added border to fix aliasing */
+            border: 1px solid rgba(0, 0, 0, 0.1); /* Subtle border for aliasing */
         }
+        body.dark-mode .feed-title-icon-wrapper {
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border for dark mode */
+        }
+
         /* Style for the image inside the feed title icon wrapper */
         .feed-title-icon-wrapper img {
             width: 100%; /* Fill parent */
@@ -941,8 +947,9 @@
         };
 
         // --- Global variables (derived from firebaseConfig or defaults) ---
-        // __app_id is automatically provided by the Canvas environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId; 
+        // IMPORTANT: Hardcoding appId to ensure all instances read from the same Firestore pool
+        const appId = 'datamaster-shared-analytics'; 
+        console.log(`Using fixed appId for analytics: ${appId}`);
 
         // --- Firebase Instances ---
         let app;
