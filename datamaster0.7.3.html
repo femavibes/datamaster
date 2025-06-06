@@ -975,7 +975,7 @@
         function setupFirestoreListener(feedId) {
             if (unsubscribeFromFirestore) {
                 unsubscribeFromFirestore(); // Unsubscribe from previous listener if exists
-                console.log(`Firestore Listener: Unsubscribed from previous feed (${unsubscribeFromFirestore._query.path.segments[5]}).`);
+                console.log(`Firestore Listener: Unsubscribed from previous feed.`); // Corrected log message
             }
 
             if (!db || !isFirebaseReady || !currentUserId) {
@@ -1640,7 +1640,7 @@
                             currentDailyData.domainCounts[simplifiedDomain].count = (currentDailyData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
                             for (const originalHost in updateData.sources) {
                                 currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
-                                    (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                                    (currentDailyData.domainDomains[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
                             }
                         }
                         for (const key in feedUpdates.contentTypeCounts) {
