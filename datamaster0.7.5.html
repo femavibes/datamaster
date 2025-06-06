@@ -1336,17 +1336,6 @@
             newWs.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    // console.log(`[WS: ${feedId} - onmessage] Received raw data:`);
-                    // console.log(JSON.stringify(data, null, 2)); // Log the raw data with pretty printing
-
-                    // Check for commit and record existence
-                    // console.log(`[WS: ${feedId} - onmessage] data.commit exists: ${!!data.commit}`);
-                    // if (data.commit) {
-                    //     console.log(`[WS: ${feedId} - onmessage] data.commit.record exists: ${!!data.commit.record}`);
-                    //     if (data.commit.record) {
-                    //         console.log(`[WS: ${feedId} - onmessage] data.commit.record.$type: ${data.commit.record.$type}`);
-                    //     }
-                    // }
                     
                     // Safely get authorDid, defaulting if not present
                     let authorDid = data.did || (data.commit?.did) || 'unknown-did'; // Added data.commit?.did for robustness
@@ -1357,13 +1346,10 @@
                     // Check if it's a commit and contains a record of type app.bsky.feed.post
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
                         const post = data.commit.record; 
-                        // console.log(`[WS: ${feedId} - onmessage] Assigned post object:`, post); // New log to confirm
 
                         postText = String(post.text || ''); // Ensure text is always a string
                         timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
                         const postUri = data.commit.uri; // Get the full URI of the post
-
-                        // console.log(`[WS: ${feedId} - onmessage] Processing post: Text="${postText.substring(0, 50)}...", DID="${authorDid}", Timestamp="${timestamp}"`);
 
                         const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid); 
                         if (resolvedInfo) {
@@ -1374,7 +1360,6 @@
                         }
                         
                         let postEmbed = post.embed; 
-                        // console.log(`[WS: ${feedId} - onmessage] Scheduling Firestore analysis update via debounce for feed: ${currentActiveFeedId}.`);
                         debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed, postUri, timestamp); 
 
                     } else {
@@ -1542,26 +1527,29 @@
 
                 // Add or update recentPosts for this link
                 if (postUri && timestamp) {
+                    // Get current simulated likes for the author
+                    const currentSimulatedLikes = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1; // Add 1 for the current post
                     const newPost = {
                         postUri: postUri,
                         authorDid: authorDid,
                         textPreview: safeText.substring(0, 150) + (safeText.length > 150 ? '...' : ''), // Truncate for preview
-                        timestamp: timestamp
+                        timestamp: timestamp,
+                        simulatedLikes: currentSimulatedLikes // Store simulated likes for this post's author
                     };
 
                     let posts = accumulatedUpdates[feedId].linkCardsData[extractedLink].recentPosts;
                     // Check if this post URI already exists to avoid duplicates (e.g., from retries)
                     const existingPostIndex = posts.findIndex(p => p.postUri === newPost.postUri);
                     if (existingPostIndex !== -1) {
-                        // Update existing post if found (e.g., for timestamp freshness)
+                        // Update existing post if found (e.g., for timestamp freshness or updated likes)
                         posts[existingPostIndex] = newPost;
                     } else {
                         // Add new post
                         posts.push(newPost);
                     }
                     
-                    // Keep only the top 5 most recent posts
-                    posts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                    // Keep only the top 5 posts, sorted by simulatedLikes (descending)
+                    posts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
                     accumulatedUpdates[feedId].linkCardsData[extractedLink].recentPosts = posts.slice(0, 5);
                 }
                 // console.log(`[Debounce] Updated linkCardsData for ${extractedLink}:`, accumulatedUpdates[feedId].linkCardsData[extractedLink]);
@@ -1620,7 +1608,7 @@
                 accumulatedUpdates[feedId].posterCounts[authorDid] = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1;
                 // For demonstration, assume each post adds 1 like.
                 accumulatedUpdates[feedId].posterLikes[authorDid] = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1;
-                // console.log(`[Debounce] Updated posterCounts for ${authorDid}:`, accumulatedUpdates[feedId].posterCounts[authorDid]);
+                // console.log(`[Debounce] Updated posterCounts for ${authorDid}:`, accumulatedUpdates[feedId].posterLikes[authorDid]);
             }
 
             // Clear any existing timer
@@ -1707,7 +1695,8 @@
                             recentPosts.forEach(newPost => newPostsMap.set(newPost.postUri, newPost)); // Add/overwrite new posts
 
                             existingRecentPosts = Array.from(newPostsMap.values());
-                            existingRecentPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                            // Sort by simulatedLikes (descending) before slicing
+                            existingRecentPosts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
                             currentSummaryData.linkCardsData[url].recentPosts = existingRecentPosts.slice(0, 5); // Keep top 5
                         }
                         for (const key in feedUpdates.imageCardsData) {
@@ -1792,7 +1781,8 @@
                             recentPosts.forEach(newPost => newDailyPostsMap.set(newPost.postUri, newPost));
 
                             existingDailyRecentPosts = Array.from(newDailyPostsMap.values());
-                            existingDailyRecentPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                            // Sort by simulatedLikes (descending) before slicing
+                            existingDailyRecentPosts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
                             currentDailyData.linkCardsData[url].recentPosts = existingDailyRecentPosts.slice(0, 5);
                         }
                         for (const key in feedUpdates.imageCardsData) {
@@ -2149,7 +2139,8 @@
                             (recentPosts || []).forEach(newPost => newPostsMap.set(newPost.postUri, newPost));
 
                             existingRecentPosts = Array.from(newPostsMap.values());
-                            existingRecentPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                            // Sort by simulatedLikes (descending) before slicing
+                            existingRecentPosts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
                             linksToDisplay[url].recentPosts = existingRecentPosts.slice(0, 5); // Keep top 5
                         }
                         for (const simplifiedDomain in dailyDomains) {
@@ -2417,11 +2408,11 @@
                 linkPostsModalTitle.textContent = `No posts found for: ${url}`;
                 linkPostsContent.innerHTML = '<p class="text-gray-500 text-center p-4">No recent posts found for this link.</p>';
             } else {
-                linkPostsModalTitle.textContent = `Posts for: ${linkData.title || url}`;
+                linkPostsModalTitle.textContent = `Top Posts for: ${linkData.title || url}`;
                 linkPostsContent.innerHTML = ''; // Clear previous content
 
-                // Sort posts by timestamp (most recent first)
-                const sortedPosts = [...linkData.recentPosts].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                // Sort posts by simulatedLikes (descending)
+                const sortedPosts = [...linkData.recentPosts].sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
 
                 sortedPosts.forEach(post => {
                     const resolvedInfo = resolvedDidsCache[post.authorDid] || { handle: '[unknown]', displayName: '[unknown]' };
@@ -2433,7 +2424,10 @@
                             <div class="text-blue-600 text-sm">@${resolvedInfo.handle}</div> 
                         </div>
                         <div class="post-content">${post.textPreview}</div>
-                        <div class="post-timestamp">${new Date(post.timestamp).toLocaleString()}</div>
+                        <div class="post-timestamp">
+                            ${new Date(post.timestamp).toLocaleString()}
+                            ${post.simulatedLikes !== undefined ? ` (${post.simulatedLikes} posts by author)` : ''}
+                        </div>
                     `;
                     linkPostsContent.appendChild(postElement);
                 });
