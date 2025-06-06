@@ -353,7 +353,7 @@
             border: 1px solid var(--link-card-border); /* Use variable */
         }
         .domain-card:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            box_shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
             transform: translateY(-2px); /* Slight lift effect */
             border-color: #3498db; /* Highlight border on hover */
         }
@@ -941,11 +941,13 @@
                         try {
                             if (initialAuthToken) {
                                 await signInWithCustomToken(auth, initialAuthToken);
+                                console.log("Firebase: Signed in with custom token.");
                             } else {
                                 await signInAnonymously(auth);
+                                console.log("Firebase: Signed in anonymously.");
                             }
                         } catch (signInError) {
-                            console.warn("Attempted signInWithCustomToken failed, falling back to signInAnonymously:", signInError);
+                            console.warn("Firebase: Attempted signInWithCustomToken failed, falling back to signInAnonymously:", signInError);
                             // If custom token sign-in fails, try anonymous sign-in as a fallback
                             try {
                                 await signInAnonymously(auth);
@@ -973,15 +975,17 @@
         function setupFirestoreListener(feedId) {
             if (unsubscribeFromFirestore) {
                 unsubscribeFromFirestore(); // Unsubscribe from previous listener if exists
+                console.log(`Firestore Listener: Unsubscribed from previous feed (${unsubscribeFromFirestore._query.path.segments[5]}).`);
             }
 
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Firestore listener cannot be set up: Firebase not ready or user not authenticated.");
+                console.warn("Firestore Listener: Cannot be set up: Firebase not ready or user not authenticated.");
                 return;
             }
 
             // REVISED PATH: /artifacts/{appId}/public/data/feeds/{feedId}/summaries/allTime
             const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
+            console.log(`Firestore Listener: Attempting to subscribe to ${analysisDocRef.path}`);
 
             unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
                 if (docSnap.exists()) {
@@ -995,9 +999,9 @@
                     currentFeedData.posterCounts = data.posterCounts || {}; 
                     currentFeedData.posterLikes = data.posterLikes || {}; 
 
-                    console.log(`Firestore All-Time data for ${feedId} received via onSnapshot:`, currentFeedData); 
+                    console.log(`Firestore Listener: All-Time data for ${feedId} received via onSnapshot:`, currentFeedData); 
                 } else {
-                    console.log(`All-Time summary document for ${feedId} does not exist, initializing with empty counts.`);
+                    console.warn(`Firestore Listener: All-Time summary document for ${feedId} does not exist. Initializing with empty counts.`);
                     // Initialize the document if it doesn't exist at the new path
                     setDoc(analysisDocRef, { 
                         termCounts: {},
@@ -1009,7 +1013,8 @@
                         posterCounts: {},
                         posterLikes: {} 
                     }, { merge: true })
-                        .catch(e => console.error(`Error creating all-time summary document for ${feedId}:`, e));
+                        .then(() => console.log(`Firestore Listener: Successfully created initial all-time summary document for ${feedId}.`))
+                        .catch(e => console.error(`Firestore Listener: Error creating all-time summary document for ${feedId}:`, e));
                     // Reset currentFeedData to empty if doc doesn't exist
                     currentFeedData = {
                         termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
@@ -1021,7 +1026,7 @@
                     updateView('allTime'); 
                 }
             }, (error) => {
-                console.error(`Error listening to Firestore (All-Time Summary for ${feedId}):`, error);
+                console.error(`Firestore Listener: Error listening to Firestore (All-Time Summary for ${feedId}):`, error);
                 connectionStatusElem.textContent = `Firestore Listener Error: ${error.message}`;
             });
         }
@@ -1029,13 +1034,14 @@
         // --- New Firestore Listener for Resolved DIDs (common for all feeds) ---
         function setupResolvedDidsListener() {
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Resolved DIDs listener cannot be set up: Firebase not ready or user not authenticated.");
+                console.warn("Resolved DIDs Listener: Cannot be set up: Firebase not ready or user not authenticated.");
                 return;
             }
 
             // Corrected collection path: artifacts/{appId}/public/data/resolvedBlueskyDIDs
             const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
             const q = query(resolvedDidsCollectionRef);
+            console.log(`Resolved DIDs Listener: Attempting to subscribe to ${resolvedDidsCollectionRef.path}`);
 
             onSnapshot(q, (snapshot) => {
                 const fetchedDids = {};
@@ -1043,11 +1049,11 @@
                     fetchedDids[docSnap.id] = docSnap.data();
                 });
                 resolvedDidsCache = fetchedDids; // Update the cache
-                console.log("Fetched resolved DIDs from Firestore:", resolvedDidsCache);
+                console.log("Resolved DIDs Listener: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
                 // Trigger view update to ensure Top Posters reflects latest resolved DIDs
                 updateView(currentSelectedTimeframe); 
             }, (error) => {
-                console.error("Error listening to resolved DIDs:", error);
+                console.error("Resolved DIDs Listener: Error listening to resolved DIDs:", error);
                 // Optionally update a UI status for this specific section
             });
         }
@@ -1056,13 +1062,13 @@
         async function resolveBlueskyDidAndProfile(did) {
             // Only did:plc DIDs are supported here.
             if (!did || !did.startsWith('did:plc:')) {
-                console.warn(`Attempted to resolve unsupported DID type or invalid DID: ${did}`);
+                console.warn(`DID Resolution: Attempted to resolve unsupported DID type or invalid DID: ${did}`);
                 return null;
             }
 
             // Check if already in cache
             if (resolvedDidsCache[did]) {
-                console.log(`DID ${did} already in cache. Using cached data.`);
+                console.log(`DID Resolution: DID ${did} already in cache. Using cached data.`);
                 return resolvedDidsCache[did];
             }
 
@@ -1072,7 +1078,7 @@
             try {
                 // Step 1: Resolve DID to Handle using plc.directory
                 const plcApiUrl = `https://plc.directory/${did}`;
-                console.log(`Fetching DID document from: ${plcApiUrl}`);
+                console.log(`DID Resolution: Fetching DID document from: ${plcApiUrl}`);
 
                 const plcResponse = await fetch(plcApiUrl);
 
@@ -1082,18 +1088,18 @@
                 }
 
                 const didDocument = await plcResponse.json();
-                console.log('Received DID document:', didDocument);
+                console.log('DID Resolution: Received DID document:', didDocument);
 
                 if (didDocument && Array.isArray(didDocument.alsoKnownAs) && didDocument.alsoKnownAs.length > 0) {
                     const potentialHandleUri = didDocument.alsoKnownAs[0];
                     if (potentialHandleUri.startsWith('at://')) {
                         resolvedHandle = potentialHandleUri.substring(5); // Remove 'at://' prefix
                     } else {
-                        console.warn(`Found "alsoKnownAs" for ${did} but not in expected "at://" format: ${potentialHandleUri}`);
+                        console.warn(`DID Resolution: Found "alsoKnownAs" for ${did} but not in expected "at://" format: ${potentialHandleUri}`);
                         resolvedHandle = `[Invalid Format]`;
                     }
                 } else {
-                    console.warn(`No handle found in "alsoKnownAs" for DID: ${did}`);
+                    console.warn(`DID Resolution: No handle found in "alsoKnownAs" for DID: ${did}`);
                     resolvedHandle = `[No Handle]`;
                 }
 
@@ -1101,17 +1107,17 @@
                 // This API call is only for display name and can be rate-limited.
                 // It does NOT provide like counts for individual posts directly from the firehose.
                 const profileApiUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`;
-                console.log(`Fetching profile from: ${profileApiUrl}`);
+                console.log(`DID Resolution: Fetching profile from: ${profileApiUrl}`);
 
                 const profileResponse = await fetch(profileApiUrl);
 
                 if (!profileResponse.ok) {
                     const errorText = await profileResponse.text();
-                    console.warn(`Failed to fetch profile from Bluesky AppView for ${did}: HTTP status ${profileResponse.status} - ${errorText}`);
+                    console.warn(`DID Resolution: Failed to fetch profile from Bluesky AppView for ${did}: HTTP status ${profileResponse.status} - ${errorText}`);
                     resolvedDisplayName = 'Display name not available'; // Indicate that display name could not be fetched
                 } else {
                     const profileData = await profileResponse.json();
-                    console.log('Received profile data:', profileData);
+                    console.log('DID Resolution: Received profile data:', profileData);
                     if (profileData && profileData.displayName) {
                         resolvedDisplayName = profileData.displayName;
                     } else {
@@ -1129,19 +1135,20 @@
                         handle: resolvedHandle, // Save without '@' for consistency, add for display
                         displayName: resolvedDisplayName,
                         timestamp: serverTimestamp() // Add a timestamp for ordering
-                    }, { merge: true }); // Use merge to avoid overwriting existing fields if they exist
-                    console.log(`Successfully saved resolved DID ${did} to Firestore.`);
+                    }, { merge: true })
+                    .then(() => console.log(`DID Resolution: Successfully saved resolved DID ${did} to Firestore.`))
+                    .catch(e => console.error(`DID Resolution: Error saving resolved DID ${did} to Firestore:`, e));
 
                     // Update local cache immediately after successful save
                     resolvedDidsCache[did] = { handle: resolvedHandle, displayName: resolvedDisplayName, timestamp: new Date() };
                 } else {
-                    console.warn("Firestore not ready for saving resolved DID. Data not persisted.");
+                    console.warn("DID Resolution: Firestore not ready for saving resolved DID. Data not persisted.");
                 }
 
                 return { handle: resolvedHandle, displayName: resolvedDisplayName };
 
             } catch (err) {
-                console.error(`Error resolving DID ${did} or fetching profile:`, err);
+                console.error(`DID Resolution: Error resolving DID ${did} or fetching profile:`, err);
                 return null;
             }
         }
@@ -1155,9 +1162,15 @@
                 console.log("[stopWebSocket] Cleared existing reconnectInterval.");
             }
             if (ws) {
-                ws.close(1000, "Stopping old connection"); // Clean close
+                // Check if the WebSocket is in a state where it can be closed (OPEN or CONNECTING)
+                if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                    ws.close(1000, "Stopping old connection"); // Clean close
+                    console.log("[stopWebSocket] Closed existing WebSocket with code 1000.");
+                } else {
+                    console.log(`[stopWebSocket] WebSocket not in OPEN/CONNECTING state (readyState: ${ws.readyState}). Skipping close.`);
+                }
                 ws = null; // Immediately clear the global reference
-                console.log("[stopWebSocket] Closed existing WebSocket and nullified global reference.");
+                console.log("[stopWebSocket] Nullified global ws reference.");
             }
             currentConnectingFeedId = null; // Also clear the connecting feed ID
         }
@@ -1165,7 +1178,7 @@
         // WebSocket Connection Logic - REVISED
         function connectWebSocket(feedId) {
             if (!isFirebaseReady || !feeds[feedId]) {
-                console.warn("[connectWebSocket] Firebase not ready or invalid feedId, delaying connection.", { isFirebaseReady, feedId });
+                console.warn(`[connectWebSocket] Firebase not ready or invalid feedId (${feedId}), delaying connection. isFirebaseReady: ${isFirebaseReady}.`);
                 setTimeout(() => connectWebSocket(feedId), 1000);
                 return;
             }
@@ -1199,7 +1212,7 @@
             ws = newWs; // Assign to global ws
 
             newWs.onopen = () => {
-                console.log(`[WS: ${feedId}] WebSocket connected!`);
+                console.log(`[WS: ${feedId}] WebSocket connected successfully!`);
                 connectionStatusElem.textContent = `Connected to ${feeds[feedId].displayName}`;
                 connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
                 connectionStatusElem.classList.add('text-green-600');
@@ -1217,10 +1230,20 @@
             newWs.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log("[WS: onmessage] Received raw data:", data); // Log the raw data
+                    console.log(`[WS: ${feedId} - onmessage] Received raw data:`);
+                    console.log(JSON.stringify(data, null, 2)); // Log the raw data with pretty printing
+
+                    // Check for commit and record existence
+                    console.log(`[WS: ${feedId} - onmessage] data.commit exists: ${!!data.commit}`);
+                    if (data.commit) {
+                        console.log(`[WS: ${feedId} - onmessage] data.commit.record exists: ${!!data.commit.record}`);
+                        if (data.commit.record) {
+                            console.log(`[WS: ${feedId} - onmessage] data.commit.record.$type: ${data.commit.record.$type}`);
+                        }
+                    }
                     
                     // Safely get authorDid, defaulting if not present
-                    let authorDid = data.did || 'unknown-did'; 
+                    let authorDid = data.did || (data.commit?.did) || 'unknown-did'; // Added data.commit?.did for robustness
                     let authorDisplayName = 'User'; 
                     let postText = '';
                     let timestamp = ''; 
@@ -1232,12 +1255,14 @@
 
                         // Explicitly check if post object is valid before accessing its properties
                         if (!post) {
-                            console.warn("WebSocket message contains commit.record of type 'app.bsky.feed.post' but the post object itself is null or undefined. Skipping:", commitData);
+                            console.warn(`[WS: ${feedId} - onmessage] WebSocket message contains commit.record of type 'app.bsky.feed.post' but the post object itself is null or undefined. Skipping:`, commitData);
                             return; // Skip processing this message
                         }
 
                         postText = String(post.text || ''); // Ensure text is always a string
                         timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
+
+                        console.log(`[WS: ${feedId} - onmessage] Processing post: Text="${postText.substring(0, 50)}...", DID="${authorDid}", Timestamp="${timestamp}"`);
 
                         const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid); 
                         if (resolvedInfo) {
@@ -1248,16 +1273,25 @@
                         }
                         
                         let postEmbed = post.embed; 
-                        console.log("Scheduling Firestore analysis update via debounce.");
+                        console.log(`[WS: ${feedId} - onmessage] Scheduling Firestore analysis update via debounce for feed: ${currentActiveFeedId}.`);
                         // Pass currentActiveFeedId to the debounced function for correct data storage
                         debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed); 
 
                     } else {
-                        console.log("WebSocket message is not a recognized post type or missing expected fields. Received data:", data);
+                        console.log(`[WS: ${feedId} - onmessage] WebSocket message is not a recognized post type or missing expected fields. Received data:`, data);
                     }
 
                 } catch (e) {
-                    console.error('Failed to parse message or process data:', e);
+                    console.error(`[WS: ${feedId} - onmessage] Failed to parse message or process data:`, e);
+                    if (event.data) {
+                        try {
+                            // Attempt to parse again to see if it's malformed JSON that JSON.parse failed on
+                            const problematicData = JSON.parse(event.data);
+                            console.error(`[WS: ${feedId} - onmessage] Problematic JSON structure:`, problematicData);
+                        } catch (parseError) {
+                            console.error(`[WS: ${feedId} - onmessage] Raw data (could not be parsed):`, event.data);
+                        }
+                    }
                 }
             };
 
@@ -1270,7 +1304,7 @@
             };
 
             newWs.onclose = (event) => {
-                console.warn(`[WS: ${feedId}] WebSocket closed. Event:`, event);
+                console.warn(`[WS: ${feedId}] WebSocket closed. Code: ${event.code}, Reason: "${event.reason || 'No reason provided'}"`);
 
                 // This check is crucial: only proceed if this closing WebSocket instance is
                 // still the one referenced by the global `ws` variable, AND it's the one
@@ -1355,6 +1389,7 @@
 
         // Modified to accept feedId
         async function debouncedUpdateFirestoreAnalysis(feedId, authorDid, text, embed) { 
+            console.log(`[Debounce] Processing data for feed: ${feedId}, Author DID: ${authorDid}`);
             // Ensure accumulatedUpdates for this feedId exists and has all expected keys
             if (!accumulatedUpdates[feedId]) {
                 accumulatedUpdates[feedId] = {
@@ -1371,7 +1406,7 @@
                 const matchedHashtags = safeText.toLowerCase().match(/#\b\w+\b/g);
                 hashtags = matchedHashtags ? [...matchedHashtags] : []; 
             } catch (e) {
-                console.error("Error during hashtag matching:", e, "Text:", safeText);
+                console.error("[Debounce] Error during hashtag matching:", e, "Text:", safeText);
                 hashtags = []; 
             }
             hashtags.forEach(tag => {
@@ -1384,16 +1419,18 @@
                 extractedLink = embed.external.uri;
                 const externalTitle = embed.external?.title || null; // Use optional chaining
                 const externalDescription = embed.external?.description || null; // Use optional chaining
+                console.log(`[Debounce] Detected external link: ${extractedLink}, Title: ${externalTitle}, Description: ${externalDescription}`);
+
 
                 // Update linkCounts
                 if (!accumulatedUpdates[feedId].linkCounts[extractedLink]) {
                     accumulatedUpdates[feedId].linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null };
                 }
                 accumulatedUpdates[feedId].linkCounts[extractedLink].count += 1;
-                if (externalTitle) {
+                if (externalTitle && accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle === null) {
                     accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle = externalTitle;
                 }
-                if (externalDescription) {
+                if (externalDescription && accumulatedUpdates[feedId].linkCounts[extractedLink].description === null) {
                     accumulatedUpdates[feedId].linkCounts[extractedLink].description = externalDescription;
                 }
                 // Only fetch headline if it's currently null
@@ -1401,6 +1438,7 @@
                     fetchHeadline(extractedLink).then(fetchedTitle => {
                         if (fetchedTitle) {
                             accumulatedUpdates[feedId].linkCounts[extractedLink].headline = fetchedTitle;
+                            console.log(`[Debounce] Fetched headline for ${extractedLink}: ${fetchedTitle}`);
                         }
                     });
                 }
@@ -1411,6 +1449,7 @@
                         accumulatedUpdates[feedId].linkCardsData[extractedLink] = { count: 0, title: externalTitle, description: externalDescription };
                     }
                     accumulatedUpdates[feedId].linkCardsData[extractedLink].count += 1;
+                    console.log(`[Debounce] Updated linkCardsData for ${extractedLink}:`, accumulatedUpdates[feedId].linkCardsData[extractedLink]);
                 }
 
                 const baseDomain = getSimplifiedDomain(extractedLink);
@@ -1421,16 +1460,23 @@
                     }
                     accumulatedUpdates[feedId].domainCounts[baseDomain].count++;
                     accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] || 0) + 1;
+                    console.log(`[Debounce] Updated domainCounts for ${baseDomain}:`, accumulatedUpdates[feedId].domainCounts[baseDomain]);
                 }
             } else if (embed?.$type === 'app.bsky.embed.images' && embed.images?.length > 0) { // Use optional chaining
                 const firstImage = embed.images?.[0]; // Use optional chaining
                 const imageAlt = firstImage?.alt || 'Image without description'; // Use optional chaining
                 const imageKey = imageAlt; 
+                console.log(`[Debounce] Detected image embed with alt: ${imageAlt}`);
 
                 if (!accumulatedUpdates[feedId].imageCardsData[imageKey]) {
                     accumulatedUpdates[feedId].imageCardsData[imageKey] = { count: 0, alt: imageAlt };
                 }
                 accumulatedUpdates[feedId].imageCardsData[imageKey].count += 1;
+                console.log(`[Debounce] Updated imageCardsData for ${imageKey}:`, accumulatedUpdates[feedId].imageCardsData[imageKey]);
+            } else if (embed) {
+                console.log(`[Debounce] Detected other embed type: ${embed.$type || 'unknown'}`);
+            } else {
+                console.log("[Debounce] No embed detected (text-only post).");
             }
 
             // --- Content Type Counting ---
@@ -1440,28 +1486,39 @@
                     contentType = 'Link';
                 } else if (embed.$type === 'app.bsky.embed.images') {
                     contentType = 'Image';
+                } else if (embed.$type === 'app.bsky.embed.record') { // Handle record embeds explicitly
+                    contentType = 'Quote/Record';
+                } else if (embed.$type === 'app.bsky.embed.recordWithMedia') { // Handle record with media embeds
+                    contentType = 'Record with Media';
+                } else {
+                    contentType = 'Other Embed';
                 }
             }
             accumulatedUpdates[feedId].contentTypeCounts[contentType] = (accumulatedUpdates[feedId].contentTypeCounts[contentType] || 0) + 1;
+            console.log(`[Debounce] Updated contentTypeCounts for ${contentType}:`, accumulatedUpdates[feedId].contentTypeCounts);
 
             // --- Poster Counting (by number of posts) ---
             if (authorDid && authorDid !== 'unknown-did') { // Ensure authorDid is valid
                 accumulatedUpdates[feedId].posterCounts[authorDid] = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1;
                 // For demonstration, assume each post adds 1 like.
                 accumulatedUpdates[feedId].posterLikes[authorDid] = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1;
+                console.log(`[Debounce] Updated posterCounts for ${authorDid}:`, accumulatedUpdates[feedId].posterCounts[authorDid]);
             }
 
             // Clear any existing timer
             clearTimeout(debounceTimer); // Clear existing timer, ensuring only one pending update
             debounceTimer = setTimeout(async () => {
+                console.log(`[Debounce] Executing debounced Firestore update for feed: ${currentActiveFeedId}.`);
                 if (!db || !isFirebaseReady) {
-                    console.warn("Firestore not ready for update after debounce. Cannot update analysis.");
+                    console.warn("Firestore: Not ready for update after debounce. Cannot update analysis.");
                     return;
                 }
 
                 // Process all accumulated updates for all feeds
                 for (const currentFeedIdToProcess in accumulatedUpdates) {
                     const feedUpdates = accumulatedUpdates[currentFeedIdToProcess];
+                    console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess}:`, JSON.stringify(feedUpdates, null, 2));
+
 
                     // REVISED PATH for summary document
                     const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
@@ -1476,6 +1533,8 @@
                             termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
                             linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
                         };
+                        console.log(`[Firestore Write] Current All-Time Summary Data before merge for ${currentFeedIdToProcess}:`, JSON.stringify(currentSummaryData, null, 2));
+
 
                         // Merge updates into currentSummaryData
                         for (const key in feedUpdates.termCounts) {
@@ -1542,6 +1601,7 @@
                         }
 
                         await setDoc(summaryDocRef, currentSummaryData, { merge: true });
+                        console.log(`[Firestore Write] Successfully updated All-Time Summary for feed ${currentFeedIdToProcess}.`);
 
                         // 2. Update Daily Aggregate for this feed
                         const dailySnap = await getDoc(dailyDocRef);
@@ -1549,6 +1609,8 @@
                             termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
                             linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
                         };
+                        console.log(`[Firestore Write] Current Daily Aggregate Data before merge for ${currentFeedIdToProcess} (${dailyDocId}):`, JSON.stringify(currentDailyData, null, 2));
+
 
                         // Merge updates into currentDailyData
                         for (const key in feedUpdates.termCounts) {
@@ -1559,15 +1621,15 @@
                             if (typeof currentDailyData.linkCounts[url] !== 'object' || currentDailyData.linkCounts[url] === null) {
                                 currentDailyData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
                             }
-                            currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url] || 0) + count;
+                            currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
                             if (headline && currentDailyData.linkCounts[url].headline === null) {
                                 currentDailyData.linkCounts[url].headline = headline;
                             }
-                            if (originalTitle && currentDailyData.linkCardsData[url].originalTitle === null) { // Typo fix
-                                currentDailyData.linkCardsData[url].originalTitle = originalTitle;
+                            if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) { // Typo fix
+                                currentDailyData.linkCounts[url].originalTitle = originalTitle;
                             }
-                            if (description && currentDailyData.linkCardsData[url].description === null) {
-                                currentDailyData.linkCardsData[url].description = description;
+                            if (description && currentDailyData.linkCounts[url].description === null) {
+                                currentDailyData.linkCounts[url].description = description;
                             }
                         }
                         for (const simplifiedDomain in feedUpdates.domainCounts) {
@@ -1589,7 +1651,7 @@
                             if (typeof currentDailyData.linkCardsData[url] !== 'object' || currentDailyData.linkCardsData[url] === null) {
                                 currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null };
                             }
-                            currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url] || 0) + count;
+                            currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url].count || 0) + count;
                             if (title && currentDailyData.linkCardsData[url].title === null) {
                                 currentDailyData.linkCardsData[url].title = title;
                             }
@@ -1615,17 +1677,18 @@
                         }
 
                         await setDoc(dailyDocRef, currentDailyData, { merge: true });
+                        console.log(`[Firestore Write] Successfully updated Daily Aggregate for feed ${currentFeedIdToProcess} (${dailyDocId}).`);
 
-                        console.log(`Firestore analysis updated for feed ${currentFeedIdToProcess} (debounced).`);
 
                     } catch (e) {
-                        console.error(`Error updating Firestore analysis for feed ${currentFeedIdToProcess} (debounced):`, e);
+                        console.error(`[Firestore Write] Error updating Firestore analysis for feed ${currentFeedIdToProcess} (debounced):`, e);
                         // connectionStatusElem.textContent = `Firestore Update Error for ${feeds[currentFeedIdToProcess].displayName}: ${e.message}`;
                     }
                 } // End of for...in loop for accumulatedUpdates
 
                 // Reset all accumulated updates after successful write
                 accumulatedUpdates = {};
+                console.log("[Debounce] Accumulated updates reset.");
 
                 // Re-render the view with the latest data for the currently active feed
                 // This ensures the UI reflects changes after the debounce.
@@ -1636,6 +1699,8 @@
 
         // --- Render Functions for Analysis ---
         function renderAnalysis(termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData) { 
+            console.log("Rendering analysis with data:", { termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData });
+
             // Render Top Hashtags
             const sortedTerms = Object.entries(termData)
                 .sort(([, countA], [, countB]) => countB - countA)
@@ -1757,6 +1822,8 @@
             // NEW: Render Top Posters (using posterLikesData, if available, otherwise fallback to posterCountsData)
             // Prioritize posterLikesData if it has values, otherwise use posterCountsData
             const dataForTopPosters = Object.keys(posterLikesData).length > 0 ? posterLikesData : posterCountsData;
+            console.log("Data for Top Posters:", dataForTopPosters);
+
 
             const sortedPosters = Object.entries(dataForTopPosters)
                 .sort(([, countA], [, countB]) => countB - countA)
@@ -1798,6 +1865,7 @@
 
         // --- Timeframe Selection and Data Fetching/Display ---
         async function updateView(timeframe) {
+            console.log(`Update View: Switching to timeframe: ${timeframe}`);
             currentSelectedTimeframe = timeframe;
             loadingIndicatorElem.style.display = 'block';
             connectionStatusElem.textContent = `Fetching data for ${timeframe}...`;
@@ -1818,6 +1886,7 @@
                 postersToDisplayByCount = currentFeedData.posterCounts;
                 postersToDisplayByLikes = currentFeedData.posterLikes; 
                 connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
+                console.log("Update View: Using currentFeedData for 'allTime'.");
 
             } else {
                 const today = new Date();
@@ -1830,6 +1899,8 @@
                 } else if (timeframe === 'month') {
                     startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 }
+                console.log(`Update View: Fetching daily aggregates from ${getYYYYMMDD(startDate)} for timeframe: ${timeframe}.`);
+
 
                 // Fetch data for the selected timeframe from the active feed's daily aggregates
                 const dailyAggregatesRef = collection(db, 'artifacts', appId, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
@@ -1837,6 +1908,7 @@
 
                 try {
                     const querySnapshot = await getDocs(q);
+                    console.log(`Update View: Found ${querySnapshot.docs.length} daily aggregate documents for ${timeframe}.`);
                     querySnapshot.forEach((docSnap) => {
                         const data = docSnap.data();
                         const dailyTerms = data.termCounts || {};
@@ -1887,7 +1959,7 @@
                     });
                     connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
                 } catch (error) {
-                    console.error(`Error fetching ${timeframe} data for ${currentActiveFeedId}:`, error);
+                    console.error(`Update View: Error fetching ${timeframe} data for ${currentActiveFeedId}:`, error);
                     connectionStatusElem.textContent = `Error fetching ${timeframe} data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
                 }
             }
@@ -1907,9 +1979,10 @@
         function updateUIForActiveFeed(feedId) {
             const feed = feeds[feedId];
             if (!feed) {
-                console.error("Invalid feedId provided for UI update:", feedId);
+                console.error("UI Update: Invalid feedId provided for UI update:", feedId);
                 return;
             }
+            console.log(`UI Update: Updating UI for feed: ${feedId}`);
 
             // Update iframe src
             mainIframe.src = feed.iframeSrc;
@@ -1959,11 +2032,11 @@
 
         async function switchFeed(newFeedId) {
             if (currentActiveFeedId === newFeedId) {
-                console.log(`Already on ${newFeedId} feed.`);
+                console.log(`Switch Feed: Already on ${newFeedId} feed.`);
                 return;
             }
 
-            console.log(`Switching feed from ${currentActiveFeedId} to ${newFeedId}`);
+            console.log(`Switch Feed: Switching feed from ${currentActiveFeedId} to ${newFeedId}`);
             currentActiveFeedId = newFeedId;
 
             // Update UI immediately for responsiveness
