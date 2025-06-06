@@ -890,6 +890,7 @@
         // --- WebSocket Variables ---
         let ws = null; // Global variable for the currently active WebSocket instance
         let reconnectInterval = null; // Global variable for the reconnect interval
+        let currentConnectingFeedId = null; // New variable to track which feed is currently attempting connection
 
         // Debounce variables for Firestore updates
         let debounceTimer = null;
@@ -1144,56 +1145,75 @@
             }
         }
 
-
-        // --- WebSocket Connection Logic ---
-        function connectWebSocket(feedId) {
-            // Ensure Firebase is ready and a valid feedId is provided
-            if (!isFirebaseReady || !feeds[feedId]) {
-                console.warn("[connectWebSocket] Firebase not ready or invalid feedId, delaying connection.", { isFirebaseReady, feedId });
-                // Attempt to reconnect after a delay, passing the current feedId
-                setTimeout(() => connectWebSocket(feedId), 1000); 
-                return;
-            }
-
-            // Step 1: Cleanly close any *currently active* WebSocket and clear its specific reconnect interval.
-            // This prevents race conditions where an old `onclose` might interfere with a new connection.
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                console.log(`[connectWebSocket] Closing existing WebSocket for previous feed (${currentActiveFeedId}).`);
-                ws.close(1000, "Switching feeds or initiating new connection");
-                ws = null; // Immediately nullify the global ws here
-            }
-            // Always clear any pending global reconnect interval when starting a new connection sequence.
+        // Function to stop the current WebSocket connection and clear any pending reconnects
+        function stopWebSocket() {
+            console.log("[stopWebSocket] Attempting to stop current WebSocket and clear interval.");
             if (reconnectInterval) {
                 clearInterval(reconnectInterval);
                 reconnectInterval = null;
-                console.log(`[connectWebSocket] Cleared existing global reconnectInterval.`);
+                console.log("[stopWebSocket] Cleared existing reconnectInterval.");
             }
+            if (ws) {
+                ws.close(1000, "Stopping old connection"); // Clean close
+                ws = null; // Immediately clear the global reference
+                console.log("[stopWebSocket] Closed existing WebSocket and nullified global reference.");
+            }
+            currentConnectingFeedId = null; // Also clear the connecting feed ID
+        }
+
+        // WebSocket Connection Logic - REVISED
+        function connectWebSocket(feedId) {
+            if (!isFirebaseReady || !feeds[feedId]) {
+                console.warn("[connectWebSocket] Firebase not ready or invalid feedId, delaying connection.", { isFirebaseReady, feedId });
+                setTimeout(() => connectWebSocket(feedId), 1000);
+                return;
+            }
+
+            // If we're already trying to connect to this exact feed, do nothing.
+            // This prevents duplicate connection attempts if switchFeed is called multiple times rapidly for the same feed.
+            if (currentConnectingFeedId === feedId && ws && ws.readyState === WebSocket.CONNECTING) {
+                console.log(`[connectWebSocket] Already in CONNECTING state for ${feedId}. Aborting duplicate attempt.`);
+                return;
+            }
+            // If already OPEN to the target feed, no need to reconnect
+            if (ws && ws.readyState === WebSocket.OPEN && currentConnectingFeedId === feedId) {
+                 console.log(`[connectWebSocket] Already OPEN to ${feedId}. Aborting duplicate attempt.`);
+                 return;
+            }
+
+
+            // IMPORTANT: Stop any existing WebSocket activity before starting a new one
+            stopWebSocket();
+
+            currentConnectingFeedId = feedId; // Mark this feed as the one we are now trying to connect to
 
             const feedUri = feeds[feedId].uri;
             const websocketUrl = `wss://api.graze.social/app/contrail?feed=${feedUri}`;
 
             loadingIndicatorElem.style.display = 'block';
             connectionStatusElem.textContent = `Connecting to ${feeds[feedId].displayName} feed...`;
-            console.log(`[connectWebSocket] Attempting to open new WebSocket connection to: ${websocketUrl} for feedId: ${feedId}`);
+            console.log(`[connectWebSocket] Starting new WebSocket connection attempt for: ${websocketUrl} (Feed: ${feedId})`);
 
-            const currentWsInstance = new WebSocket(websocketUrl); // Create a new local variable for the new WS
-            ws = currentWsInstance; // Assign to global ws immediately
+            const newWs = new WebSocket(websocketUrl); // Create the new WebSocket instance
+            ws = newWs; // Assign to global ws
 
-            currentWsInstance.onopen = () => {
+            newWs.onopen = () => {
                 console.log(`[WS: ${feedId}] WebSocket connected!`);
-                connectionStatusElem.textContent = `Connected to ${feeds[feedId].displayName}`; 
+                connectionStatusElem.textContent = `Connected to ${feeds[feedId].displayName}`;
                 connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
                 connectionStatusElem.classList.add('text-green-600');
                 loadingIndicatorElem.style.display = 'none';
-                // Ensure no reconnect interval is running if connection is open
+                
+                // Clear any lingering reconnect interval specifically for this connection
                 if (reconnectInterval) { 
                     clearInterval(reconnectInterval);
                     reconnectInterval = null;
                     console.log(`[WS: ${feedId}] Cleared reconnectInterval on successful open.`);
                 }
+                currentConnectingFeedId = null; // Connection established, no longer "connecting"
             };
 
-            currentWsInstance.onmessage = async (event) => {
+            newWs.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
                     let authorDisplayName = 'User'; 
@@ -1238,74 +1258,64 @@
                 }
             };
 
-            currentWsInstance.onerror = (error) => {
+            newWs.onerror = (error) => {
                 console.error(`[WS: ${feedId}] WebSocket error:`, error);
-                // The onclose event will typically follow onerror, so reconnect logic is primarily there.
                 connectionStatusElem.textContent = `WebSocket error for ${feeds[feedId].displayName}. Attempting reconnect...`;
                 connectionStatusElem.classList.remove('text-green-600', 'text-orange-600');
-                connectionStatusElem.classList.add('text-red-600'); // Show red for error state
+                connectionStatusElem.classList.add('text-red-600'); 
                 loadingIndicatorElem.style.display = 'none';
             };
 
-            currentWsInstance.onclose = (event) => {
+            newWs.onclose = (event) => {
                 console.warn(`[WS: ${feedId}] WebSocket closed. Event:`, event);
-                
-                // Always clear any existing reconnect interval *first* associated with this global variable.
-                // This is crucial to prevent multiple intervals or interference from old onclose handlers.
-                if (reconnectInterval) {
-                    clearInterval(reconnectInterval);
-                    reconnectInterval = null;
-                    console.log(`[WS: ${feedId}] Cleared existing reconnectInterval.`);
+
+                // This check is crucial: only proceed if this closing WebSocket instance is
+                // still the one referenced by the global `ws` variable, AND it's the one
+                // for the currently active feed. This prevents old closed connections
+                // from triggering unintended reconnects or state changes.
+                if (ws !== newWs) {
+                    console.log(`[WS: ${feedId}] Closed instance is not the current global active WS. Ignoring.`);
+                    return;
+                }
+                // Ensure the global `ws` is nullified immediately as this connection is no longer valid.
+                ws = null;
+                console.log(`[WS: ${feedId}] Global ws reference nullified on close.`);
+
+
+                // If it's a clean close, and not part of an intended reconnect, just log and exit.
+                // The 'Stopping old connection' reason comes from our `stopWebSocket` function.
+                if (event.code === 1000 && event.reason === "Stopping old connection") {
+                    console.log(`[WS: ${feedId}] Cleanly stopped by stopWebSocket function. No reconnection needed.`);
+                    // No UI update or interval setting here, as stopWebSocket handles global state.
+                    return;
                 }
 
-                // Check if this closing WebSocket instance is still the one currently active globally.
-                // This prevents an old WS's onclose from affecting a newly opened WS.
-                if (ws === currentWsInstance) {
-                    ws = null; // Clear the global reference only if it points to this specific instance
-                    console.log(`[WS: ${feedId}] Global ws variable cleared as this instance closed.`);
-                } else {
-                    console.log(`[WS: ${feedId}] WebSocket closed, but it's not the current global active WS. Ignoring reconnect logic.`);
-                    return; // Exit if this is not the active WS, no reconnect needed for this instance.
+                // For all other disconnects (abnormal, network, timeout, etc.)
+                let disconnectMessage = `Disconnected from ${feeds[feedId].displayName}. Code: ${event.code}`;
+                if (event.reason) {
+                    disconnectMessage += `, Reason: ${event.reason}`;
                 }
+                if (event.code === 1006) {
+                    disconnectMessage += `. Abnormal closure.`;
+                }
+                disconnectMessage += ` Reconnecting in ${RECONNECT_DELAY / 1000}s...`;
+                connectionStatusElem.textContent = disconnectMessage;
+                connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
+                connectionStatusElem.classList.add('text-orange-600');
+                loadingIndicatorElem.style.display = 'none';
 
-
-                if (currentActiveFeedId === feedId) { // This `if` block handles active feed disconnects
-                    let disconnectMessage = `Disconnected from ${feeds[feedId].displayName}. Code: ${event.code}`;
-                    if (event.reason) {
-                        disconnectMessage += `, Reason: ${event.reason}`;
-                    }
-
-                    if (event.code === 1000) {
-                        // Clean close (e.g., initiated by switchFeed or app unload)
-                        connectionStatusElem.textContent = `${disconnectMessage}.`;
-                        connectionStatusElem.classList.remove('text-red-600', 'text-orange-600', 'text-green-600');
-                        connectionStatusElem.classList.add('text-gray-600'); 
-                        loadingIndicatorElem.style.display = 'none';
-                        console.log(`[WS: ${feedId}] Cleanly disconnected. No reconnect.`);
-                    } else {
-                        // Abnormal closure or other non-clean close, attempt reconnect for THIS feed
-                        if (event.code === 1006) {
-                            disconnectMessage += `. Abnormal closure.`;
-                        }
-                        disconnectMessage += ` Reconnecting in ${RECONNECT_DELAY / 1000}s...`;
-                        connectionStatusElem.textContent = disconnectMessage;
-                        connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
-                        connectionStatusElem.classList.add('text-orange-600'); 
-                        loadingIndicatorElem.style.display = 'none';
-                        
-                        // Set up a new reconnect interval if one isn't already running for this active feed.
-                        if (!reconnectInterval) { // This check is critical here
-                            console.log(`[WS: ${feedId}] Setting new reconnect interval.`);
-                            reconnectInterval = setInterval(() => {
-                                console.log(`[WS: ${feedId}] Attempting to reconnect via interval.`);
-                                connectWebSocket(feedId); // Recurse to re-establish
-                            }, RECONNECT_DELAY);
-                        } else {
-                            console.log(`[WS: ${feedId}] Reconnect interval already active. Not setting new one.`);
-                        }
-                    }
+                // We cleared the interval in `stopWebSocket` before creating `newWs`.
+                // Now, if `currentActiveFeedId` still matches this `feedId`,
+                // and no new connection has started (`ws` is currently null),
+                // then set up a new reconnect interval.
+                if (currentActiveFeedId === feedId && !reconnectInterval) { // Double check `!reconnectInterval`
+                    console.log(`[WS: ${feedId}] Setting new reconnect interval for active feed.`);
+                    reconnectInterval = setInterval(() => {
+                        console.log(`[WS: ${feedId}] Attempting to reconnect via interval.`);
+                        connectWebSocket(feedId); // Recurse to re-establish connection
+                    }, RECONNECT_DELAY);
                 } else {
-                    console.log(`[WS: ${feedId}] WebSocket closed, but no longer the active feed (${currentActiveFeedId}). No reconnect initiated.`);
+                    console.log(`[WS: ${feedId}] Not setting reconnect interval. Either feed changed or interval already set.`);
                 }
             };
         }
@@ -1986,11 +1996,8 @@
 
         // Cleanup WebSocket on window unload
         window.addEventListener('beforeunload', () => {
-            if (ws) {
-                console.log("[window.beforeunload] Closing WebSocket cleanly.");
-                ws.close(1000, "App closing"); // Cleanly close WebSocket on page unload
-            }
-            clearInterval(reconnectInterval);
+            console.log("[window.beforeunload] Performing clean WebSocket shutdown.");
+            stopWebSocket(); // Use the dedicated stop function
         });
 
         // --- Settings Modal and Theme/Dark Mode Logic ---
