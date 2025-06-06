@@ -1221,14 +1221,18 @@
                     let authorDid = data.did; 
                     let postText = '';
                     let timestamp = ''; 
-                    let postUri = ''; 
 
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
                         const commitData = data;
                         const post = commitData.record; 
 
-                        // REVISED: Add explicit check for 'post' object before accessing 'text'
-                        if (post && typeof post.text === 'string') {
+                        // NEW: Explicitly check if post object is valid before accessing its properties
+                        if (!post) {
+                            console.warn("WebSocket message contains commit.record of type 'app.bsky.feed.post' but the post object itself is null or undefined. Skipping:", commitData);
+                            return; // Skip processing this message
+                        }
+
+                        if (typeof post.text === 'string') {
                             postText = post.text;
                         } else {
                             // Log the full post object if text is missing or invalid for better debugging
@@ -1236,7 +1240,8 @@
                             postText = ''; 
                         }
                         
-                        timestamp = post.createdAt; 
+                        // NEW: Safely access createdAt, defaulting to current time if not present
+                        timestamp = post.createdAt || new Date().toISOString(); 
 
                         const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid); 
                         if (resolvedInfo) {
@@ -1252,7 +1257,7 @@
                         debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed); 
 
                     } else {
-                        console.log("WebSocket message is not a recognized post type or missing expected fields.");
+                        console.log("WebSocket message is not a recognized post type or missing expected fields. Received data:", data);
                     }
 
                 } catch (e) {
