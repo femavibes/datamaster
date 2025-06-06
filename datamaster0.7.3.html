@@ -1250,14 +1250,9 @@
 
                     // Check if it's a commit and contains a record of type app.bsky.feed.post
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
-                        const commitData = data;
-                        const post = commitData.record; 
-
-                        // Explicitly check if post object is valid before accessing its properties
-                        if (!post) {
-                            console.warn(`[WS: ${feedId} - onmessage] WebSocket message contains commit.record of type 'app.bsky.feed.post' but the post object itself is null or undefined. Skipping:`, commitData);
-                            return; // Skip processing this message
-                        }
+                        // FIX: Directly access data.commit.record as the post object
+                        const post = data.commit.record; 
+                        console.log(`[WS: ${feedId} - onmessage] Assigned post object:`, post); // New log to confirm
 
                         postText = String(post.text || ''); // Ensure text is always a string
                         timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
@@ -1640,7 +1635,7 @@
                             currentDailyData.domainCounts[simplifiedDomain].count = (currentDailyData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
                             for (const originalHost in updateData.sources) {
                                 currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
-                                    (currentDailyData.domainDomains[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                                    (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
                             }
                         }
                         for (const key in feedUpdates.contentTypeCounts) {
