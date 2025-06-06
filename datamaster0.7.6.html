@@ -917,14 +917,14 @@
             },
             'bandcamp': {
                 id: 'bandcamp',
-                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/bandcamp', // Updated URI
                 displayName: 'Bandcamp', 
                 iframeSrc: 'https://graze.social/feeds/embed/8723', 
                 icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp' 
             },
-            'transitSky': { // NEW FEED: TransitSky
+            'transitSky': { 
                 id: 'transitSky',
-                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaic34mdicfg', // Updated URI
                 displayName: 'TransitSky', 
                 iframeSrc: 'https://graze.social/feeds/embed/5511', 
                 icon: 'train' // Using a keyword for an SVG icon
@@ -1270,7 +1270,7 @@
             currentConnectingFeedId = null; // Also clear the connecting feed ID
         }
 
-        // WebSocket Connection Logic - REVISED to use Jetstream for certain feeds
+        // WebSocket Connection Logic - MODIFIED to always use Contrails
         function connectWebSocket(feedId) {
             if (!isFirebaseReady || !feeds[feedId]) {
                 console.warn(`[connectWebSocket] Firebase not ready or invalid feedId (${feedId}), delaying connection. isFirebaseReady: ${isFirebaseReady}.`);
@@ -1293,26 +1293,14 @@
             currentConnectingFeedId = feedId; // Mark this feed as the one we are now trying to connect to
 
             const feedUri = feeds[feedId].uri;
-            let websocketUrl;
+            // ALWAYS use Contrails for all configured feeds
+            const websocketUrl = `wss://api.graze.social/app/contrail?feed=${encodeURIComponent(feedUri)}`;
 
             console.log(`[DEBUG] connectWebSocket - Processing feedId: ${feedId}`);
-            console.log(`[DEBUG] connectWebSocket - Current feedUri: ${feedUri}`);
-            const isFeedGenerator = feedUri.includes('/app.bsky.feed.generator/');
-            console.log(`[DEBUG] connectWebSocket - isFeedGenerator check result: ${isFeedGenerator}`);
-
-            // Conditional logic for WebSocket URL
-            if (isFeedGenerator) { // Use the pre-calculated boolean
-                // Use Contrails API for feed generators
-                websocketUrl = `wss://api.graze.social/app/contrail?feed=${feedUri}`;
-                console.log(`[DEBUG] connectWebSocket - Using Contrails API URL: ${websocketUrl}`);
-            } else {
-                // Use Bluesky's Jetstream for direct feeds (like Bandcamp and TransitSky)
-                websocketUrl = `wss://jetstream.bsky.network/subscribe?wantedCollections=app.bsky.feed.post`;
-                console.log(`[DEBUG] connectWebSocket - Using Jetstream API URL: ${websocketUrl}`);
-            }
+            console.log(`[DEBUG] connectWebSocket - Attempting to connect to Contrails API URL: ${websocketUrl}`);
 
             loadingIndicatorElem.style.display = 'block';
-            connectionStatusElem.textContent = `Connecting to ${feeds[feedId].displayName} feed...`;
+            connectionStatusElem.textContent = `Connecting to ${feeds[feedId].displayName} feed via Contrails...`;
             console.log(`[connectWebSocket] Starting new WebSocket connection attempt for: ${websocketUrl} (Feed: ${feedId})`);
 
             const newWs = new WebSocket(websocketUrl); // Create the new WebSocket instance
@@ -1756,7 +1744,7 @@
                             currentDailyData.domainCounts[simplifiedDomain].count = (currentDailyData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
                             for (const originalHost in updateData.sources) {
                                 currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
-                                    (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                                    (currentDailyData.domainDomains[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
                             }
                         }
                         for (const key in feedUpdates.contentTypeCounts) {
