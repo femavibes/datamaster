@@ -1106,7 +1106,7 @@
                         
                         // Setup listeners and UI for the initially active feed
                         switchFeed(currentActiveFeedId); // This will handle all setup for the initial feed
-                        setupResolvedDidsListener(); // Setup listener for resolved DIDs (common for all feeds)
+                        fetchResolvedDids(); // Fetch resolved DIDs once after auth (was setupResolvedDidsListener)
                         updateView(currentSelectedTimeframe); // Initial render based on default timeframe
                         // Set the correct radio button checked state on load
                         document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
@@ -1164,7 +1164,7 @@
             const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
             console.log(`Firestore Listener: Attempting to subscribe to ${analysisDocRef.path}`);
 
-            onSnapshot(analysisDocRef, async (docSnap) => {
+            unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     currentFeedData.termCounts = data.termCounts || {}; 
@@ -1200,10 +1200,7 @@
                 }
                 // Only update the view if 'allTime' is currently selected to avoid overwriting other views
                 if (currentSelectedTimeframe === 'allTime') {
-                    // *** FIX START: Removed redundant getDoc call here ***
-                    // We don't need to fetch the document again, currentFeedData is already updated by onSnapshot
                     updateView('allTime'); 
-                    // *** FIX END ***
                 }
             }, (error) => {
                 console.error(`Firestore Listener: Error listening to Firestore (All-Time Summary for ${feedId}):`, error);
@@ -1211,31 +1208,31 @@
             });
         }
 
-        // --- New Firestore Listener for Resolved DIDs (common for all feeds) ---
-        function setupResolvedDidsListener() {
+        // --- New Function to Fetch Resolved DIDs (using getDocs instead of onSnapshot) ---
+        async function fetchResolvedDids() {
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Resolved DIDs Listener: Cannot be set up: Firebase not ready or user not authenticated.");
+                console.warn("Fetch Resolved DIDs: Cannot fetch: Firebase not ready or user not authenticated.");
                 return;
             }
 
-            // Corrected collection path: artifacts/{appId}/public/data/resolvedBlueskyDIDs
             const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
             const q = query(resolvedDidsCollectionRef);
-            console.log(`Resolved DIDs Listener: Attempting to subscribe to ${resolvedDidsCollectionRef.path}`);
+            console.log(`Fetch Resolved DIDs: Attempting to fetch from ${resolvedDidsCollectionRef.path}`);
 
-            onSnapshot(q, (snapshot) => {
+            try {
+                const querySnapshot = await getDocs(q);
                 const fetchedDids = {};
-                snapshot.forEach(docSnap => {
+                querySnapshot.forEach(docSnap => {
                     fetchedDids[docSnap.id] = docSnap.data();
                 });
                 resolvedDidsCache = fetchedDids; // Update the cache
-                console.log("Resolved DIDs Listener: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
+                console.log("Fetch Resolved DIDs: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
                 // Trigger view update to ensure Top Posters reflects latest resolved DIDs
                 updateView(currentSelectedTimeframe); 
-            }, (error) => {
-                console.error("Resolved DIDs Listener: Error listening to resolved DIDs:", error);
+            } catch (error) {
+                console.error("Fetch Resolved DIDs: Error fetching resolved DIDs:", error);
                 // Optionally update a UI status for this specific section
-            });
+            }
         }
 
         // --- DID Resolution Function (extracted from React App logic) ---
@@ -1883,35 +1880,9 @@
                 // After updating Firestore, explicitly re-fetch currentFeedData from Firestore
                 // to ensure the UI updates with the very latest state.
                 if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed
-                    // *** FIX START: Removed redundant getDoc for allTime summary ***
-                    // The onSnapshot listener (setupFirestoreListener) already updates currentFeedData.
-                    // This block was only needed if onSnapshot wasn't used or was delayed.
-                    /*
-                    const updatedSummarySnap = await getDoc(summaryDocRef); // Re-fetch the allTime summary
-                    if (updatedSummarySnap.exists()) {
-                        const updatedData = updatedSummarySnap.data();
-                        // Manually update currentFeedData to ensure latest state is used for UI
-                        currentFeedData.termCounts = updatedData.termCounts || {};
-                        currentFeedData.linkCounts = updatedData.linkCounts || {};
-                        currentFeedData.domainCounts = updatedData.domainCounts || {};
-                        currentFeedData.contentTypeCounts = updatedData.contentTypeCounts || {};
-                        currentFeedData.linkCardsData = updatedData.linkCardsData || {};
-                        currentFeedData.imageCardsData = updatedData.imageCardsData || {};
-                        currentFeedData.posterCounts = updatedData.posterCounts || {};
-                        currentFeedData.posterLikes = updatedData.posterLikes || {};
-                        console.log(`[Debounce] currentFeedData manually refreshed from Firestore for active feed ${currentActiveFeedId}.`);
-                    } else {
-                        console.warn(`[Debounce] All-Time summary doc for ${currentActiveFeedId} still doesn't exist after write, cannot refresh currentFeedData.`);
-                        // Ensure currentFeedData is cleared if doc disappeared unexpectedly
-                        currentFeedData = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {} };
-                    }
-                    */
-                    // *** FIX END ***
+                    updateView(currentSelectedTimeframe); 
                 }
                 
-                // Re-render the view with the latest data for the currently active feed
-                updateView(currentSelectedTimeframe); 
-
             }, DEBOUNCE_DELAY);
         }
 
@@ -2115,6 +2086,9 @@
             connectionStatusElem.textContent = `Fetching data for ${timeframe}...`;
             connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
             connectionStatusElem.classList.add('text-orange-600'); // Indicate fetching state
+
+            // IMPORTANT: Fetch resolved DIDs every time the view updates
+            await fetchResolvedDids();
 
             let termsToDisplay = {};
             let linksToDisplay = {}; // This will hold the consolidated link data for display
