@@ -543,10 +543,10 @@
         }
         /* Specific rule for zooming in the images */
         #urbanismPlusFeedBtn img {
-            transform: scale(2.42); /* Increased from 2.20 by another 10% */
+            transform: scale(2.42); /* Original value */
         }
         #bandcampFeedBtn img {
-            transform: scale(2.80); /* Increased from 2.15 by another 30% */
+            transform: scale(2.80); /* Original value */
         }
 
         .feed-select-btn svg {
@@ -707,13 +707,13 @@
                         </div>
                     </div>
                     <!-- The next two divs will automatically wrap to the next row in a 4-column grid -->
-                    <div class="md:col-span-2" style="display: none;">
+                    <div class="md:col-span-2" id="topSitesSection" style="display: none;">
                         <h3 class="stylish-subheader">Top Sites</h3>
                         <div id="topDomains">
                             <p class="text-gray-500 text-center">No domains yet to analyze.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-2" style="display: none;">
+                    <div class="md:col-span-2" id="contentTypeBreakdownSection" style="display: none;">
                         <h3 class="stylish-subheader">Content Type Breakdown</h3>
                         <div id="contentTypeBreakdown">
                             <p class="text-gray-500 text-center">No content types yet to analyze.</p>
@@ -960,8 +960,9 @@
                 displayName: 'Urbanism+',
                 iframeSrc: 'https://graze.social/feeds/embed/3654',
                 icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg',
-                blueskyProfileUrl: 'https://bsky.app/profile/urbanism.plus',
-                titleIconScale: '2.42' // Specific scale for title icon
+                // Updated to link to the feed directly
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaotfjzjplna', 
+                titleIconScale: '2.0' // Adjusted zoom for header icon
             },
             'bandcamp': {
                 id: 'bandcamp',
@@ -969,8 +970,9 @@
                 displayName: 'Bandcamp', 
                 iframeSrc: 'https://graze.social/feeds/embed/8723', 
                 icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp',
-                blueskyProfileUrl: 'https://bsky.app/profile/bandcamp.bsky.social', // Example, confirm actual Bluesky handle
-                titleIconScale: '2.80'
+                // Updated to link to the feed directly
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp', 
+                titleIconScale: '2.3' // Adjusted zoom for header icon
             },
             'transitSky': { 
                 id: 'transitSky',
@@ -978,7 +980,8 @@
                 displayName: 'TransitSky', 
                 iframeSrc: 'https://graze.social/feeds/embed/5511', 
                 icon: 'train', // Using a keyword for an SVG icon
-                blueskyProfileUrl: 'https://bsky.app/profile/transitsky.bsky.social', // Example, confirm actual Bluesky handle
+                // Updated to link to the feed directly
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg', 
                 titleIconScale: '1' // SVG should likely not be scaled initially like images
             }
             // Add more feeds here
@@ -1006,6 +1009,11 @@
         const urbanismPlusFeedBtn = document.getElementById('urbanismPlusFeedBtn');
         const bandcampFeedBtn = document.getElementById('bandcampFeedBtn');
         const transitSkyFeedBtn = document.getElementById('transitSkyFeedBtn'); // NEW: Event Listener for TransitSky
+
+        // Elements to hide/show
+        const topSitesSection = document.getElementById('topSitesSection');
+        const contentTypeBreakdownSection = document.getElementById('contentTypeBreakdownSection');
+
 
         // Link Posts Modal elements
         const linkPostsModal = document.getElementById('linkPostsModal');
