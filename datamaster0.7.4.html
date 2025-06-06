@@ -1189,7 +1189,7 @@
             currentConnectingFeedId = null; // Also clear the connecting feed ID
         }
 
-        // WebSocket Connection Logic - REVISED
+        // WebSocket Connection Logic - REVISED to use Jetstream for certain feeds
         function connectWebSocket(feedId) {
             if (!isFirebaseReady || !feeds[feedId]) {
                 console.warn(`[connectWebSocket] Firebase not ready or invalid feedId (${feedId}), delaying connection. isFirebaseReady: ${isFirebaseReady}.`);
@@ -1198,25 +1198,37 @@
             }
 
             // If we're already trying to connect to this exact feed, do nothing.
-            // This prevents duplicate connection attempts if switchFeed is called multiple times rapidly for the same feed.
             if (currentConnectingFeedId === feedId && ws && ws.readyState === WebSocket.CONNECTING) {
                 console.log(`[connectWebSocket] Already in CONNECTING state for ${feedId}. Aborting duplicate attempt.`);
                 return;
             }
-            // If already OPEN to the target feed, no need to reconnect
             if (ws && ws.readyState === WebSocket.OPEN && currentConnectingFeedId === feedId) {
                  console.log(`[connectWebSocket] Already OPEN to ${feedId}. Aborting duplicate attempt.`);
                  return;
             }
 
-
-            // IMPORTANT: Stop any existing WebSocket activity before starting a new one
-            stopWebSocket();
+            stopWebSocket(); // Stop any existing WebSocket activity
 
             currentConnectingFeedId = feedId; // Mark this feed as the one we are now trying to connect to
 
             const feedUri = feeds[feedId].uri;
-            const websocketUrl = `wss://api.graze.social/app/contrail?feed=${feedUri}`;
+            let websocketUrl;
+
+            console.log(`[DEBUG] connectWebSocket - Processing feedId: ${feedId}`);
+            console.log(`[DEBUG] connectWebSocket - Current feedUri: ${feedUri}`);
+            const isFeedGenerator = feedUri.includes('/app.bsky.feed.generator/');
+            console.log(`[DEBUG] connectWebSocket - isFeedGenerator check result: ${isFeedGenerator}`);
+
+            // Conditional logic for WebSocket URL
+            if (isFeedGenerator) { // Use the pre-calculated boolean
+                // Use Contrails API for feed generators
+                websocketUrl = `wss://api.graze.social/app/contrail?feed=${feedUri}`;
+                console.log(`[DEBUG] connectWebSocket - Using Contrails API URL: ${websocketUrl}`);
+            } else {
+                // Use Bluesky's Jetstream for direct feeds (like Bandcamp and TransitSky)
+                websocketUrl = `wss://jetstream.bsky.network/subscribe?wantedCollections=app.bsky.feed.post`;
+                console.log(`[DEBUG] connectWebSocket - Using Jetstream API URL: ${websocketUrl}`);
+            }
 
             loadingIndicatorElem.style.display = 'block';
             connectionStatusElem.textContent = `Connecting to ${feeds[feedId].displayName} feed...`;
@@ -1232,7 +1244,6 @@
                 connectionStatusElem.classList.add('text-green-600');
                 loadingIndicatorElem.style.display = 'none';
                 
-                // Clear any lingering reconnect interval specifically for this connection
                 if (reconnectInterval) { 
                     clearInterval(reconnectInterval);
                     reconnectInterval = null;
@@ -1244,17 +1255,17 @@
             newWs.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log(`[WS: ${feedId} - onmessage] Received raw data:`);
-                    console.log(JSON.stringify(data, null, 2)); // Log the raw data with pretty printing
+                    // console.log(`[WS: ${feedId} - onmessage] Received raw data:`);
+                    // console.log(JSON.stringify(data, null, 2)); // Log the raw data with pretty printing
 
                     // Check for commit and record existence
-                    console.log(`[WS: ${feedId} - onmessage] data.commit exists: ${!!data.commit}`);
-                    if (data.commit) {
-                        console.log(`[WS: ${feedId} - onmessage] data.commit.record exists: ${!!data.commit.record}`);
-                        if (data.commit.record) {
-                            console.log(`[WS: ${feedId} - onmessage] data.commit.record.$type: ${data.commit.record.$type}`);
-                        }
-                    }
+                    // console.log(`[WS: ${feedId} - onmessage] data.commit exists: ${!!data.commit}`);
+                    // if (data.commit) {
+                    //     console.log(`[WS: ${feedId} - onmessage] data.commit.record exists: ${!!data.commit.record}`);
+                    //     if (data.commit.record) {
+                    //         console.log(`[WS: ${feedId} - onmessage] data.commit.record.$type: ${data.commit.record.$type}`);
+                    //     }
+                    // }
                     
                     // Safely get authorDid, defaulting if not present
                     let authorDid = data.did || (data.commit?.did) || 'unknown-did'; // Added data.commit?.did for robustness
@@ -1264,14 +1275,13 @@
 
                     // Check if it's a commit and contains a record of type app.bsky.feed.post
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
-                        // FIX: Directly access data.commit.record as the post object
                         const post = data.commit.record; 
-                        console.log(`[WS: ${feedId} - onmessage] Assigned post object:`, post); // New log to confirm
+                        // console.log(`[WS: ${feedId} - onmessage] Assigned post object:`, post); // New log to confirm
 
                         postText = String(post.text || ''); // Ensure text is always a string
                         timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
 
-                        console.log(`[WS: ${feedId} - onmessage] Processing post: Text="${postText.substring(0, 50)}...", DID="${authorDid}", Timestamp="${timestamp}"`);
+                        // console.log(`[WS: ${feedId} - onmessage] Processing post: Text="${postText.substring(0, 50)}...", DID="${authorDid}", Timestamp="${timestamp}"`);
 
                         const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid); 
                         if (resolvedInfo) {
@@ -1282,19 +1292,17 @@
                         }
                         
                         let postEmbed = post.embed; 
-                        console.log(`[WS: ${feedId} - onmessage] Scheduling Firestore analysis update via debounce for feed: ${currentActiveFeedId}.`);
-                        // Pass currentActiveFeedId to the debounced function for correct data storage
+                        // console.log(`[WS: ${feedId} - onmessage] Scheduling Firestore analysis update via debounce for feed: ${currentActiveFeedId}.`);
                         debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed); 
 
                     } else {
-                        console.log(`[WS: ${feedId} - onmessage] WebSocket message is not a recognized post type or missing expected fields. Received data:`, data);
+                        // console.log(`[WS: ${feedId} - onmessage] WebSocket message is not a recognized post type or missing expected fields. Received data:`, data);
                     }
 
                 } catch (e) {
                     console.error(`[WS: ${feedId} - onmessage] Failed to parse message or process data:`, e);
                     if (event.data) {
                         try {
-                            // Attempt to parse again to see if it's malformed JSON that JSON.parse failed on
                             const problematicData = JSON.parse(event.data);
                             console.error(`[WS: ${feedId} - onmessage] Problematic JSON structure:`, problematicData);
                         } catch (parseError) {
@@ -1315,28 +1323,18 @@
             newWs.onclose = (event) => {
                 console.warn(`[WS: ${feedId}] WebSocket closed. Code: ${event.code}, Reason: "${event.reason || 'No reason provided'}"`);
 
-                // This check is crucial: only proceed if this closing WebSocket instance is
-                // still the one referenced by the global `ws` variable, AND it's the one
-                // for the currently active feed. This prevents old closed connections
-                // from triggering unintended reconnects or state changes.
                 if (ws !== newWs) {
                     console.log(`[WS: ${feedId}] Closed instance is not the current global active WS. Ignoring.`);
                     return;
                 }
-                // Ensure the global `ws` is nullified immediately as this connection is no longer valid.
                 ws = null;
                 console.log(`[WS: ${feedId}] Global ws reference nullified on close.`);
 
-
-                // If it's a clean close, and not part of an intended reconnect, just log and exit.
-                // The 'Stopping old connection' reason comes from our `stopWebSocket` function.
                 if (event.code === 1000 && event.reason === "Stopping old connection") {
                     console.log(`[WS: ${feedId}] Cleanly stopped by stopWebSocket function. No reconnection needed.`);
-                    // No UI update or interval setting here, as stopWebSocket handles global state.
                     return;
                 }
 
-                // For all other disconnects (abnormal, network, timeout, etc.)
                 let disconnectMessage = `Disconnected from ${feeds[feedId].displayName}. Code: ${event.code}`;
                 if (event.reason) {
                     disconnectMessage += `, Reason: ${event.reason}`;
@@ -1350,11 +1348,7 @@
                 connectionStatusElem.classList.add('text-orange-600');
                 loadingIndicatorElem.style.display = 'none';
 
-                // We cleared the interval in `stopWebSocket` before creating `newWs`.
-                // Now, if `currentActiveFeedId` still matches this `feedId`,
-                // and no new connection has started (`ws` is currently null`),
-                // then set up a new reconnect interval.
-                if (currentActiveFeedId === feedId && !reconnectInterval) { // Double check `!reconnectInterval`
+                if (currentActiveFeedId === feedId && !reconnectInterval) {
                     console.log(`[WS: ${feedId}] Setting new reconnect interval for active feed.`);
                     reconnectInterval = setInterval(() => {
                         console.log(`[WS: ${feedId}] Attempting to reconnect via interval.`);
@@ -1428,7 +1422,7 @@
                 extractedLink = embed.external.uri;
                 const externalTitle = embed.external?.title || null; // Use optional chaining
                 const externalDescription = embed.external?.description || null; // Use optional chaining
-                console.log(`[Debounce] Detected external link: ${extractedLink}, Title: ${externalTitle}, Description: ${externalDescription}`);
+                // console.log(`[Debounce] Detected external link: ${extractedLink}, Title: ${externalTitle}, Description: ${externalDescription}`);
 
 
                 // Update linkCounts
@@ -1447,7 +1441,7 @@
                     fetchHeadline(extractedLink).then(fetchedTitle => {
                         if (fetchedTitle) {
                             accumulatedUpdates[feedId].linkCounts[extractedLink].headline = fetchedTitle;
-                            console.log(`[Debounce] Fetched headline for ${extractedLink}: ${fetchedTitle}`);
+                            // console.log(`[Debounce] Fetched headline for ${extractedLink}: ${fetchedTitle}`);
                         }
                     });
                 }
@@ -1458,7 +1452,7 @@
                         accumulatedUpdates[feedId].linkCardsData[extractedLink] = { count: 0, title: externalTitle, description: externalDescription };
                     }
                     accumulatedUpdates[feedId].linkCardsData[extractedLink].count += 1;
-                    console.log(`[Debounce] Updated linkCardsData for ${extractedLink}:`, accumulatedUpdates[feedId].linkCardsData[extractedLink]);
+                    // console.log(`[Debounce] Updated linkCardsData for ${extractedLink}:`, accumulatedUpdates[feedId].linkCardsData[extractedLink]);
                 }
 
                 const baseDomain = getSimplifiedDomain(extractedLink);
@@ -1469,23 +1463,23 @@
                     }
                     accumulatedUpdates[feedId].domainCounts[baseDomain].count++;
                     accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] || 0) + 1;
-                    console.log(`[Debounce] Updated domainCounts for ${baseDomain}:`, accumulatedUpdates[feedId].domainCounts[baseDomain]);
+                    // console.log(`[Debounce] Updated domainCounts for ${baseDomain}:`, accumulatedUpdates[feedId].domainCounts[baseDomain]);
                 }
             } else if (embed?.$type === 'app.bsky.embed.images' && embed.images?.length > 0) { // Use optional chaining
                 const firstImage = embed.images?.[0]; // Use optional chaining
                 const imageAlt = firstImage?.alt || 'Image without description'; // Use optional chaining
                 const imageKey = imageAlt; 
-                console.log(`[Debounce] Detected image embed with alt: ${imageAlt}`);
+                // console.log(`[Debounce] Detected image embed with alt: ${imageAlt}`);
 
                 if (!accumulatedUpdates[feedId].imageCardsData[imageKey]) {
                     accumulatedUpdates[feedId].imageCardsData[imageKey] = { count: 0, alt: imageAlt };
                 }
                 accumulatedUpdates[feedId].imageCardsData[imageKey].count += 1;
-                console.log(`[Debounce] Updated imageCardsData for ${imageKey}:`, accumulatedUpdates[feedId].imageCardsData[imageKey]);
+                // console.log(`[Debounce] Updated imageCardsData for ${imageKey}:`, accumulatedUpdates[feedId].imageCardsData[imageKey]);
             } else if (embed) {
-                console.log(`[Debounce] Detected other embed type: ${embed.$type || 'unknown'}`);
+                // console.log(`[Debounce] Detected other embed type: ${embed.$type || 'unknown'}`);
             } else {
-                console.log("[Debounce] No embed detected (text-only post).");
+                // console.log("[Debounce] No embed detected (text-only post).");
             }
 
             // --- Content Type Counting ---
@@ -1504,14 +1498,14 @@
                 }
             }
             accumulatedUpdates[feedId].contentTypeCounts[contentType] = (accumulatedUpdates[feedId].contentTypeCounts[contentType] || 0) + 1;
-            console.log(`[Debounce] Updated contentTypeCounts for ${contentType}:`, accumulatedUpdates[feedId].contentTypeCounts);
+            // console.log(`[Debounce] Updated contentTypeCounts for ${contentType}:`, accumulatedUpdates[feedId].contentTypeCounts);
 
             // --- Poster Counting (by number of posts) ---
             if (authorDid && authorDid !== 'unknown-did') { // Ensure authorDid is valid
                 accumulatedUpdates[feedId].posterCounts[authorDid] = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1;
                 // For demonstration, assume each post adds 1 like.
                 accumulatedUpdates[feedId].posterLikes[authorDid] = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1;
-                console.log(`[Debounce] Updated posterCounts for ${authorDid}:`, accumulatedUpdates[feedId].posterCounts[authorDid]);
+                // console.log(`[Debounce] Updated posterCounts for ${authorDid}:`, accumulatedUpdates[feedId].posterCounts[authorDid]);
             }
 
             // Clear any existing timer
@@ -1637,8 +1631,8 @@
                             if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) { // Typo fix
                                 currentDailyData.linkCounts[url].originalTitle = originalTitle;
                             }
-                            if (description && currentDailyData.linkCounts[url].description === null) {
-                                currentDailyData.linkCounts[url].description = description;
+                            if (description && currentDailyData.linkCardsData[url].description === null) {
+                                currentDailyData.linkCardsData[url].description = description;
                             }
                         }
                         for (const simplifiedDomain in feedUpdates.domainCounts) {
