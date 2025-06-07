@@ -157,7 +157,7 @@
             font-size: 2rem; /* Larger title */
             font-weight: 800; /* Extra bold */
             color: var(--heading-color); /* Use variable */
-            /* margin-bottom is handled by the new flex container now */
+            margin-bottom: 20px;
             text-align: center;
             display: flex; /* Use flexbox for image and text alignment */
             align-items: center; /* Vertically align items */
@@ -170,48 +170,11 @@
             flex-shrink: 0; /* Prevent title from shrinking */
             transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
-        /* Style for the link element wrapping the icon and text in the title */
-        .stylish-section-title a.feed-title-link {
-            text-decoration: none; /* Remove underline from link */
-            color: inherit; /* Inherit text color */
-            display: flex; /* Ensure flex for icon/text alignment */
-            align-items: center; /* Vertically align items */
-            gap: 10px; /* Space between icon and text */
+        .stylish-section-title img {
+            height: 40px; /* Adjust image size */
+            width: auto;
+            border-radius: 8px; /* Slightly rounded image */
         }
-        /* Style for the circular container of the icon in the title */
-        .feed-title-icon-wrapper {
-            width: 48px; /* Match navigation button width */
-            height: 48px; /* Match navigation button height */
-            border-radius: 50%;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-shrink: 0; /* Prevent shrinking */
-            /* Reverted border to 2px for header icons */
-            border: 2px solid rgba(0, 0, 0, 0.1); 
-        }
-        body.dark-mode .feed-title-icon-wrapper {
-            /* Reverted border to 2px for dark mode header icons */
-            border: 2px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Style for the image inside the feed title icon wrapper */
-        .feed-title-icon-wrapper img {
-            width: 100%; /* Fill parent */
-            height: 100%;
-            object-fit: cover;
-            border-radius: 50%; /* Ensure image itself is round */
-            transition: none !important; /* IMPORTANT: Prevent any hover transition on transform */
-            transform: scale(var(--title-icon-scale, 1)); /* Set by JS with default */
-        }
-        /* Style for the SVG inside the feed title icon wrapper */
-        .feed-title-icon-wrapper svg {
-            width: 100%; /* Fill parent */
-            height: 100%;
-            transition: none !important; /* Prevent any hover transition on transform */
-        }
-
 
         .post-card {
             background-color: var(--post-card-bg); /* Use variable */
@@ -287,17 +250,18 @@
             /* Removed height: 100%; to fix double scrollbar - relies on flex-grow: 1 */
             min-height: 500px; /* Ensure a minimum height for the iframe */
             border: none;
-            border-radius: 8一層px;
+            border-radius: 8px;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
             flex-grow: 1; /* Allow iframe to grow within its container */
             display: block; /* Ensures it respects flex properties better */
             /* The iframe itself will handle its own scrolling if its content overflows */
         }
-        /* Adjusted timeframe selector for inline display with header */
         .timeframe-selector {
             display: flex;
             justify-content: flex-start; /* Changed: Left-align buttons within the selector */
             gap: 10px;
+            margin-bottom: 15px; /* Changed: Reduced margin-bottom */
+            margin-top: 10px; /* Added: Small margin-top to separate from title/status */
             flex-wrap: wrap; /* Allow wrapping on small screens */
             flex-shrink: 0; /* Prevent selector from shrinking */
         }
@@ -403,14 +367,6 @@
         body.dark-mode .link-card-comment-btn svg {
             color: var(--subheader-color); /* Keep distinct in dark mode */
         }
-        /* New CSS for image inside link card */
-        .link-card img {
-            width: 100%;
-            height: 128px; /* Fixed height for thumbnails */
-            object-fit: cover; /* Cover the area, cropping if necessary */
-            border-radius: 8px 8px 0 0; /* Rounded top corners, sharp bottom */
-            margin-bottom: 8px; /* Space below image */
-        }
 
         /* Modern Domain Card Styling (similar to link-card) */
         .domain-card {
@@ -479,59 +435,20 @@
             align-items: flex-start;
         }
         /* Specific styling for the handle and DID in Top Posters */
-        .poster-card { /* Reusing link-card styles but adjusting */
-            display: flex;
-            align-items: center; /* Align avatar and text */
-            gap: 10px; /* Space between avatar and text */
-            background-color: var(--link-card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            padding: 10px;
-            margin-bottom: 8px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-            border: 1px solid var(--link-card-border);
-        }
-        .poster-card:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-            transform: translateY(-2px);
-            border-color: #3498db;
-        }
-        .poster-avatar {
-            width: 40px; /* Size for poster avatar */
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            flex-shrink: 0; /* Prevent shrinking */
-        }
-        .poster-info {
-            flex-grow: 1;
-            min-width: 0; /* Allow text to shrink */
-        }
-        .poster-display-name {
-            font-weight: 600;
-            font-size: 1rem;
-            color: var(--link-card-headline);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
         .poster-handle {
-            font-size: 0.85rem;
-            color: var(--link-card-url);
+            white-space: nowrap; /* Prevent line breaks */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            display: inline-block; /* Essential for overflow properties to work */
+            max-width: 100%; /* Ensure it respects parent's width */
+        }
+        .poster-did {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: inline-block;
+            max-width: 100%;
         }
-        .poster-count {
-            font-size: 0.9rem;
-            font-weight: bold;
-            color: #3498db;
-            flex-shrink: 0;
-        }
-
-
         /* Styling for the modal */
         #settingsModal .bg-white { /* Target the modal content box */
             background-color: var(--modal-bg);
@@ -562,12 +479,11 @@
             justify-content: center;
             align-items: center;
             width: 48px; /* Fixed width */
-            height: 48px;
+            height: 48px; /* Fixed height */
             margin-bottom: 15px; /* Space between buttons */
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             transition: all 0.2s ease-in-out;
-            /* Reverted border to 2px for navigation buttons */
-            border: 2px solid transparent; 
+            border: 2px solid transparent; /* Default transparent border */
             overflow: hidden; /* IMPORTANT: Ensures zoomed images are clipped to the circle */
         }
         .feed-select-btn:last-of-type {
@@ -581,8 +497,7 @@
             background-color: #3498db; /* Blue for active state */
             transform: scale(1.05);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            /* Reverted border to 2px for active navigation buttons */
-            border: 2px solid #287bbd; 
+            border: 2px solid #287bbd; /* Stronger border for active */
         }
         .feed-select-btn.active-feed-btn svg {
             color: white; /* Ensure SVG icon is white when active */
@@ -598,10 +513,10 @@
         }
         /* Specific rule for zooming in the images */
         #urbanismPlusFeedBtn img {
-            transform: scale(2.42); /* Original value */
+            transform: scale(2.20); /* Increased from 2.0 by another 10% */
         }
         #bandcampFeedBtn img {
-            transform: scale(2.80); /* Original value */
+            transform: scale(2.80); /* Increased from 2.15 by another 30% */
         }
 
         .feed-select-btn svg {
@@ -694,20 +609,10 @@
         <!-- Section for Iframe Embed (Urbanism+) -->
         <div class="section-wrapper">
             <div class="section-card">
-                <!-- New flex container for title and version buttons -->
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="stylish-section-title mb-0 mr-4">
-                        <a id="feedTitleLink" href="#" target="_blank" rel="noopener noreferrer" class="feed-title-link">
-                            <div class="feed-title-icon-wrapper">
-                                <img id="feedTitleIcon" src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Feed Logo">
-                            </div>
-                            <span id="feedTitleText">Urbanism+</span>
-                        </a>
-                    </h2>
-                    <div id="feedVersionButtons" class="flex gap-2">
-                        <!-- Buttons will be rendered here by JS -->
-                    </div>
-                </div>
+                <h2 class="stylish-section-title">
+                    <img id="feedTitleIcon" src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Feed Logo">
+                    <span id="feedTitleText">Urbanism+</span>
+                </h2>
                 <iframe
                     id="mainIframe"
                     src="https://graze.social/feeds/embed/3654"
@@ -721,74 +626,58 @@
         <!-- Section for Live Analysis (Contrails data processed in background) - Now on the right -->
         <div class="section-wrapper">
             <div class="section-card">
-                <!-- Main header for Rankings section -->
-                <div class="flex flex-col sm:flex-row justify-between sm:items-center w-full mb-4">
-                    <div class="flex flex-col sm:flex-row items-center flex-grow-0 gap-4 mb-4 sm:mb-0">
-                        <h2 class="stylish-section-title mb-0">Rankings</h2>
-                        <div class="timeframe-selector flex-shrink-0 sm:ml-8">
-                            <input type="radio" id="timeframeDay" name="timeframe" value="day">
-                            <label for="timeframeDay">Day</label>
-                            <input type="radio" id="timeframeWeek" name="timeframe" value="week">
-                            <label for="timeframeWeek">Week</label>
-                            <input type="radio" id="timeframeMonth" name="timeframe" value="month">
-                            <label for="timeframeMonth">Month</label>
-                            <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
-                            <label for="timeframeAllTime">All Time</label>
-                        </div>
-                    </div>
-                    <div class="text-sm text-gray-600 flex flex-col items-end flex-shrink-0">
-                        <span id="connectionStatus">Initializing...</span>
-                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.8.3</span>
-                    </div>
+                <h2 class="stylish-section-title">Rankings</h2>
+                <!-- Connection status moved to top right within the card -->
+                <div id="connectionStatus" class="absolute top-4 right-4 text-sm text-gray-600">
+                    Initializing...
                 </div>
                 
-                <!-- The actual live posts container (hidden) -->
+                <!-- The actual live posts container is now hidden, but still updated -->
                 <div id="postsContainer" class="flex-grow overflow-y-auto border border-gray-200 rounded-md p-2" style="max-height: 500px; display: none;">
                     <p id="noPostsMessage" class="text-gray-500 text-center py-4" style="display: none;">Waiting for new posts...</p>
                 </div>
-                <div id="loadingIndicator" class="loading-indicator" style="display: none;"></div>
+                <div id="loadingIndicator" class="loading-indicator" style="display: none;">Connecting to feed...</div>
 
-                <!-- Grid for rankings - Adjusted for 10 columns -->
-                <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
-                    <div class="md:col-span-2"> <!-- Top Hashtags -->
+                <!-- Timeframe Selector - Changed order -->
+                <div class="timeframe-selector">
+                    <input type="radio" id="timeframeDay" name="timeframe" value="day">
+                    <label for="timeframeDay">Day</label>
+                    <input type="radio" id="timeframeWeek" name="timeframe" value="week">
+                    <label for="timeframeWeek">Week</label>
+                    <input type="radio" id="timeframeMonth" name="timeframe" value="month">
+                    <label for="timeframeMonth">Month</label>
+                    <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
+                    <label for="timeframeAllTime">All Time</label>
+                </div>
+
+                <!-- Changed: Grid for rankings to support 12 columns on medium screens and above -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
+                    <div class="md:col-span-2"> <!-- Top Hashtags 2/12 -->
                         <h3 class="stylish-subheader">Top Hashtags</h3>
                         <div id="topTerms">
                             <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-5"> <!-- Top Links -->
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="stylish-subheader mb-0">Top Links</h3>
-                        </div>
+                    <div class="md:col-span-6"> <!-- Top Links 6/12 -->
+                        <h3 class="stylish-subheader">Top Links</h3>
                         <div id="topLinks">
                             <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-3"> <!-- Top Posters - Moved here to be on first row -->
+                    <div class="md:col-span-4"> <!-- Top Posters 4/12 --> 
                         <h3 class="stylish-subheader">Top Posters</h3>
                         <div id="topPostersList" class="space-y-3">
                             <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
                         </div>
                     </div>
-                    <!-- The remaining divs will automatically wrap to the next row in a 10-column grid -->
-                    <div class="md:col-span-3" id="topMentionsSection"> <!-- Top Mentions -->
+                    
+                    <div class="md:col-span-3"> <!-- Top Mentions 3/12 - NEW -->
                         <h3 class="stylish-subheader">Top Mentions</h3>
                         <div id="topMentionsList" class="space-y-3">
-                            <p class="text-gray-500 text-center">No mentions yet to rank from the feed.</p>
+                            <p class="text-gray-500 text-center">No mentions yet to display.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-5" id="topSitesSection" style="display: none;">
-                        <h3 class="stylish-subheader">Top Sites</h3>
-                        <div id="topDomains">
-                            <p class="text-gray-500 text-center">No domains yet to analyze.</p>
-                        </div>
-                    </div>
-                    <div class="md:col-span-5" id="contentTypeBreakdownSection" style="display: none;">
-                        <h3 class="stylish-subheader">Content Type Breakdown</h3>
-                        <div id="contentTypeBreakdown">
-                            <p class="text-gray-500 text-center">No content types yet to analyze.</p>
-                        </div>
-                    </div>
+                    <!-- The removed Top Sites and Content Type Breakdown would have been here -->
                 </div>
                 
                 <!-- HIDDEN: Resolved DIDs List Section -->
@@ -840,21 +729,11 @@
         </div>
     </div>
 
-    <!-- Plus Button Modal (New Feed Suggestion) -->
-    <div id="plusButtonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/2 lg:w-1/3 max-h-[90vh] flex flex-col text-center">
-            <h3 class="text-xl font-bold mb-4 text-gray-800">Add a Feed to Fema's Datamaster</h3>
-            <p class="text-gray-700 mb-4">Want to add a Feed to Fema's datamaster? This is something I am looking to support but for now feel free to reach out to me on Bluesky <a href="https://bsky.app/profile/fema.monster" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">@fema.monster</a>.</p>
-            <p class="text-gray-700 mb-6">Consider donating to my Ko-Fi <a href="https://ko-fi.co/urbanismplus" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">">(https://ko.fi/urbanismplus)</a> and mention "Datamaster" to earmark the funds for this project.</p>
-            <button id="closePlusButtonModalBtn" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">Close</button>
-        </div>
-    </div>
-
     <script type="module">
         // Firebase CDN imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Helper function to fetch headline from a URL (Moved to top for scope visibility) ---
         async function fetchHeadline(url) {
@@ -1011,10 +890,8 @@
         };
 
         // --- Global variables (derived from firebaseConfig or defaults) ---
-        // All read/write operations will now use this single APP_ID.
-        const APP_ID = firebaseConfig.projectId; 
-        console.log(`Using APP_ID for all operations: ${APP_ID}`);
-
+        // __app_id is automatically provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId; 
 
         // --- Firebase Instances ---
         let app;
@@ -1022,6 +899,7 @@
         let auth;
         let currentUserId = null;
         let isFirebaseReady = false; 
+        let unsubscribeFromFirestore = null; // To store the unsubscribe function for Firestore listener
 
         // --- Feed Configurations ---
         const feeds = {
@@ -1029,70 +907,43 @@
                 id: 'urbanismPlus',
                 uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaotfjzjplna',
                 displayName: 'Urbanism+',
-                versions: [
-                    { name: 'Default', src: 'https://graze.social/feeds/embed/3654' }
-                ],
-                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg',
-                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaotfjzjplna', 
-                titleIconScale: '1.0' 
+                iframeSrc: 'https://graze.social/feeds/embed/3654',
+                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg'
             },
             'bandcamp': {
                 id: 'bandcamp',
-                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/bandcamp', 
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp',
                 displayName: 'Bandcamp', 
-                versions: [
-                    { name: 'Trending', src: 'https://graze.social/feeds/embed/8723' },
-                    { name: 'New', src: 'https://graze.social/feeds/embed/8768' }
-                ],
-                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp',
-                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp', 
-                titleIconScale: '1.3225' 
+                iframeSrc: 'https://graze.social/feeds/embed/8723', 
+                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp' 
             },
-            'transitSky': { 
+            'transitSky': { // NEW FEED: TransitSky
                 id: 'transitSky',
-                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaic34mdicfg', 
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg',
                 displayName: 'TransitSky', 
-                versions: [
-                    { name: 'Default', src: 'https://graze.social/feeds/embed/5511' }
-                ],
-                icon: 'train', 
-                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg', 
-                titleIconScale: '1' 
+                iframeSrc: 'https://graze.social/feeds/embed/5511', 
+                icon: 'train' // Using a keyword for an SVG icon
             }
             // Add more feeds here
         };
 
-        // Initialize currentActiveFeedId from localStorage, or default to 'urbanismPlus'
-        let currentActiveFeedId = localStorage.getItem('activeFeedId') || 'urbanismPlus';
+        let currentActiveFeedId = 'urbanismPlus'; // Default active feed on load
 
         // --- DOM Elements ---
         const postsContainer = document.getElementById('postsContainer');
         const connectionStatusElem = document.getElementById('connectionStatus');
-        const datamasterVersionTextElem = document.getElementById('datamasterVersionText'); // Element for "datamaster 0.7.8" text
-        const loadingIndicatorElem = document.getElementById('loadingIndicator'); // This will now be hidden
+        const loadingIndicatorElem = document.getElementById('loadingIndicator');
         const topTermsDiv = document.getElementById('topTerms'); 
         const topLinksDiv = document.getElementById('topLinks'); // Now used for Link Cards (with Title & Description)
-        const topDomainsDiv = document.getElementById('topDomains'); 
-        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown');
-        const resolvedDidsListDiv = document.getElementById('resolvedDidsList'); // Original resolved DIDs list (now hidden)
         const topPostersListDiv = document.getElementById('topPostersList'); // NEW: Top Posters List
         const topMentionsListDiv = document.getElementById('topMentionsList'); // NEW: Top Mentions List
         const noPostsMessage = document.getElementById('noPostsMessage');
         const mainIframe = document.getElementById('mainIframe'); // Reference to the iframe
         const feedTitleIcon = document.getElementById('feedTitleIcon'); // Image in the title
         const feedTitleText = document.getElementById('feedTitleText'); // Text in the title
-        const feedTitleLink = document.getElementById('feedTitleLink'); // New link for title image and text
         const urbanismPlusFeedBtn = document.getElementById('urbanismPlusFeedBtn');
         const bandcampFeedBtn = document.getElementById('bandcampFeedBtn');
         const transitSkyFeedBtn = document.getElementById('transitSkyFeedBtn'); // NEW: Event Listener for TransitSky
-        const feedVersionButtonsContainer = document.getElementById('feedVersionButtons'); // New container for version buttons
-        // REMOVED: const hashtagLinkFilterSelect = document.getElementById('hashtagLinkFilterSelect'); // No longer used
-
-
-        // Elements to hide/show (Top Sites and Content Type Breakdown are now hidden by default in HTML)
-        // const topSitesSection = document.getElementById('topSitesSection'); // No longer needed
-        // const contentTypeBreakdownSection = document.getElementById('contentTypeBreakdownSection'); // No longer needed
-
 
         // Link Posts Modal elements
         const linkPostsModal = document.getElementById('linkPostsModal');
@@ -1100,38 +951,29 @@
         const linkPostsContent = document.getElementById('linkPostsContent');
         const closeLinkPostsModalBtn = document.getElementById('closeLinkPostsModalBtn');
 
-        // Plus Button Modal elements
-        const plusButtonModal = document.getElementById('plusButtonModal');
-        const closePlusButtonModalBtn = document.getElementById('closePlusButtonModalBtn');
-
 
         // --- Analysis Data (synced with Firestore for the CURRENTLY ACTIVE feed) ---
-        // currentFeedData will store data read from the unified APP_ID
         let currentFeedData = {
             termCounts: {},
             linkCounts: {},
-            domainCounts: {},
-            contentTypeCounts: {},
-            linkCardsData: {}, // linkCardsData will now store recentPosts and thumbnailUrl
+            domainCounts: {}, // No longer directly displayed but might still be collected
+            contentTypeCounts: {}, // No longer directly displayed but might still be collected
+            linkCardsData: {}, // linkCardsData will now store recentPosts
             imageCardsData: {},
             posterCounts: {},
-            posterLikes: {}, // This will now explicitly be based on posterCounts
-            mentionCounts: {} // NEW: For mentions
+            posterLikes: {}
         };
-        // Cache for already resolved DIDs { did: { handle, displayName, avatar, timestamp } }
-        let resolvedDidsCache = {}; 
+        let resolvedDidsCache = {}; // Cache for already resolved DIDs { did: { handle, displayName, timestamp } }
 
         // These will hold the counts for the CURRENTLY SELECTED timeframe (derived from currentFeedData or daily aggregates)
         let currentDisplayTermCounts = {};
         let currentDisplayLinkCounts = {}; 
-        let currentDisplayDomainCounts = {}; 
-        let currentDisplayContentTypeCounts = {}; 
+        let currentDisplayDomainCounts = {}; // No longer directly displayed
+        let currentDisplayContentTypeCounts = {}; // No longer directly displayed
         let currentDisplayPosterCounts = {}; // For displaying current timeframe poster counts
-        let currentDisplayPosterLikes = {}; // NEW: For displaying current timeframe poster likes (same as posterCounts)
-        let currentDisplayMentionCounts = {}; // NEW: For displaying current timeframe mention counts
+        let currentDisplayPosterLikes = {}; // NEW: For displaying current timeframe poster likes
 
-        let currentSelectedTimeframe = localStorage.getItem('selectedTimeframe') || 'allTime'; // Default timeframe to 'allTime'
-        // REMOVED: let currentLinkFilterHashtag = localStorage.getItem('linkFilterHashtag') || ''; // Default to no filter
+        let currentSelectedTimeframe = 'allTime'; // Default timeframe
 
         // --- WebSocket Variables ---
         let ws = null; // Global variable for the currently active WebSocket instance
@@ -1176,24 +1018,10 @@
                         isFirebaseReady = true;
                         console.log("Firebase authenticated and ready. User ID:", currentUserId);
                         
-                        // Fetch resolved DIDs once after auth
-                        await fetchResolvedDids(); 
-                        
-                        // Fetch initial all-time summary data for the active feed
-                        await fetchFeedSummaryData(currentActiveFeedId);
-
-                        // Update UI for the initial feed
-                        updateUIForActiveFeed(currentActiveFeedId);
-                        
-                        // Set the correct radio button checked state on load
-                        document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
-                        
-                        // Ensure view is updated with whatever data is available immediately
-                        updateView(currentSelectedTimeframe);
-
-                        // Start WebSocket connection after everything else is set up
-                        connectWebSocket(currentActiveFeedId);
-
+                        // Setup listeners and UI for the initially active feed
+                        switchFeed(currentActiveFeedId); // This will handle all setup for the initial feed
+                        setupResolvedDidsListener(); // Setup listener for resolved DIDs (common for all feeds)
+                        updateView(currentSelectedTimeframe); // Initial render based on default timeframe
                     } else {
                         // FIX: Added more robust error handling for signInWithCustomToken.
                         // If signInWithCustomToken fails (e.g., token mismatch/expired),
@@ -1201,10 +1029,10 @@
                         try {
                             if (initialAuthToken) {
                                 await signInWithCustomToken(auth, initialAuthToken);
-                                console.log("Signed in with custom token.");
+                                console.log("Firebase: Signed in with custom token.");
                             } else {
                                 await signInAnonymously(auth);
-                                console.log("Signed in anonymously.");
+                                console.log("Firebase: Signed in anonymously.");
                             }
                         } catch (signInError) {
                             console.warn("Firebase: Attempted signInWithCustomToken failed, falling back to signInAnonymously:", signInError);
@@ -1231,79 +1059,91 @@
             }
         }
 
-        // --- Firestore Data Fetcher (getDoc for All-Time Summary of specific feed) ---
-        // Renamed from setupFirestoreListener and changed to use getDoc
-        async function fetchFeedSummaryData(feedId) {
+        // --- Firestore Data Listener (onSnapshot for All-Time Summary of specific feed) ---
+        function setupFirestoreListener(feedId) {
+            if (unsubscribeFromFirestore) {
+                unsubscribeFromFirestore(); // Unsubscribe from previous listener if exists
+                console.log(`Firestore Listener: Unsubscribed from previous feed.`); // Corrected log message
+            }
+
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Firestore Fetcher: Cannot fetch summary: Firebase not ready or user not authenticated.");
+                console.warn("Firestore Listener: Cannot be set up: Firebase not ready or user not authenticated.");
                 return;
             }
 
-            // Path: /artifacts/{APP_ID}/public/data/feeds/{feedId}/summaries/allTime
-            const analysisDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
-            console.log(`Firestore Fetcher: Attempting to fetch all-time summary for ${feedId} from ${analysisDocRef.path}`);
+            // REVISED PATH: /artifacts/{appId}/public/data/feeds/{feedId}/summaries/allTime
+            const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
+            console.log(`Firestore Listener: Attempting to subscribe to ${analysisDocRef.path}`);
 
-            try {
-                const docSnap = await getDoc(analysisDocRef);
+            unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     currentFeedData.termCounts = data.termCounts || {}; 
                     currentFeedData.linkCounts = data.linkCounts || {}; 
                     currentFeedData.domainCounts = data.domainCounts || {}; 
                     currentFeedData.contentTypeCounts = data.contentTypeCounts || {}; 
-                    // Ensure thumbnailUrl is initialized in the object structure
-                    currentFeedData.linkCardsData = data.linkCardsData || {}; 
-                    // Iterate and ensure thumbnailUrl is set for existing linkCardsData
-                    for (const url in currentFeedData.linkCardsData) {
-                        if (currentFeedData.linkCardsData[url].thumbnailUrl === undefined) {
-                            currentFeedData.linkCardsData[url].thumbnailUrl = null;
-                        }
-                    }
-
+                    currentFeedData.linkCardsData = data.linkCardsData || {}; // This will now contain recentPosts
                     currentFeedData.imageCardsData = data.imageCardsData || {}; 
                     currentFeedData.posterCounts = data.posterCounts || {}; 
                     currentFeedData.posterLikes = data.posterLikes || {}; 
-                    currentFeedData.mentionCounts = data.mentionCounts || {}; // NEW: Load mentionCounts
 
-                    console.log(`Firestore Fetcher: All-Time data for ${feedId} received:`, currentFeedData); 
+                    console.log(`Firestore Listener: All-Time data for ${feedId} received via onSnapshot:`, currentFeedData); 
                 } else {
-                    console.warn(`Firestore Fetcher: All-Time summary document for ${feedId} does not exist in ${APP_ID}. Initializing with empty counts locally.`);
-                    // Reset currentFeedData to empty if doc doesn't exist in APP_ID
+                    console.warn(`Firestore Listener: All-Time summary document for ${feedId} does not exist. Initializing with empty counts.`);
+                    // Initialize the document if it doesn't exist at the new path
+                    setDoc(analysisDocRef, { 
+                        termCounts: {},
+                        linkCounts: {},
+                        domainCounts: {},
+                        contentTypeCounts: {},
+                        linkCardsData: {}, // Initialize with empty object
+                        imageCardsData: {},
+                        posterCounts: {},
+                        posterLikes: {} 
+                    }, { merge: true })
+                        .then(() => console.log(`Firestore Listener: Successfully created initial all-time summary document for ${feedId}.`))
+                        .catch(e => console.error(`Firestore Listener: Error creating all-time summary document for ${feedId}:`, e));
+                    // Reset currentFeedData to empty if doc doesn't exist
                     currentFeedData = {
                         termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
-                        linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}, mentionCounts: {}
+                        linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
                     };
                 }
-            } catch (error) {
-                console.error(`Firestore Fetcher: Error fetching all-time summary for ${feedId}:`, error);
-                connectionStatusElem.textContent = `Firestore Fetch Error: ${error.message}`;
-            }
+                // Only update the view if 'allTime' is currently selected to avoid overwriting other views
+                if (currentSelectedTimeframe === 'allTime') {
+                    updateView('allTime'); 
+                }
+            }, (error) => {
+                console.error(`Firestore Listener: Error listening to Firestore (All-Time Summary for ${feedId}):`, error);
+                connectionStatusElem.textContent = `Firestore Listener Error: ${error.message}`;
+            });
         }
 
-        // --- New Function to Fetch Resolved DIDs (using getDocs instead of onSnapshot) ---
-        async function fetchResolvedDids() {
+        // --- New Firestore Listener for Resolved DIDs (common for all feeds) ---
+        function setupResolvedDidsListener() {
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Fetch Resolved DIDs: Cannot fetch: Firebase not ready or user not authenticated.");
+                console.warn("Resolved DIDs Listener: Cannot be set up: Firebase not ready or user not authenticated.");
                 return;
             }
 
-            // Read from APP_ID
-            const resolvedDidsCollectionRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'resolvedBlueskyDIDs');
+            // Corrected collection path: artifacts/{appId}/public/data/resolvedBlueskyDIDs
+            const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
             const q = query(resolvedDidsCollectionRef);
-            console.log(`Fetch Resolved DIDs: Attempting to fetch from ${resolvedDidsCollectionRef.path}`);
+            console.log(`Resolved DIDs Listener: Attempting to subscribe to ${resolvedDidsCollectionRef.path}`);
 
-            try {
-                const querySnapshot = await getDocs(q);
+            onSnapshot(q, (snapshot) => {
                 const fetchedDids = {};
-                querySnapshot.forEach(docSnap => {
+                snapshot.forEach(docSnap => {
                     fetchedDids[docSnap.id] = docSnap.data();
                 });
                 resolvedDidsCache = fetchedDids; // Update the cache
-                console.log("Fetch Resolved DIDs: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
-            } catch (error) {
-                console.error("Fetch Resolved DIDs: Error fetching resolved DIDs:", error);
+                console.log("Resolved DIDs Listener: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
+                // Trigger view update to ensure Top Posters reflects latest resolved DIDs
+                updateView(currentSelectedTimeframe); 
+            }, (error) => {
+                console.error("Resolved DIDs Listener: Error listening to resolved DIDs:", error);
                 // Optionally update a UI status for this specific section
-            }
+            });
         }
 
         // --- DID Resolution Function (extracted from React App logic) ---
@@ -1322,56 +1162,78 @@
 
             let resolvedHandle = '';
             let resolvedDisplayName = '';
-            let resolvedAvatar = null; // NEW: To store avatar URL
 
             try {
-                // Step 1: Fetch profile from Bluesky AppView API to get handle, display name, and avatar
-                // This is preferred over plc.directory first, as it gives full profile data.
+                // Step 1: Resolve DID to Handle using plc.directory
+                const plcApiUrl = `https://plc.directory/${did}`;
+                console.log(`DID Resolution: Fetching DID document from: ${plcApiUrl}`);
+
+                const plcResponse = await fetch(plcApiUrl);
+
+                if (!plcResponse.ok) {
+                    const errorText = await plcResponse.text();
+                    throw new Error(`Failed to fetch DID document from plc.directory: HTTP status ${plcResponse.status} - ${errorText}`);
+                }
+
+                const didDocument = await plcResponse.json();
+                console.log('DID Resolution: Received DID document:', didDocument);
+
+                if (didDocument && Array.isArray(didDocument.alsoKnownAs) && didDocument.alsoKnownAs.length > 0) {
+                    const potentialHandleUri = didDocument.alsoKnownAs[0];
+                    if (potentialHandleUri.startsWith('at://')) {
+                        resolvedHandle = potentialHandleUri.substring(5); // Remove 'at://' prefix
+                    } else {
+                        console.warn(`DID Resolution: Found "alsoKnownAs" for ${did} but not in expected "at://" format: ${potentialHandleUri}`);
+                        resolvedHandle = `[Invalid Format]`;
+                    }
+                } else {
+                    console.warn(`DID Resolution: No handle found in "alsoKnownAs" for DID: ${did}`);
+                    resolvedHandle = `[No Handle]`;
+                }
+
+                // Step 2: Fetch Display Name using Bluesky AppView API
+                // This API call is only for display name and can be rate-limited.
+                // It does NOT provide like counts for individual posts directly from the firehose.
                 const profileApiUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`;
-                console.log(`Fetching profile from: ${profileApiUrl}`);
+                console.log(`DID Resolution: Fetching profile from: ${profileApiUrl}`);
 
                 const profileResponse = await fetch(profileApiUrl);
 
                 if (!profileResponse.ok) {
                     const errorText = await profileResponse.text();
                     console.warn(`DID Resolution: Failed to fetch profile from Bluesky AppView for ${did}: HTTP status ${profileResponse.status} - ${errorText}`);
-                    resolvedHandle = `[Error Fetching Handle]`;
-                    resolvedDisplayName = 'Display name not available';
-                    resolvedAvatar = null;
+                    resolvedDisplayName = 'Display name not available'; // Indicate that display name could not be fetched
                 } else {
                     const profileData = await profileResponse.json();
-                    console.log('Received profile data:', profileData);
-                    if (profileData) {
-                        resolvedHandle = profileData.handle || `[No Handle]`;
-                        resolvedDisplayName = profileData.displayName || 'Display name not set';
-                        resolvedAvatar = profileData.avatar || null; // Capture the avatar URL
+                    console.log('DID Resolution: Received profile data:', profileData);
+                    if (profileData && profileData.displayName) {
+                        resolvedDisplayName = profileData.displayName;
                     } else {
-                        resolvedHandle = `[No Handle]`;
                         resolvedDisplayName = 'Display name not set';
-                        resolvedAvatar = null;
                     }
                 }
 
-                // Step 2: Save to Firestore - ALWAYS write to APP_ID
-                if (db && currentUserId) { 
-                    const resolvedDidsCollectionRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'resolvedBlueskyDIDs');
+                // Step 3: Save to Firestore
+                if (db && currentUserId) { // Ensure Firebase is ready before saving
+                    // Corrected collection name here
+                    const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
+                    // Use setDoc with DID as document ID to ensure uniqueness and allow updates
                     await setDoc(doc(resolvedDidsCollectionRef, did), {
                         did: did,
                         handle: resolvedHandle, // Save without '@' for consistency, add for display
                         displayName: resolvedDisplayName,
-                        avatar: resolvedAvatar, // NEW: Save the avatar URL
                         timestamp: serverTimestamp() // Add a timestamp for ordering
                     }, { merge: true })
-                    .then(() => console.log(`DID Resolution: Successfully saved resolved DID ${did} to Firestore (${APP_ID}).`))
-                    .catch(e => console.error(`DID Resolution: Error saving resolved DID ${did} to Firestore (${APP_ID}):`, e));
+                    .then(() => console.log(`DID Resolution: Successfully saved resolved DID ${did} to Firestore.`))
+                    .catch(e => console.error(`DID Resolution: Error saving resolved DID ${did} to Firestore:`, e));
 
-                    // Update local cache from the data that was written
-                    resolvedDidsCache[did] = { handle: resolvedHandle, displayName: resolvedDisplayName, avatar: resolvedAvatar, timestamp: new Date() };
+                    // Update local cache immediately after successful save
+                    resolvedDidsCache[did] = { handle: resolvedHandle, displayName: resolvedDisplayName, timestamp: new Date() };
                 } else {
                     console.warn("DID Resolution: Firestore not ready for saving resolved DID. Data not persisted.");
                 }
 
-                return { handle: resolvedHandle, displayName: resolvedDisplayName, avatar: resolvedAvatar };
+                return { handle: resolvedHandle, displayName: resolvedDisplayName };
 
             } catch (err) {
                 console.error(`DID Resolution: Error resolving DID ${did} or fetching profile:`, err);
@@ -1401,7 +1263,7 @@
             currentConnectingFeedId = null; // Also clear the connecting feed ID
         }
 
-        // WebSocket Connection Logic - MODIFIED to always use Contrails
+        // WebSocket Connection Logic - REVISED to use Jetstream for certain feeds
         function connectWebSocket(feedId) {
             if (!isFirebaseReady || !feeds[feedId]) {
                 console.warn(`[connectWebSocket] Firebase not ready or invalid feedId (${feedId}), delaying connection. isFirebaseReady: ${isFirebaseReady}.`);
@@ -1424,18 +1286,26 @@
             currentConnectingFeedId = feedId; // Mark this feed as the one we are now trying to connect to
 
             const feedUri = feeds[feedId].uri;
-            // ALWAYS use Contrails for all configured feeds
-            const websocketUrl = `wss://api.graze.social/app/contrail?feed=${encodeURIComponent(feedUri)}`;
+            let websocketUrl;
 
             console.log(`[DEBUG] connectWebSocket - Processing feedId: ${feedId}`);
-            console.log(`[DEBUG] connectWebSocket - Attempting to connect to Contrails API URL: ${websocketUrl}`);
+            console.log(`[DEBUG] connectWebSocket - Current feedUri: ${feedUri}`);
+            const isFeedGenerator = feedUri.includes('/app.bsky.feed.generator/');
+            console.log(`[DEBUG] connectWebSocket - isFeedGenerator check result: ${isFeedGenerator}`);
 
-            // Update connection status immediately
-            connectionStatusElem.textContent = `Connecting to ${feeds[feedId].displayName} feed via Contrails...`;
-            connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
-            connectionStatusElem.classList.add('text-orange-600'); // Indicate connecting state
-            // loadingIndicatorElem.style.display = 'none'; // This element is already hidden via HTML/CSS
+            // Conditional logic for WebSocket URL
+            if (isFeedGenerator) { // Use the pre-calculated boolean
+                // Use Contrails API for feed generators
+                websocketUrl = `wss://api.graze.social/app/contrail?feed=${feedUri}`;
+                console.log(`[DEBUG] connectWebSocket - Using Contrails API URL: ${websocketUrl}`);
+            } else {
+                // Use Bluesky's Jetstream for direct feeds (like Bandcamp and TransitSky)
+                websocketUrl = `wss://jetstream.bsky.network/subscribe?wantedCollections=app.bsky.feed.post`;
+                console.log(`[DEBUG] connectWebSocket - Using Jetstream API URL: ${websocketUrl}`);
+            }
 
+            loadingIndicatorElem.style.display = 'block';
+            connectionStatusElem.textContent = `Connecting to ${feeds[feedId].displayName} feed...`;
             console.log(`[connectWebSocket] Starting new WebSocket connection attempt for: ${websocketUrl} (Feed: ${feedId})`);
 
             const newWs = new WebSocket(websocketUrl); // Create the new WebSocket instance
@@ -1446,6 +1316,7 @@
                 connectionStatusElem.textContent = `Connected to ${feeds[feedId].displayName}`;
                 connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
                 connectionStatusElem.classList.add('text-green-600');
+                loadingIndicatorElem.style.display = 'none';
                 
                 if (reconnectInterval) { 
                     clearInterval(reconnectInterval);
@@ -1464,8 +1335,6 @@
                     let authorDisplayName = 'User'; 
                     let postText = '';
                     let timestamp = ''; 
-                    let postCid = data.cid || (data.commit?.cid); // Get CID for post document ID
-                    let postFacets = []; // Default empty array for facets
 
                     // Check if it's a commit and contains a record of type app.bsky.feed.post
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
@@ -1474,34 +1343,6 @@
                         postText = String(post.text || ''); // Ensure text is always a string
                         timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
                         const postUri = data.commit.uri; // Get the full URI of the post
-                        postFacets = post.facets || []; // Capture facets
-
-
-                        // Store the raw post in the new '/posts' collection (writes to APP_ID)
-                        if (db && currentUserId && postUri && postCid) {
-                            const postDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'posts', postUri);
-                            await setDoc(postDocRef, {
-                                $type: post.$type,
-                                uri: postUri,
-                                cid: postCid,
-                                repo: authorDid,
-                                seq: data.seq, // Preserve sequence number
-                                createdAt: timestamp, // Original creation timestamp
-                                text_content: postText,
-                                langs: post.langs || [],
-                                facets: postFacets, // Store raw facets
-                                embed: post.embed || null,
-                                author_did: authorDid,
-                                // These would ideally be derived by a backend worker, but for now
-                                // we'll re-extract simple things here to keep the structure.
-                                hashtags: (postText.toLowerCase().match(/#\b\w+\b/g) || []).map(tag => tag.substring(1)), // Remove '#'
-                                links_extracted: [], // Populate below if embed exists
-                                images_extracted: [], // Populate below if embed exists
-                                quotes_extracted: [] // Populate below if embed exists
-                            }, { merge: true }).catch(e => console.error(`Firestore: Error saving raw post ${postUri}:`, e));
-                        } else {
-                            console.warn(`Firestore: Skipping saving raw post, missing data (postUri: ${postUri}, postCid: ${postCid}) or Firebase not ready.`);
-                        }
 
                         const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid); 
                         if (resolvedInfo) {
@@ -1512,8 +1353,7 @@
                         }
                         
                         let postEmbed = post.embed; 
-                        // Pass the timestamp and facets of the actual post to the debounced function
-                        debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed, postUri, timestamp, postFacets); 
+                        debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed, postUri, timestamp); 
 
                     } else {
                         // console.log(`[WS: ${feedId} - onmessage] WebSocket message is not a recognized post type or missing expected fields. Received data:`, data);
@@ -1537,6 +1377,7 @@
                 connectionStatusElem.textContent = `WebSocket error for ${feeds[feedId].displayName}. Attempting reconnect...`;
                 connectionStatusElem.classList.remove('text-green-600', 'text-orange-600');
                 connectionStatusElem.classList.add('text-red-600'); 
+                loadingIndicatorElem.style.display = 'none';
             };
 
             newWs.onclose = (event) => {
@@ -1565,6 +1406,17 @@
                 connectionStatusElem.textContent = disconnectMessage;
                 connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
                 connectionStatusElem.classList.add('text-orange-600');
+                loadingIndicatorElem.style.display = 'none';
+
+                if (currentActiveFeedId === feedId && !reconnectInterval) {
+                    console.log(`[WS: ${feedId}] Setting new reconnect interval for active feed.`);
+                    reconnectInterval = setInterval(() => {
+                        console.log(`[WS: ${feedId}] Attempting to reconnect via interval.`);
+                        connectWebSocket(feedId); // Recurse to re-establish connection
+                    }, RECONNECT_DELAY);
+                } else {
+                    console.log(`[WS: ${feedId}] Not setting reconnect interval. Either feed changed or interval already set.`);
+                }
             };
         }
 
@@ -1593,69 +1445,19 @@
             }
         }
 
-        /**
-         * Recursively extracts link, title, description, and the first found thumbnail URL from a Bluesky embed object.
-         * Handles direct external/image embeds, and also nested recordWithMedia/record structures.
-         * @param {object} embed The Bluesky embed object (e.g., post.embed).
-         * @returns {{link: string|null, title: string|null, description: string|null, thumbnailUrl: string|null}}
-         */
-        function extractEmbedData(embed) {
-            let link = null;
-            let title = null;
-            let description = null;
-            let thumbnailUrl = null;
-
-            if (!embed) return { link, title, description, thumbnailUrl };
-
-            // Helper to recursively find content within nested embeds
-            const findContent = (currentEmbed) => {
-                if (!currentEmbed) return;
-
-                // Case: Direct external link embed
-                if (currentEmbed.$type === 'app.bsky.embed.external' && currentEmbed.external?.uri) {
-                    // Prioritize the first link found
-                    if (!link) link = currentEmbed.external.uri;
-                    if (!title) title = currentEmbed.external.title;
-                    if (!description) description = currentEmbed.external.description;
-                }
-                // Case: Direct image embed
-                else if (currentEmbed.$type === 'app.bsky.embed.images' && currentEmbed.images?.length > 0) {
-                    // Prioritize the first image thumbnail found
-                    if (!thumbnailUrl) thumbnailUrl = currentEmbed.images[0].thumb;
-                }
-                // Case: RecordWithMedia embed (contains a record and media)
-                else if (currentEmbed.$type === 'app.bsky.embed.recordWithMedia') {
-                    findContent(currentEmbed.media); // Recursively check the media part
-                    // Recursively check the quoted record's embed (common for link-quotes with images)
-                    findContent(currentEmbed.record?.record?.value?.embed);
-                }
-                // Case: Record embed (points to another record, which might have its own embed)
-                else if (currentEmbed.$type === 'app.bsky.embed.record' && currentEmbed.record?.value?.embed) {
-                    findContent(currentEmbed.record.value.embed); // Recursively check the quoted record's embed
-                }
-            };
-
-            findContent(embed); // Start the search from the top-level embed object
-
-            return { link, title, description, thumbnailUrl };
-        }
-
-
         // --- Debounced Firestore Update Function (Existing logic) ---
         // This accumulatedUpdates object will now be per-feed.
         // We will pass the feedId to ensure updates go to the correct feed's data.
         let accumulatedUpdates = {}; // This will be reset and populated per-feed during debounce
 
         // Modified to accept feedId and post details
-        async function debouncedUpdateFirestoreAnalysis(feedId, authorDid, text, embed, postUri, timestamp, facets) { 
+        async function debouncedUpdateFirestoreAnalysis(feedId, authorDid, text, embed, postUri, timestamp) { 
             console.log(`[Debounce] Processing data for feed: ${feedId}, Author DID: ${authorDid}`);
             // Ensure accumulatedUpdates for this feedId exists and has all expected keys
             if (!accumulatedUpdates[feedId]) {
                 accumulatedUpdates[feedId] = {
                     termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
-                    linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
-                    mentionCounts: {}, // NEW: Initialize mentionCounts
-                    latestPostTimestamp: null // Track latest timestamp for dailyDocId calculation
+                    linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
                 };
             }
             
@@ -1674,95 +1476,77 @@
                 accumulatedUpdates[feedId].termCounts[tag] = (accumulatedUpdates[feedId].termCounts[tag] || 0) + 1;
             });
 
-            // --- Mention Counting (NEW) ---
-            if (Array.isArray(facets)) {
-                facets.forEach(facet => {
-                    if (facet.features && Array.isArray(facet.features)) {
-                        facet.features.forEach(feature => {
-                            if (feature.$type === 'app.bsky.richtext.facet#mention' && feature.did) {
-                                accumulatedUpdates[feedId].mentionCounts[feature.did] = (accumulatedUpdates[feedId].mentionCounts[feature.did] || 0) + 1;
-                            }
-                        });
-                    }
-                });
-            }
+            // --- Link and Domain Counting ---
+            let extractedLink = null;
+            if (embed?.$type === 'app.bsky.embed.external' && embed.external?.uri) { // Use optional chaining
+                extractedLink = embed.external.uri;
+                const externalTitle = embed.external?.title || null; // Use optional chaining
+                const externalDescription = embed.external?.description || null; // Use optional chaining
+                // console.log(`[Debounce] Detected external link: ${extractedLink}, Title: ${externalTitle}, Description: ${externalDescription}`);
 
 
-            // --- Extract embed data using the new helper ---
-            const { link: extractedLink, title: extractedTitle, description: extractedDescription, thumbnailUrl: extractedThumbnailUrl } = extractEmbedData(embed);
-
-
-            // --- Link and Domain Counting (now includes thumbnail if found) ---
-            if (extractedLink) {
-                // Update linkCounts (simplified for backend aggregation)
+                // Update linkCounts
                 if (!accumulatedUpdates[feedId].linkCounts[extractedLink]) {
-                    accumulatedUpdates[feedId].linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null }; // thumbnailUrl not stored here
+                    accumulatedUpdates[feedId].linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null };
                 }
                 accumulatedUpdates[feedId].linkCounts[extractedLink].count += 1;
-                // Only fetch headline if title is not already present from embed or previous fetches
-                if (extractedTitle && accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle === null) {
-                    accumulatedUpdates[feedId].linkCardsData[extractedLink].originalTitle = extractedTitle; // Corrected to linkCardsData for consistent title usage
+                if (externalTitle && accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle === null) {
+                    accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle = externalTitle;
                 }
-                // Fetch headline if still null from embed
+                if (externalDescription && accumulatedUpdates[feedId].linkCounts[extractedLink].description === null) {
+                    accumulatedUpdates[feedId].linkCounts[extractedLink].description = externalDescription;
+                }
+                // Only fetch headline if it's currently null
                 if (accumulatedUpdates[feedId].linkCounts[extractedLink].headline === null) {
                     fetchHeadline(extractedLink).then(fetchedTitle => {
                         if (fetchedTitle) {
                             accumulatedUpdates[feedId].linkCounts[extractedLink].headline = fetchedTitle;
+                            // console.log(`[Debounce] Fetched headline for ${extractedLink}: ${fetchedTitle}`);
                         }
                     });
                 }
-                if (extractedDescription && accumulatedUpdates[feedId].linkCounts[extractedLink].description === null) {
-                    accumulatedUpdates[feedId].linkCounts[extractedLink].description = extractedDescription;
-                }
 
-
-                // Update linkCardsData (for display, combining title and description, thumbnail, AND RECENT POSTS)
+                // Update linkCardsData (for display, combining title and description, AND RECENT POSTS)
                 if (!accumulatedUpdates[feedId].linkCardsData[extractedLink]) {
-                    // Initialize thumbnailUrl to null if it doesn't exist
-                    accumulatedUpdates[feedId].linkCardsData[extractedLink] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink] = { count: 0, title: null, description: null, recentPosts: [] };
                 }
                 accumulatedUpdates[feedId].linkCardsData[extractedLink].count += 1;
-                if (extractedTitle && accumulatedUpdates[feedId].linkCardsData[extractedLink].title === null) {
-                    accumulatedUpdates[feedId].linkCardsData[extractedLink].title = extractedTitle;
+                if (externalTitle && accumulatedUpdates[feedId].linkCardsData[extractedLink].title === null) {
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink].title = externalTitle;
                 }
-                if (extractedDescription && accumulatedUpdates[feedId].linkCardsData[extractedLink].description === null) {
-                    accumulatedUpdates[feedId].linkCardsData[extractedLink].description = extractedDescription;
-                }
-                // Set thumbnailUrl only if it's found and not already set
-                if (extractedThumbnailUrl && accumulatedUpdates[feedId].linkCardsData[extractedLink].thumbnailUrl === null) {
-                    accumulatedUpdates[feedId].linkCardsData[extractedLink].thumbnailUrl = extractedThumbnailUrl;
+                if (externalDescription && accumulatedUpdates[feedId].linkCardsData[extractedLink].description === null) {
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink].description = externalDescription;
                 }
 
                 // Add or update recentPosts for this link
                 if (postUri && timestamp) {
-                    // Get current poster's total posts
-                    const currentPosterPosts = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1; // Add 1 for the current post
+                    // Get current simulated likes for the author
+                    const currentSimulatedLikes = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1; // Add 1 for the current post
                     const newPost = {
                         postUri: postUri,
                         authorDid: authorDid,
                         textPreview: safeText.substring(0, 150) + (safeText.length > 150 ? '...' : ''), // Truncate for preview
                         timestamp: timestamp,
-                        // For link cards, we'll now store the *actual* post count of the author as a proxy for engagement.
-                        // This aligns with user's request to use "posts" instead of "simulated likes".
-                        posterTotalPosts: currentPosterPosts, 
-                        hashtags: hashtags // Store identified hashtags with the post
+                        simulatedLikes: currentSimulatedLikes // Store simulated likes for this post's author
                     };
 
                     let posts = accumulatedUpdates[feedId].linkCardsData[extractedLink].recentPosts;
                     // Check if this post URI already exists to avoid duplicates (e.g., from retries)
                     const existingPostIndex = posts.findIndex(p => p.postUri === newPost.postUri);
                     if (existingPostIndex !== -1) {
-                        // Update existing post if found (e.g., for timestamp freshness or updated posterTotalPosts)
+                        // Update existing post if found (e.g., for timestamp freshness or updated likes)
                         posts[existingPostIndex] = newPost;
                     } else {
                         // Add new post
                         posts.push(newPost);
                     }
                     
-                    // Keep only the top 5 posts, sorted by posterTotalPosts (descending)
-                    posts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                    // Keep only the top 5 posts, sorted by simulatedLikes (descending)
+                    posts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
                     accumulatedUpdates[feedId].linkCardsData[extractedLink].recentPosts = posts.slice(0, 5);
                 }
+                // console.log(`[Debounce] Updated linkCardsData for ${extractedLink}:`, accumulatedUpdates[feedId].linkCardsData[extractedLink]);
+
 
                 const baseDomain = getSimplifiedDomain(extractedLink);
                 if (baseDomain && baseDomain !== 'Invalid Domain') {
@@ -1771,20 +1555,28 @@
                         accumulatedUpdates[feedId].domainCounts[baseDomain] = { count: 0, sources: {} };
                     }
                     accumulatedUpdates[feedId].domainCounts[baseDomain].count++;
-                    accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[originalHost] || 0) + 1; // Corrected key for sources
+                    accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] || 0) + 1;
+                    // console.log(`[Debounce] Updated domainCounts for ${baseDomain}:`, accumulatedUpdates[feedId].domainCounts[baseDomain]);
                 }
-            }
-            // Only update imageCardsData if it's purely an image post and no link was found
-            else if (extractedThumbnailUrl) { // This handles cases where only an image embed exists and no link was extracted
-                // Using the thumbnail URL as a key for imageCardsData for now.
-                // If the image had specific alt text from its embed, we'd use that here.
-                const imageKey = extractedThumbnailUrl; 
+            } else if (embed?.$type === 'app.bsky.embed.images' && embed.images?.length > 0) { // Use optional chaining
+                const firstImage = embed.images?.[0]; // Use optional chaining
+                const imageAlt = firstImage?.alt || 'Image without description'; // Use optional chaining
+                const imageKey = imageAlt; 
+                // console.log(`[Debounce] Detected image embed with alt: ${imageAlt}`);
+
                 if (!accumulatedUpdates[feedId].imageCardsData[imageKey]) {
-                    accumulatedUpdates[feedId].imageCardsData[imageKey] = { count: 0, alt: 'Image' }; // Default alt or extract more detailed alt from embed
+                    accumulatedUpdates[feedId].imageCardsData[imageKey] = { count: 0, alt: null }; // Changed to null to ensure proper merge
                 }
                 accumulatedUpdates[feedId].imageCardsData[imageKey].count += 1;
+                if (imageAlt && accumulatedUpdates[feedId].imageCardsData[imageKey].alt === null) {
+                    accumulatedUpdates[feedId].imageCardsData[imageKey].alt = imageAlt;
+                }
+                // console.log(`[Debounce] Updated imageCardsData for ${imageKey}:`, accumulatedUpdates[feedId].imageCardsData[imageKey]);
+            } else if (embed) {
+                // console.log(`[Debounce] Detected other embed type: ${embed.$type || 'unknown'}`);
+            } else {
+                // console.log("[Debounce] No embed detected (text-only post).");
             }
-
 
             // --- Content Type Counting ---
             let contentType = 'Text-only';
@@ -1802,19 +1594,15 @@
                 }
             }
             accumulatedUpdates[feedId].contentTypeCounts[contentType] = (accumulatedUpdates[feedId].contentTypeCounts[contentType] || 0) + 1;
+            // console.log(`[Debounce] Updated contentTypeCounts for ${contentType}:`, accumulatedUpdates[feedId].contentTypeCounts);
 
             // --- Poster Counting (by number of posts) ---
             if (authorDid && authorDid !== 'unknown-did') { // Ensure authorDid is valid
                 accumulatedUpdates[feedId].posterCounts[authorDid] = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1;
-                // PosterLikes will now be identical to posterCounts as per user request to drop simulated likes
-                accumulatedUpdates[feedId].posterLikes[authorDid] = accumulatedUpdates[feedId].posterCounts[authorDid]; 
+                // For demonstration, assume each post adds 1 like.
+                accumulatedUpdates[feedId].posterLikes[authorDid] = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1;
+                // console.log(`[Debounce] Updated posterCounts for ${authorDid}:`, accumulatedUpdates[feedId].posterLikes[authorDid]);
             }
-
-            // Update latestPostTimestamp in accumulatedUpdates for this feed
-            if (!accumulatedUpdates[feedId].latestPostTimestamp || new Date(timestamp) > new Date(accumulatedUpdates[feedId].latestPostTimestamp)) {
-                accumulatedUpdates[feedId].latestPostTimestamp = timestamp;
-            }
-
 
             // Clear any existing timer
             clearTimeout(debounceTimer); // Clear existing timer, ensuring only one pending update
@@ -1825,34 +1613,26 @@
                     return;
                 }
 
-                // Iterate over a copy of accumulatedUpdates keys to avoid issues if accumulatedUpdates is reset during loop
-                const feedsToProcess = Object.keys(accumulatedUpdates);
-
-                for (const currentFeedIdToProcess of feedsToProcess) {
+                // Process all accumulated updates for all feeds
+                for (const currentFeedIdToProcess in accumulatedUpdates) {
                     const feedUpdates = accumulatedUpdates[currentFeedIdToProcess];
-                    // IMPORTANT: Use the latestPostTimestamp from the accumulated updates for this specific feed
-                    const dailyDocDate = new Date(feedUpdates.latestPostTimestamp || new Date()); // Fallback to current date if no timestamp
-                    const dailyDocId = getYYYYMMDD(dailyDocDate);
+                    console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess}:`, JSON.stringify(feedUpdates, null, 2));
 
-                    console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess} (Daily Doc: ${dailyDocId}):`, JSON.stringify(feedUpdates, null, 2));
 
-                    // REVISED PATH for summary document - ALWAYS write to APP_ID
-                    const summaryDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
-                    const dailyDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
-                    
-                    console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId} in ${APP_ID}`); 
-
+                    // REVISED PATH for summary document
+                    const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
+                    const today = new Date();
+                    const dailyDocId = getYYYYMMDD(today);
+                    const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
 
                     try {
-                        // 1. Update All-Time Summary for this feed (in APP_ID)
-                        // Read from APP_ID first to merge new updates
-                        const liveSummarySnap = await getDoc(summaryDocRef);
-                        let currentSummaryData = liveSummarySnap.exists() ? liveSummarySnap.data() : {
+                        // 1. Update All-Time Summary for this feed
+                        const summarySnap = await getDoc(summaryDocRef);
+                        let currentSummaryData = summarySnap.exists() ? summarySnap.data() : {
                             termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
-                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
-                            mentionCounts: {} // NEW: Initialize
+                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
                         };
-                        console.log(`[Firestore Write] Current All-Time Summary Data before merge for ${currentFeedIdToProcess} (${APP_ID}):`, JSON.stringify(currentSummaryData, null, 2));
+                        console.log(`[Firestore Write] Current All-Time Summary Data before merge for ${currentFeedIdToProcess}:`, JSON.stringify(currentSummaryData, null, 2));
 
 
                         // Merge updates into currentSummaryData
@@ -1869,7 +1649,7 @@
                                 currentSummaryData.linkCounts[url].headline = headline;
                             }
                             if (originalTitle && currentSummaryData.linkCounts[url].originalTitle === null) {
-                                currentSummaryData.linkCardsData[url].originalTitle = originalTitle; // Corrected to linkCardsData for consistent title usage
+                                currentSummaryData.linkCounts[url].originalTitle = originalTitle;
                             }
                             if (description && currentSummaryData.linkCounts[url].description === null) {
                                 currentSummaryData.linkCounts[url].description = description;
@@ -1890,10 +1670,9 @@
                             currentSummaryData.contentTypeCounts[key] = (currentSummaryData.contentTypeCounts[key] || 0) + feedUpdates.contentTypeCounts[key];
                         }
                         for (const url in feedUpdates.linkCardsData) {
-                            const { count, title, description, recentPosts, thumbnailUrl } = feedUpdates.linkCardsData[url]; // Get thumbnailUrl
+                            const { count, title, description, recentPosts } = feedUpdates.linkCardsData[url];
                             if (typeof currentSummaryData.linkCardsData[url] !== 'object' || currentSummaryData.linkCardsData[url] === null) {
-                                // Initialize thumbnailUrl to null
-                                currentSummaryData.linkCardsData[url] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                                currentSummaryData.linkCardsData[url] = { count: 0, title: null, description: null, recentPosts: [] };
                             }
                             currentSummaryData.linkCardsData[url].count = (currentSummaryData.linkCardsData[url].count || 0) + count;
                             if (title && currentSummaryData.linkCardsData[url].title === null) {
@@ -1902,10 +1681,6 @@
                             if (description && currentSummaryData.linkCardsData[url].description === null) {
                                 currentSummaryData.linkCardsData[url].description = description;
                             }
-                            // Only set thumbnailUrl if it's found and not already set
-                            if (thumbnailUrl && currentSummaryData.linkCardsData[url].thumbnailUrl === null) {
-                                currentSummaryData.linkCardsData[url].thumbnailUrl = thumbnailUrl;
-                            }
 
                             // Merge recentPosts, ensure uniqueness by postUri, and re-sort/trim
                             let existingRecentPosts = currentSummaryData.linkCardsData[url].recentPosts || [];
@@ -1913,9 +1688,9 @@
                             recentPosts.forEach(newPost => newPostsMap.set(newPost.postUri, newPost)); // Add/overwrite new posts
 
                             existingRecentPosts = Array.from(newPostsMap.values());
-                            // Sort by posterTotalPosts (descending) before slicing
-                            existingRecentPosts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
-                            currentSummaryData.linkCardsData[url].recentPosts = existingRecentPosts.slice(0, 5);
+                            // Sort by simulatedLikes (descending) before slicing
+                            existingRecentPosts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
+                            currentSummaryData.linkCardsData[url].recentPosts = existingRecentPosts.slice(0, 5); // Keep top 5
                         }
                         for (const key in feedUpdates.imageCardsData) {
                             const { count, alt } = feedUpdates.imageCardsData[key];
@@ -1933,22 +1708,17 @@
                         for (const didKey in feedUpdates.posterLikes) {
                             currentSummaryData.posterLikes[didKey] = (currentSummaryData.posterLikes[didKey] || 0) + feedUpdates.posterLikes[didKey];
                         }
-                        for (const didKey in feedUpdates.mentionCounts) { // NEW: Merge mentionCounts
-                            currentSummaryData.mentionCounts[didKey] = (currentSummaryData.mentionCounts[didKey] || 0) + feedUpdates.mentionCounts[didKey];
-                        }
 
                         await setDoc(summaryDocRef, currentSummaryData, { merge: true });
-                        console.log(`[Firestore Write] Successfully updated All-Time Summary for feed ${currentFeedIdToProcess} in ${APP_ID}.`);
+                        console.log(`[Firestore Write] Successfully updated All-Time Summary for feed ${currentFeedIdToProcess}.`);
 
-
-                        // 2. Update Daily Aggregate for this feed (in APP_ID)
+                        // 2. Update Daily Aggregate for this feed
                         const dailySnap = await getDoc(dailyDocRef);
                         let currentDailyData = dailySnap.exists() ? dailySnap.data() : {
                             termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
-                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
-                            mentionCounts: {} // NEW: Initialize
+                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
                         };
-                        console.log(`[Firestore Write] Current Daily Aggregate Data before merge for ${currentFeedIdToProcess} (${dailyDocId}) in ${APP_ID}:`, JSON.stringify(currentDailyData, null, 2));
+                        console.log(`[Firestore Write] Current Daily Aggregate Data before merge for ${currentFeedIdToProcess} (${dailyDocId}):`, JSON.stringify(currentDailyData, null, 2));
 
 
                         // Merge updates into currentDailyData
@@ -1986,9 +1756,9 @@
                             currentDailyData.contentTypeCounts[key] = (currentDailyData.contentTypeCounts[key] || 0) + feedUpdates.contentTypeCounts[key];
                         }
                         for (const url in feedUpdates.linkCardsData) {
-                             const { count, title, description, recentPosts, thumbnailUrl } = feedUpdates.linkCardsData[url];
+                             const { count, title, description, recentPosts } = feedUpdates.linkCardsData[url];
                             if (typeof currentDailyData.linkCardsData[url] !== 'object' || currentDailyData.linkCardsData[url] === null) {
-                                currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                                currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null, recentPosts: [] };
                             }
                             currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url].count || 0) + count;
                             if (title && currentDailyData.linkCardsData[url].title === null) {
@@ -1997,19 +1767,15 @@
                             if (description && currentDailyData.linkCardsData[url].description === null) {
                                 currentDailyData.linkCardsData[url].description = description;
                             }
-                            // Only set thumbnailUrl if it's found and not already set in Firestore
-                            if (thumbnailUrl && currentDailyData.linkCardsData[url].thumbnailUrl === null) {
-                                currentDailyData.linkCardsData[url].thumbnailUrl = thumbnailUrl;
-                            }
 
                             // Merge recentPosts for daily aggregates too
                             let existingDailyRecentPosts = currentDailyData.linkCardsData[url].recentPosts || [];
                             const newDailyPostsMap = new Map(existingDailyRecentPosts.map(p => [p.postUri, p]));
-                            (recentPosts || []).forEach(newPost => newDailyPostsMap.set(newPost.postUri, newPost));
+                            recentPosts.forEach(newPost => newDailyPostsMap.set(newPost.postUri, newPost));
 
                             existingDailyRecentPosts = Array.from(newDailyPostsMap.values());
-                            // Sort by posterTotalPosts (descending) before slicing
-                            existingDailyRecentPosts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                            // Sort by simulatedLikes (descending) before slicing
+                            existingDailyRecentPosts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
                             currentDailyData.linkCardsData[url].recentPosts = existingDailyRecentPosts.slice(0, 5);
                         }
                         for (const key in feedUpdates.imageCardsData) {
@@ -2028,30 +1794,27 @@
                         for (const didKey in feedUpdates.posterLikes) {
                             currentDailyData.posterLikes[didKey] = (currentDailyData.posterLikes[didKey] || 0) + feedUpdates.posterLikes[didKey];
                         }
-                        for (const didKey in feedUpdates.mentionCounts) { // NEW: Merge mentionCounts
-                            currentDailyData.mentionCounts[didKey] = (currentDailyData.mentionCounts[didKey] || 0) + feedUpdates.mentionCounts[didKey];
-                        }
 
                         await setDoc(dailyDocRef, currentDailyData, { merge: true });
-                        console.log(`[Firestore Write] Successfully updated Daily Aggregate for feed ${currentFeedIdToProcess} (${dailyDocId}) in ${APP_ID}.`);
+                        console.log(`[Firestore Write] Successfully updated Daily Aggregate for feed ${currentFeedIdToProcess} (${dailyDocId}).`);
 
 
                     } catch (e) {
                         console.error(`[Firestore Write] Error updating Firestore analysis for feed ${currentFeedIdToProcess} (debounced):`, e);
                         // connectionStatusElem.textContent = `Firestore Update Error for ${feeds[currentFeedIdToProcess].displayName}: ${e.message}`;
                     }
-                } // End of for...of loop for feedsToProcess
+                } // End of for...in loop for accumulatedUpdates
 
                 // Reset all accumulated updates after successful write
                 accumulatedUpdates = {};
                 console.log("[Debounce] Accumulated updates reset.");
-                
-                // After updating Firestore, re-fetch currentFeedData from the single APP_ID
-                if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed being updated
-                    const updatedSummaryDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'summaries', 'allTime');
-                    const updatedDisplaySummarySnap = await getDoc(updatedSummaryDocRef); 
-                    if (updatedDisplaySummarySnap.exists()) {
-                        const updatedData = updatedDisplaySummarySnap.data();
+
+                // After updating Firestore, explicitly re-fetch currentFeedData from Firestore
+                // to ensure the UI updates with the very latest state.
+                if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed
+                    const updatedSummarySnap = await getDoc(summaryDocRef); // Re-fetch the allTime summary
+                    if (updatedSummarySnap.exists()) {
+                        const updatedData = updatedSummarySnap.data();
                         // Manually update currentFeedData to ensure latest state is used for UI
                         currentFeedData.termCounts = updatedData.termCounts || {};
                         currentFeedData.linkCounts = updatedData.linkCounts || {};
@@ -2061,12 +1824,11 @@
                         currentFeedData.imageCardsData = updatedData.imageCardsData || {};
                         currentFeedData.posterCounts = updatedData.posterCounts || {};
                         currentFeedData.posterLikes = updatedData.posterLikes || {};
-                        currentFeedData.mentionCounts = updatedData.mentionCounts || {};
-                        console.log(`[Debounce] currentFeedData manually refreshed from ${APP_ID} for active feed ${currentActiveFeedId}.`);
+                        console.log(`[Debounce] currentFeedData manually refreshed from Firestore for active feed ${currentActiveFeedId}.`);
                     } else {
-                        console.warn(`[Debounce] All-Time summary doc for ${currentActiveFeedId} does not exist in ${APP_ID}, cannot refresh currentFeedData.`);
+                        console.warn(`[Debounce] All-Time summary doc for ${currentActiveFeedId} still doesn't exist after write, cannot refresh currentFeedData.`);
                         // Ensure currentFeedData is cleared if doc disappeared unexpectedly
-                        currentFeedData = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}, mentionCounts: {} };
+                        currentFeedData = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {} };
                     }
                 }
                 
@@ -2076,12 +1838,10 @@
             }, DEBOUNCE_DELAY);
         }
 
-        // --- UI Update Functions ---
-        function renderAnalysis(termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData, mentionCountsData) { 
-            console.log("Rendering analysis with data:", { termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData, mentionCountsData });
+        // --- Render Functions for Analysis ---
+        function renderAnalysis(termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData) { 
+            console.log("Rendering analysis with data:", { termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData });
 
-            // REMOVED: Populate the hashtag filter dropdown (no longer needed)
-            
             // Render Top Hashtags
             const sortedTerms = Object.entries(termData)
                 .sort(([, countA], [, countB]) => countB - countA)
@@ -2107,7 +1867,7 @@
                 });
             }
 
-            // No filtering applied to richLinkCardsData now
+            // Render Link Cards (with Title & Description) in the topLinksDiv
             const sortedRichLinkCards = Object.entries(richLinkCardsData)
                 .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
                 .slice(0, 10);
@@ -2121,91 +1881,58 @@
                     item.className = 'link-card'; 
                     // No direct href on the card, but internal elements can have them
 
-                    let imageHtml = '';
-                    if (data.thumbnailUrl) {
-                        imageHtml = `<img src="${data.thumbnailUrl}" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e2e8f0/333?text=No+Image';" alt="${data.title || 'Link thumbnail'}" class="w-full h-32 object-cover rounded-t-md mb-2">`;
-                    }
+                    // Create URL link for headline
+                    const headlineLink = document.createElement('a');
+                    headlineLink.href = url;
+                    headlineLink.target = "_blank";
+                    headlineLink.rel = "noopener noreferrer";
+                    headlineLink.className = 'link-card-headline';
+                    headlineLink.textContent = data.title;
 
-                    item.innerHTML = `
-                        ${imageHtml}
-                        <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-card-headline">
-                            ${data.title}
-                        </a>
-                        <div class="link-card-description">${data.description}</div>
-                        <div class="link-card-url">${url}</div>
-                        <div class="link-card-footer">
-                            <span class="link-card-count">${data.count} clicks</span>
-                            <button class="link-card-comment-btn" title="View posts for ${url}" data-link-url="${url}">
-                                <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.735-1.579l-3.321 1.096A1 1 0 01.328 15.22l1.096-3.321A7.002 7.002 0 002 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"></path>
-                                </svg>
-                            </button>
-                        </div>
+                    const descriptionDiv = document.createElement('div');
+                    descriptionDiv.className = 'link-card-description';
+                    descriptionDiv.textContent = data.description;
+
+                    const urlDiv = document.createElement('div');
+                    urlDiv.className = 'link-card-url';
+                    urlDiv.textContent = url;
+
+                    const footerDiv = document.createElement('div');
+                    footerDiv.className = 'link-card-footer';
+
+                    const countSpan = document.createElement('span');
+                    countSpan.className = 'link-card-count';
+                    countSpan.textContent = `${data.count} clicks`;
+
+                    const commentButton = document.createElement('button');
+                    commentButton.className = 'link-card-comment-btn';
+                    commentButton.title = `View posts for ${url}`;
+                    commentButton.innerHTML = `
+                        <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.735-1.579l-3.321 1.096A1 1 0 01.328 15.22l1.096-3.321A7.002 7.002 0 002 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"></path>
+                        </svg>
                     `;
+                    commentButton.onclick = () => openLinkPostsModal(url);
+
+                    footerDiv.appendChild(countSpan);
+                    footerDiv.appendChild(commentButton);
+
+                    item.appendChild(headlineLink);
+                    item.appendChild(descriptionDiv);
+                    item.appendChild(urlDiv);
+                    item.appendChild(footerDiv);
+
                     topLinksDiv.appendChild(item);
                 });
             }
 
-            // Render Top Domains - Apply canonicalization here for display
-            const canonicalizedDomainData = canonicalizeDisplayDomains(domainData);
+            // Render Top Posters (using posterLikesData, if available, otherwise fallback to posterCountsData)
+            // Prioritize posterLikesData if it has values, otherwise use posterCountsData
+            const dataForTopPosters = Object.keys(posterLikesData).length > 0 ? posterLikesData : posterCountsData;
+            console.log("Data for Top Posters:", dataForTopPosters);
 
-            const sortedDomains = Object.entries(canonicalizedDomainData)
-                .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
-                .slice(0, 10);
 
-            topDomainsDiv.innerHTML = '';
-            if (sortedDomains.length === 0) {
-                topDomainsDiv.innerHTML = '<p class="text-gray-500 text-center">No domains yet to analyze.</p>';
-            } else {
-                sortedDomains.forEach(([domain, data]) => {
-                    const item = document.createElement('div');
-                    item.className = 'domain-card';
-                    
-                    // Construct the tooltip string with original full domains
-                    let tooltipText = `Website: ${domain}`;
-                    if (data.original_full_domains_list && data.original_full_domains_list.length > 0) {
-                        tooltipText += `\nIncludes: ${Array.from(data.original_full_domains_list).join(', ')}`; // Ensure it's an array for join
-                    }
-                    item.title = tooltipText;
-
-                    item.innerHTML = `
-                        <div class="domain-card-name">
-                            ${domain}
-                        </div>
-                        <div class="domain-card-count">
-                            ${data.count} visits
-                        </div>
-                    `;
-                    topDomainsDiv.appendChild(item);
-                });
-            }
-
-            // Render Content Type Breakdown
-            const sortedContentTypes = Object.entries(contentTypeData)
-                .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 5);
-
-            contentTypeBreakdownDiv.innerHTML = '';
-            if (sortedContentTypes.length === 0) {
-                contentTypeBreakdownDiv.innerHTML = '<p class="text-gray-500 text-center">No content types yet to analyze.</p>';
-            } else {
-                sortedContentTypes.forEach(([type, count]) => {
-                    const item = document.createElement('div');
-                    item.className = 'domain-card';
-                    item.innerHTML = `
-                        <div class="domain-card-name">
-                            ${type}
-                        </div>
-                        <div class="domain-card-count">
-                            ${count} posts
-                        </div>
-                    `;
-                    contentTypeBreakdownDiv.appendChild(item);
-                });
-            }
-
-            // NEW: Render Top Posters (using posterCountsData)
-            const sortedPosters = Object.entries(posterCountsData)
+            const sortedPosters = Object.entries(dataForTopPosters)
                 .sort(([, countA], [, countB]) => countB - countA)
                 .slice(0, 10); // Get top 10 posters
 
@@ -2214,105 +1941,89 @@
                 topPostersListDiv.innerHTML = '<p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>';
             } else {
                 sortedPosters.forEach(([did, count]) => {
-                    const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?' }; // Default avatar
+                    const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]' };
                     const item = document.createElement('a');
                     item.href = `https://bsky.app/profile/${resolvedInfo.handle}`; // Link to Bluesky profile
                     item.target = "_blank";
                     item.rel = "noopener noreferrer";
-                    item.className = 'poster-card'; // Use new poster-card styling
+                    item.className = 'link-card'; // Reuse link-card styling
                     item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
 
+                    // Determine the label based on whether we are showing likes or post count
+                    // IMPORTANT: The live WebSocket stream does NOT provide like counts directly.
+                    // This currently counts posts as likes for demonstration purposes.
+                    // For true like counts, a backend service polling Bluesky's API is required.
+                    const countLabel = Object.keys(posterLikesData).length > 0 ? `${count} likes` : `${count} posts`;
+
                     item.innerHTML = `
-                        <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
-                        <div class="poster-info">
-                            <div class="poster-display-name">${resolvedInfo.displayName}</div> 
-                            <div class="poster-handle">@${resolvedInfo.handle}</div> 
+                        <div class="link-card-headline">
+                            ${resolvedInfo.displayName}
                         </div>
-                        <div class="poster-count">
-                            ${count} posts
+                        <div class="text-gray-500 text-sm poster-handle">@${resolvedInfo.handle}</div>
+                        <div class="text-gray-500 text-xs poster-did">${did}</div>
+                        <div class="link-card-count">
+                            ${countLabel}
                         </div>
                     `;
                     topPostersListDiv.appendChild(item);
                 });
             }
 
-            // NEW: Render Top Mentions
-            const sortedMentions = Object.entries(mentionCountsData)
-                .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 10); // Get top 10 mentioned users
-
-            topMentionsListDiv.innerHTML = ''; // Clear previous content
-            if (sortedMentions.length === 0) {
-                topMentionsListDiv.innerHTML = '<p class="text-gray-500 text-center">No mentions yet to rank from the feed.</p>';
-            } else {
-                sortedMentions.forEach(([did, count]) => {
-                    const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?m' }; // Default avatar
-                    const item = document.createElement('a');
-                    item.href = `https://bsky.app/profile/${resolvedInfo.handle}`; // Link to Bluesky profile
-                    item.target = "_blank";
-                    item.rel = "noopener noreferrer";
-                    item.className = 'poster-card'; // Reuse poster-card styling
-                    item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
-
-                    item.innerHTML = `
-                        <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
-                        <div class="poster-info">
-                            <div class="poster-display-name">${resolvedInfo.displayName}</div> 
-                            <div class="poster-handle">@${resolvedInfo.handle}</div> 
-                        </div>
-                        <div class="poster-count">
-                            ${count} mentions
-                        </div>
-                    `;
-                    topMentionsListDiv.appendChild(item);
-                });
-            }
-
-
-            // Attach event listeners for comment buttons after rendering
-            document.querySelectorAll('.link-card-comment-btn').forEach(button => {
-                button.onclick = (event) => {
-                    event.preventDefault(); // Prevent default link behavior if inside an <a>
-                    const url = event.currentTarget.dataset.linkUrl;
-                    openLinkPostsModal(url);
-                };
-            });
+            // Render Top Mentions (placeholder, as data source is not yet defined)
+            topMentionsListDiv.innerHTML = '<p class="text-gray-500 text-center">No mentions yet to display.</p>'; // Placeholder content
         }
 
         // --- Timeframe Selection and Data Fetching/Display ---
         async function updateView(timeframe) {
             console.log(`Update View: Switching to timeframe: ${timeframe}`);
             currentSelectedTimeframe = timeframe;
-            // Persist selected timeframe
-            localStorage.setItem('selectedTimeframe', timeframe);
-            // Update connection status immediately
+            loadingIndicatorElem.style.display = 'block';
             connectionStatusElem.textContent = `Fetching data for ${timeframe}...`;
-            connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
-            connectionStatusElem.classList.add('text-orange-600'); // Indicate fetching state
-
 
             let termsToDisplay = {};
             let linksToDisplay = {}; // This will hold the consolidated link data for display
-            let domainsToDisplay = {}; 
-            let contentTypesToDisplay = {};
+            let domainsToDisplay = {}; // Still collected in backend, but not displayed here
+            let contentTypesToDisplay = {}; // Still collected in backend, but not displayed here
             let postersToDisplayByCount = {}; // For ranking by posts
-            let postersToDisplayByLikes = {}; // For ranking by likes (now same as posts)
-            let mentionsToDisplay = {}; // NEW: For mentions
+            let postersToDisplayByLikes = {}; // For ranking by likes
 
             if (timeframe === 'allTime') {
-                // For 'allTime', currentFeedData is now manually updated by debouncedUpdateFirestoreAnalysis
-                // or fetched on feed switch/init. We just use the existing data.
-                console.log("Update View: Using currentFeedData (from memory) for 'allTime'.");
+                // For 'allTime', explicitly re-fetch from Firestore to ensure latest state is used.
+                // This addresses the issue where 'allTime' might not reflect the most recent debounced writes.
+                const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentActiveFeedId, 'summaries', 'allTime');
+                try {
+                    const summarySnap = await getDoc(summaryDocRef);
+                    if (summarySnap.exists()) {
+                        const data = summarySnap.data();
+                        currentFeedData.termCounts = data.termCounts || {};
+                        currentFeedData.linkCounts = data.linkCounts || {};
+                        currentFeedData.domainCounts = data.domainCounts || {};
+                        currentFeedData.contentTypeCounts = data.contentTypeCounts || {};
+                        currentFeedData.linkCardsData = data.linkCardsData || {}; // Crucial for recentPosts
+                        currentFeedData.imageCardsData = data.imageCardsData || {};
+                        currentFeedData.posterCounts = data.posterCounts || {};
+                        currentFeedData.posterLikes = data.posterLikes || {};
+                        console.log("Update View: Refreshed currentFeedData from Firestore for 'allTime'.");
+                    } else {
+                        console.warn(`Update View: All-Time summary doc for ${currentActiveFeedId} does not exist.`);
+                        currentFeedData = {
+                            termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
+                        };
+                    }
+                } catch (error) {
+                    console.error(`Update View: Error fetching allTime data for ${currentActiveFeedId}:`, error);
+                    connectionStatusElem.textContent = `Error fetching allTime data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
+                }
+
                 termsToDisplay = currentFeedData.termCounts;
                 linksToDisplay = currentFeedData.linkCardsData; // Use linkCardsData directly for display
-                domainsToDisplay = currentFeedData.domainCounts;
-                contentTypesToDisplay = currentFeedData.contentTypeCounts;
+                domainsToDisplay = currentFeedData.domainCounts; // Still collected in backend, but not displayed here
+                contentTypesToDisplay = currentFeedData.contentTypeCounts; // Still collected in backend, but not displayed here
                 postersToDisplayByCount = currentFeedData.posterCounts;
                 postersToDisplayByLikes = currentFeedData.posterLikes; 
-                mentionsToDisplay = currentFeedData.mentionCounts; // NEW: Use mentionCounts
                 connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
-                connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
-                connectionStatusElem.classList.add('text-green-600');
+                console.log("Update View: Using refreshed currentFeedData for 'allTime'.");
 
             } else {
                 const today = new Date();
@@ -2328,11 +2039,11 @@
                     startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 }
                 const startYYYYMMDD = getYYYYMMDD(startDate);
-                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe} from ${APP_ID}.`);
+                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe}.`);
 
 
-                // Fetch data for the selected timeframe from the active feed's daily aggregates (from APP_ID)
-                const dailyAggregatesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
+                // Fetch data for the selected timeframe from the active feed's daily aggregates
+                const dailyAggregatesRef = collection(db, 'artifacts', appId, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
                 // Query for documents whose ID (date string) is greater than or equal to the start date
                 const q = query(dailyAggregatesRef, where('__name__', '>=', startYYYYMMDD));
 
@@ -2340,7 +2051,7 @@
                     const querySnapshot = await getDocs(q);
                     console.log(`Update View: Found ${querySnapshot.docs.length} daily aggregate documents for ${timeframe}.`);
                     if (querySnapshot.docs.length === 0) {
-                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD} in ${APP_ID}.`);
+                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD}.`);
                     }
 
                     querySnapshot.forEach((docSnap) => {
@@ -2352,16 +2063,15 @@
                         const dailyContentTypes = data.contentTypeCounts || {};
                         const dailyPosterCounts = data.posterCounts || {};
                         const dailyPosterLikes = data.posterLikes || {}; 
-                        const dailyMentionCounts = data.mentionCounts || {}; // NEW: Load daily mentionCounts
 
                         for (const term in dailyTerms) {
                             termsToDisplay[term] = (termsToDisplay[term] || 0) + dailyTerms[term];
                         }
-                        // Aggregate linkCardsData (including recentPosts and thumbnailUrl)
+                        // Aggregate linkCardsData (including recentPosts)
                         for (const url in dailyLinkCards) {
-                            const { count, title, description, recentPosts, thumbnailUrl } = dailyLinkCards[url];
+                            const { count, title, description, recentPosts } = dailyLinkCards[url];
                             if (!linksToDisplay[url]) { 
-                                linksToDisplay[url] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                                linksToDisplay[url] = { count: 0, title: null, description: null, recentPosts: [] };
                             }
                             linksToDisplay[url].count += count;
                             if (title && linksToDisplay[url].title === null) {
@@ -2370,18 +2080,14 @@
                             if (description && linksToDisplay[url].description === null) {
                                 linksToDisplay[url].description = description;
                             }
-                            if (thumbnailUrl && linksToDisplay[url].thumbnailUrl === null) {
-                                linksToDisplay[url].thumbnailUrl = thumbnailUrl;
-                            }
-
                             // Merge recentPosts, ensure uniqueness by postUri, and re-sort/trim
                             let existingRecentPosts = linksToDisplay[url].recentPosts || [];
                             const newPostsMap = new Map(existingRecentPosts.map(p => [p.postUri, p]));
                             (recentPosts || []).forEach(newPost => newPostsMap.set(newPost.postUri, newPost));
 
                             existingRecentPosts = Array.from(newPostsMap.values());
-                            // Sort by posterTotalPosts (descending) before slicing
-                            existingRecentPosts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                            // Sort by simulatedLikes (descending) before slicing
+                            existingRecentPosts.sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
                             linksToDisplay[url].recentPosts = existingRecentPosts.slice(0, 5); // Keep top 5
                         }
                         for (const simplifiedDomain in dailyDomains) {
@@ -2404,58 +2110,27 @@
                         for (const didKey in dailyPosterLikes) {
                             postersToDisplayByLikes[didKey] = (postersToDisplayByLikes[didKey] || 0) + dailyPosterLikes[didKey];
                         }
-                        for (const didKey in dailyMentionCounts) { // NEW: Aggregate daily mentionCounts
-                            mentionsToDisplay[didKey] = (mentionsToDisplay[didKey] || 0) + dailyMentionCounts[didKey];
-                        }
                     });
                     connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
-                    connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
-                    connectionStatusElem.classList.add('text-green-600');
                 } catch (error) {
-                    console.error(`Update View: Error fetching ${timeframe} data for ${currentActiveFeedId} from ${APP_ID}:`, error);
+                    console.error(`Update View: Error fetching ${timeframe} data for ${currentActiveFeedId}:`, error);
                     connectionStatusElem.textContent = `Error fetching ${timeframe} data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
-                    connectionStatusElem.classList.remove('text-green-600', 'text-orange-600');
-                    connectionStatusElem.classList.add('text-red-600');
                 }
             }
 
             currentDisplayTermCounts = termsToDisplay;
             currentDisplayLinkCounts = linksToDisplay; 
-            currentDisplayDomainCounts = domainsToDisplay;
-            currentDisplayContentTypeCounts = contentTypesToDisplay;
+            currentDisplayDomainCounts = domainsToDisplay; // Still collected in backend, but not displayed here
+            currentDisplayContentTypeCounts = contentTypesToDisplay; // Still collected in backend, but not displayed here
             currentDisplayPosterCounts = postersToDisplayByCount;
             currentDisplayPosterLikes = postersToDisplayByLikes; 
-            currentDisplayMentionCounts = mentionsToDisplay; // NEW: Set current display mentions
 
-            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts, currentDisplayContentTypeCounts, currentDisplayPosterCounts, currentDisplayPosterLikes, currentDisplayMentionCounts); 
+            // Only pass the relevant data to renderAnalysis now
+            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts, currentDisplayContentTypeCounts, currentDisplayPosterCounts, currentDisplayPosterLikes); 
+            loadingIndicatorElem.style.display = 'none';
         }
 
         // --- Feed Switching Logic ---
-        async function switchFeed(newFeedId) { // Made async to await fetchFeedSummaryData
-            if (currentActiveFeedId === newFeedId) {
-                console.log(`Switch Feed: Already on ${newFeedId} feed.`);
-                return;
-            }
-
-            console.log(`Switch Feed: Switching feed from ${currentActiveFeedId} to ${newFeedId}`);
-            currentActiveFeedId = newFeedId;
-            // Persist active feed ID
-            localStorage.setItem('activeFeedId', newFeedId);
-
-            // Update UI immediately for responsiveness
-            updateUIForActiveFeed(newFeedId);
-            
-            // Reconnect WebSocket to the new feed URI
-            connectWebSocket(newFeedId);
-
-            // Fetch the all-time summary data for the new feed from APP_ID
-            await fetchFeedSummaryData(newFeedId); // Await this to ensure currentFeedData is populated
-
-            // Re-fetch and render analysis data for the new feed based on current timeframe
-            updateView(currentSelectedTimeframe);
-        }
-
-        // --- UI Update Function for Active Feed (unchanged) ---
         function updateUIForActiveFeed(feedId) {
             const feed = feeds[feedId];
             if (!feed) {
@@ -2464,48 +2139,32 @@
             }
             console.log(`UI Update: Updating UI for feed: ${feedId}`);
 
-            // Determine the current version to load for the active feed
-            const activeVersionKey = `activeVersion_${feedId}`;
-            let currentVersionSrc = localStorage.getItem(activeVersionKey) || feed.versions[0].src;
-            mainIframe.src = currentVersionSrc;
-
-            // Update title link href
-            feedTitleLink.href = feed.blueskyProfileUrl;
+            // Update iframe src
+            mainIframe.src = feed.iframeSrc;
 
             // Update title and icon
             feedTitleText.textContent = feed.displayName;
-            // Get the icon wrapper for applying consistent styles
-            const iconWrapper = feedTitleIcon.parentNode;
-
             if (feed.icon.startsWith('http')) {
                 feedTitleIcon.src = feed.icon;
                 feedTitleIcon.style.display = 'inline'; // Show image
-                // Apply the CSS variable for scale to the image
-                feedTitleIcon.style.setProperty('--title-icon-scale', feed.titleIconScale);
-                
                 // Remove existing SVG if it was previously displayed
-                const existingSvg = iconWrapper.querySelector('svg');
-                if (existingSvg) { // Check if any SVG exists
-                    // Only remove if it's the one we placed for 'train'
-                    if (existingSvg.id === 'feedTitleSvgIcon') { 
-                        existingSvg.remove();
-                    }
+                const existingSvg = feedTitleIcon.nextElementSibling;
+                if (existingSvg && existingSvg.tagName.toLowerCase() === 'svg') {
+                    existingSvg.remove();
                 }
             } else if (feed.icon === 'train') { // Handle 'train' icon
                 feedTitleIcon.style.display = 'none'; // Hide the image
-                feedTitleIcon.style.setProperty('--title-icon-scale', '1'); // Reset image scale
-                
-                let svgIcon = iconWrapper.querySelector('svg');
-                // If the SVG doesn't exist or is not the one we created, create it
-                if (!svgIcon || svgIcon.id !== 'feedTitleSvgIcon') {
+                let svgIcon = feedTitleIcon.nextElementSibling;
+                // If the next sibling is not an SVG or doesn't exist, create it
+                if (!svgIcon || svgIcon.tagName.toLowerCase() !== 'svg' || svgIcon.id !== 'feedTitleSvgIcon') {
                     if (svgIcon) svgIcon.remove(); // Remove incorrect sibling if it exists
                     svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svgIcon.setAttribute('class', 'w-10 h-10'); // Apply Tailwind classes
+                    svgIcon.setAttribute('fill', 'currentColor');
+                    svgIcon.setAttribute('viewBox', '0 0 24 24');
                     svgIcon.setAttribute('id', 'feedTitleSvgIcon'); // Add an ID to track it
-                    iconWrapper.appendChild(svgIcon); // Append to the wrapper
+                    feedTitleIcon.parentNode.insertBefore(svgIcon, feedTitleIcon.nextSibling);
                 }
-                svgIcon.setAttribute('class', 'w-full h-full'); // Fill the wrapper
-                svgIcon.setAttribute('fill', 'currentColor');
-                svgIcon.setAttribute('viewBox', '0 0 24 24');
                 // Path for a simple train/subway icon (example using a common rail icon shape)
                 svgIcon.innerHTML = `<path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>`;
                 svgIcon.style.display = 'inline'; // Show SVG
@@ -2518,14 +2177,7 @@
                 // Also reset icon color for non-active SVG buttons
                 const svgInBtn = btn.querySelector('svg');
                 if (svgInBtn) {
-                    // Check if it's the specific SVG icon we manage, don't touch if it's another SVG for other purpose
-                    if (svgInBtn.id === 'feedTitleSvgIcon' || btn.id === 'transitSkyFeedBtn') { 
-                        if (document.body.classList.contains('dark-mode')) {
-                            svgInBtn.style.color = '#e2e8f0'; // Light color for dark mode
-                        } else {
-                            svgInBtn.style.color = '#333'; // Default color from CSS variable
-                        }
-                    }
+                    svgInBtn.style.color = 'var(--text-color)'; // Default color from CSS variable
                 }
             });
             const activeBtn = document.getElementById(`${feedId}FeedBtn`);
@@ -2533,42 +2185,29 @@
                 activeBtn.classList.add('active-feed-btn');
                 // Active button's background and SVG color will be handled by .active-feed-btn CSS
             }
-            renderFeedVersionButtons(feedId); // Render version buttons specific to this feed
         }
 
-        function renderFeedVersionButtons(feedId) {
-            feedVersionButtonsContainer.innerHTML = ''; // Clear previous buttons
-            const feed = feeds[feedId];
-
-            if (feed && feed.versions && feed.versions.length > 1) { // Only render if multiple versions exist
-                const activeVersionKey = `activeVersion_${feedId}`;
-                let currentActiveVersionSrc = localStorage.getItem(activeVersionKey) || feed.versions[0].src;
-
-                feed.versions.forEach((version) => {
-                    const button = document.createElement('button');
-                    button.textContent = version.name;
-                    button.className = 'px-4 py-2 text-sm font-medium rounded-md transition duration-200';
-                    
-                    if (version.src === currentActiveVersionSrc) {
-                        button.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
-                    } else {
-                        button.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-                    }
-
-                    button.addEventListener('click', () => {
-                        mainIframe.src = version.src;
-                        localStorage.setItem(activeVersionKey, version.src);
-                        // Re-render buttons to update active state
-                        renderFeedVersionButtons(feedId);
-                    });
-                    feedVersionButtonsContainer.appendChild(button);
-                });
-                feedVersionButtonsContainer.style.display = 'flex'; // Show the container
-            } else {
-                feedVersionButtonsContainer.style.display = 'none'; // Hide if no multiple versions
+        async function switchFeed(newFeedId) {
+            if (currentActiveFeedId === newFeedId) {
+                console.log(`Switch Feed: Already on ${newFeedId} feed.`);
+                return;
             }
-        }
 
+            console.log(`Switch Feed: Switching feed from ${currentActiveFeedId} to ${newFeedId}`);
+            currentActiveFeedId = newFeedId;
+
+            // Update UI immediately for responsiveness
+            updateUIForActiveFeed(newFeedId);
+            
+            // Reconnect WebSocket to the new feed URI
+            connectWebSocket(newFeedId);
+
+            // Resubscribe Firestore listener to the new feed's summary data
+            setupFirestoreListener(newFeedId);
+
+            // Re-fetch and render analysis data for the new feed based on current timeframe
+            updateView(currentSelectedTimeframe);
+        }
 
         // --- Event Listeners for Timeframe Selector ---
         document.querySelectorAll('input[name="timeframe"]').forEach(radio => {
@@ -2582,15 +2221,12 @@
         bandcampFeedBtn.addEventListener('click', () => switchFeed('bandcamp'));
         transitSkyFeedBtn.addEventListener('click', () => switchFeed('transitSky')); // NEW: Event Listener for TransitSky
 
-        // REMOVED: Event Listener for Hashtag Link Filter (no longer needed)
 
         // --- Initialize on DOMContentLoaded ---
         document.addEventListener('DOMContentLoaded', () => {
             initializeFirebase(); // Start Firebase initialization and auth
-            // Initial UI update for the feed loaded from localStorage or default
-            // This will now be handled by initializeFirebase's onAuthStateChanged callback
-            // after Firebase is ready and the initial Firestore snapshot is received.
-            // connectWebSocket is called within initializeFirebase now after initial setup is complete.
+            // Initial UI update for default feed (Urbanism+)
+            updateUIForActiveFeed(currentActiveFeedId);
         });
 
         // Cleanup WebSocket on window unload
@@ -2664,8 +2300,6 @@
                 document.body.classList.remove('dark-mode');
             }
             localStorage.setItem('darkModeEnabled', isDarkMode);
-            // Re-apply feed button SVG colors based on new dark mode state
-            updateUIForActiveFeed(currentActiveFeedId); 
         }
 
         // Event listeners for settings modal
@@ -2685,16 +2319,12 @@
             applyTheme(event.target.value);
         });
 
-        // Event listener for the new plus button to open its modal
+        // Event listener for the new plus button
         plusBtn.addEventListener('click', () => {
-            plusButtonModal.classList.remove('hidden');
+            // Placeholder for future functionality
+            console.log("Plus button clicked!");
+            // You can add a small temporary message or alert here if needed for feedback
         });
-
-        // Event listener for closing the plus button modal
-        closePlusButtonModalBtn.addEventListener('click', () => {
-            plusButtonModal.classList.add('hidden');
-        });
-
 
         // Load settings on initial page load
         document.addEventListener('DOMContentLoaded', () => {
@@ -2717,7 +2347,6 @@
                 themeSelect.value = 'none'; // Default to 'None' if no saved theme or invalid
                 applyTheme('none');
             }
-            // REMOVED: Load Link Filter Hashtag preference (no longer needed)
         });
 
         // --- Link Posts Modal Functions ---
@@ -2730,8 +2359,9 @@
                 linkPostsModalTitle.textContent = `Top Posts for: ${linkData.title || url}`;
                 linkPostsContent.innerHTML = ''; // Clear previous content
 
-                // Sort posts by posterTotalPosts (descending)
-                const sortedPosts = [...linkData.recentPosts].sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                // Sort posts by simulatedLikes (descending) - This already happens in debouncedUpdateFirestoreAnalysis
+                // but re-sorting here ensures the very latest order from the current aggregated data.
+                const sortedPosts = [...linkData.recentPosts].sort((a, b) => (b.simulatedLikes || 0) - (a.simulatedLikes || 0));
 
                 sortedPosts.forEach(post => {
                     const resolvedInfo = resolvedDidsCache[post.authorDid] || { handle: '[unknown]', displayName: '[unknown]' };
@@ -2745,7 +2375,7 @@
                         <div class="post-content">${post.textPreview}</div>
                         <div class="post-timestamp">
                             ${new Date(post.timestamp).toLocaleString()}
-                            ${post.posterTotalPosts !== undefined ? ` (Posts by author: ${post.posterTotalPosts})` : ''}
+                            ${post.simulatedLikes !== undefined ? ` (Simulated Likes: ${post.simulatedLikes})` : ''}
                         </div>
                     `;
                     linkPostsContent.appendChild(postElement);
