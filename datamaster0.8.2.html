@@ -699,7 +699,7 @@
                     </div>
                     <div class="text-sm text-gray-600 flex flex-col items-end flex-shrink-0">
                         <span id="connectionStatus">Initializing...</span>
-                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.8.1</span>
+                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.8.2</span>
                     </div>
                 </div>
                 
@@ -1751,40 +1751,18 @@
                     const feedUpdates = accumulatedUpdates[currentFeedIdToProcess];
                     console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess}:`, JSON.stringify(feedUpdates, null, 2));
 
-                    // Use the timestamp of the last processed post (or simply 'now' for the daily aggregate doc)
-                    // It's better to use the timestamp from the post itself for the daily aggregate.
-                    // If we want this to represent *today's* data according to the client, we use `new Date()`.
-                    // Given the user's issue, we want this to be based on the incoming post's timestamp,
-                    // which is implicitly handled as the timestamp passed into debouncedUpdateFirestoreAnalysis.
-                    // For the dailyDocId, we should specifically create a Date object from the LAST post's timestamp.
-                    // However, since `accumulatedUpdates` aggregates from multiple posts, we can use the current
-                    // wall-clock time for the daily aggregate document ID, ensuring consistency.
-                    // The core issue described by the user means data is being saved to '2025-06-06'
-                    // instead of '2025-06-07'. This implies `new Date()` was resolving to the 6th when the
-                    // debounce fired, or the timezone was problematic.
-                    // To guarantee it always uses "today" in the user's local time (which seems to be the intent),
-                    // we'll stick with `new Date()` for the dailyDocId creation.
-                    // The problem is more likely that no posts *for today* were processed to trigger the debounce,
-                    // or `new Date().getDate()` was giving the previous day.
-
-                    // Let's re-evaluate: The console log shows `Found 0 daily aggregate documents for day` starting `2025-06-07`.
-                    // This means `getYYYYMMDD(today)` was indeed `2025-06-07`.
-                    // The problem is that the *write* isn't happening for `2025-06-07`.
-                    // This implies the `dailyDocId` inside `debouncedUpdateFirestoreAnalysis` was for `2025-06-06`.
-
-                    // This was the problem: `const today = new Date();` was inside the debounced function.
-                    // The timestamp parameter is only for the post.
-                    // When debounce fires, it should pick the current date for the daily aggregate based on current time.
-                    // The crucial bit is that `timestamp` is passed *to* `debouncedUpdateFirestoreAnalysis`.
-                    // Let's create the date object from *that* timestamp. This makes the daily aggregate specific to the post's date.
-                    const postDateForDailyDoc = new Date(timestamp); // Use the post's actual creation timestamp
-                    const dailyDocId = getYYYYMMDD(postDateForDailyDoc); // Generate doc ID based on post's date
-
-
                     // REVISED PATH for summary document
                     const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
                     
+                    // CRITICAL CHANGE: Use the timestamp of the last post that triggered this debounce for the dailyDocId
+                    // This ensures the daily aggregate reflects the actual day the post was created on Bluesky.
+                    // Assuming `timestamp` is the latest received post's timestamp for the current debounce batch.
+                    const dailyDocDate = new Date(timestamp); 
+                    const dailyDocId = getYYYYMMDD(dailyDocDate);
                     const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
+                    
+                    console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId}`); // Add this debug log
+
 
                     try {
                         // 1. Update All-Time Summary for this feed
@@ -1843,7 +1821,7 @@
                             if (description && currentSummaryData.linkCardsData[url].description === null) {
                                 currentSummaryData.linkCardsData[url].description = description;
                             }
-                            // Only set thumbnailUrl if it's found and not already set in Firestore
+                            // Only set thumbnailUrl if it's found and not already set
                             if (thumbnailUrl && currentSummaryData.linkCardsData[url].thumbnailUrl === null) {
                                 currentSummaryData.linkCardsData[url].thumbnailUrl = thumbnailUrl;
                             }
@@ -1915,16 +1893,15 @@
                             currentDailyData.domainCounts[simplifiedDomain].count = (currentDailyData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
                             for (const originalHost in updateData.sources) {
                                 currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
-                                    (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                                    (currentDailyData.domainDocs[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
                             }
                         }
                         for (const key in feedUpdates.contentTypeCounts) {
                             currentDailyData.contentTypeCounts[key] = (currentDailyData.contentTypeCounts[key] || 0) + feedUpdates.contentTypeCounts[key];
                         }
                         for (const url in feedUpdates.linkCardsData) {
-                             const { count, title, description, recentPosts, thumbnailUrl } = feedUpdates.linkCardsData[url]; // Get thumbnailUrl
+                             const { count, title, description, recentPosts, thumbnailUrl } = feedUpdates.linkCardsData[url];
                             if (typeof currentDailyData.linkCardsData[url] !== 'object' || currentDailyData.linkCardsData[url] === null) {
-                                // Initialize thumbnailUrl to null
                                 currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
                             }
                             currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url].count || 0) + count;
