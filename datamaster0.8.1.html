@@ -1044,7 +1044,7 @@
 
         // Plus Button Modal elements
         const plusButtonModal = document.getElementById('plusButtonModal');
-        const closePlusButtonModalBtn = document = ('closePlusButtonModalBtn');
+        const closePlusButtonModalBtn = document.getElementById('closePlusButtonModalBtn');
 
 
         // --- Analysis Data (synced with Firestore for the CURRENTLY ACTIVE feed) ---
@@ -1113,12 +1113,16 @@
                         isFirebaseReady = true;
                         console.log("Firebase authenticated and ready. User ID:", currentUserId);
                         
-                        // Setup listeners and UI for the initially active feed
-                        await switchFeed(currentActiveFeedId); // AWAIT this call
-                        fetchResolvedDids(); // Fetch resolved DIDs once after auth (was setupResolvedDidsListener)
+                        // Setup Firestore listener for the initially active feed
+                        setupFirestoreListener(currentActiveFeedId); 
+                        // Update UI for the initial feed (will fetch data via updateView)
+                        updateUIForActiveFeed(currentActiveFeedId);
+                        // Fetch resolved DIDs once after auth (was setupResolvedDidsListener)
+                        fetchResolvedDids();
                         // Set the correct radio button checked state on load
                         document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
-                        // updateView(currentSelectedTimeframe); // This is now called by switchFeed after data is ready
+                        // Ensure view is updated with whatever data is available immediately
+                        updateView(currentSelectedTimeframe);
 
                     } else {
                         // FIX: Added more robust error handling for signInWithCustomToken.
@@ -1166,59 +1170,53 @@
 
             if (!db || !isFirebaseReady || !currentUserId) {
                 console.warn("Firestore Listener: Cannot be set up: Firebase not ready or user not authenticated.");
-                // Reject the promise if db/auth is not ready to avoid indefinite loading
-                return Promise.reject(new Error("Firestore not ready for listener setup."));
+                return;
             }
 
             // REVISED PATH: /artifacts/{appId}/public/data/feeds/{feedId}/summaries/allTime
             const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
             console.log(`Firestore Listener: Attempting to subscribe to ${analysisDocRef.path}`);
 
-            return new Promise((resolve, reject) => {
-                unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        currentFeedData.termCounts = data.termCounts || {}; 
-                        currentFeedData.linkCounts = data.linkCounts || {}; 
-                        currentFeedData.domainCounts = data.domainCounts || {}; 
-                        currentFeedData.contentTypeCounts = data.contentTypeCounts || {}; 
-                        currentFeedData.linkCardsData = data.linkCardsData || {}; // This will now contain recentPosts
-                        currentFeedData.imageCardsData = data.imageCardsData || {}; 
-                        currentFeedData.posterCounts = data.posterCounts || {}; 
-                        currentFeedData.posterLikes = data.posterLikes || {}; 
+            unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    currentFeedData.termCounts = data.termCounts || {}; 
+                    currentFeedData.linkCounts = data.linkCounts || {}; 
+                    currentFeedData.domainCounts = data.domainCounts || {}; 
+                    currentFeedData.contentTypeCounts = data.contentTypeCounts || {}; 
+                    currentFeedData.linkCardsData = data.linkCardsData || {}; // This will now contain recentPosts
+                    currentFeedData.imageCardsData = data.imageCardsData || {}; 
+                    currentFeedData.posterCounts = data.posterCounts || {}; 
+                    currentFeedData.posterLikes = data.posterLikes || {}; 
 
-                        console.log(`Firestore Listener: All-Time data for ${feedId} received via onSnapshot:`, currentFeedData); 
-                    } else {
-                        console.warn(`Firestore Listener: All-Time summary document for ${feedId} does not exist. Initializing with empty counts.`);
-                        // Initialize the document if it doesn't exist at the new path
-                        setDoc(analysisDocRef, { 
-                            termCounts: {},
-                            linkCounts: {},
-                            domainCounts: {},
-                            contentTypeCounts: {},
-                            linkCardsData: {}, // Initialize with empty object
-                            imageCardsData: {},
-                            posterCounts: {},
-                            posterLikes: {} 
-                        }, { merge: true })
-                            .then(() => console.log(`Firestore Listener: Successfully created initial all-time summary document for ${feedId}.`))
-                            .catch(e => console.error(`Firestore Listener: Error creating all-time summary document for ${feedId}:`, e));
-                        // Reset currentFeedData to empty if doc doesn't exist
-                        currentFeedData = {
-                            termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
-                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
-                        };
-                    }
-                    // Only update the view if 'allTime' is currently selected to avoid overwriting other views
-                    if (currentSelectedTimeframe === 'allTime') {
-                        updateView('allTime'); 
-                    }
-                    resolve(); // Resolve the promise once data is received
-                }, (error) => {
-                    console.error(`Firestore Listener: Error listening to Firestore (All-Time Summary for ${feedId}):`, error);
-                    connectionStatusElem.textContent = `Firestore Listener Error: ${error.message}`;
-                    reject(error); // Reject the promise on error
-                });
+                    console.log(`Firestore Listener: All-Time data for ${feedId} received via onSnapshot:`, currentFeedData); 
+                } else {
+                    console.warn(`Firestore Listener: All-Time summary document for ${feedId} does not exist. Initializing with empty counts.`);
+                    // Initialize the document if it doesn't exist at the new path
+                    setDoc(analysisDocRef, { 
+                        termCounts: {},
+                        linkCounts: {},
+                        domainCounts: {},
+                        contentTypeCounts: {},
+                        linkCardsData: {}, // Initialize with empty object
+                        imageCardsData: {},
+                        posterCounts: {},
+                        posterLikes: {} 
+                    }, { merge: true })
+                        .then(() => console.log(`Firestore Listener: Successfully created initial all-time summary document for ${feedId}.`))
+                        .catch(e => console.error(`Firestore Listener: Error creating all-time summary document for ${feedId}:`, e));
+                    // Reset currentFeedData to empty if doc doesn't exist
+                    currentFeedData = {
+                        termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                        linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
+                    };
+                }
+                // Always update the view after receiving a snapshot for 'allTime' data
+                // This ensures the UI is immediately populated or updated.
+                updateView(currentSelectedTimeframe); 
+            }, (error) => {
+                console.error(`Firestore Listener: Error listening to Firestore (All-Time Summary for ${feedId}):`, error);
+                connectionStatusElem.textContent = `Firestore Listener Error: ${error.message}`;
             });
         }
 
@@ -2353,14 +2351,12 @@
             connectWebSocket(newFeedId);
 
             // Resubscribe Firestore listener to the new feed's summary data
-            try {
-                await setupFirestoreListener(newFeedId); // Await the initial data load for the listener
-            } catch (e) {
-                console.error("Error setting up Firestore listener on feed switch:", e);
-                // Handle error, maybe show a message
-            }
+            // No await here, the listener will update currentFeedData and call updateView when ready.
+            setupFirestoreListener(newFeedId); 
             
             // Re-fetch and render analysis data for the new feed based on current timeframe
+            // This will use whatever data is available from the Firestore listener (which might be empty initially)
+            // and will be updated again when the listener provides fresh data.
             updateView(currentSelectedTimeframe);
         }
 
@@ -2381,9 +2377,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeFirebase(); // Start Firebase initialization and auth
             // Initial UI update for the feed loaded from localStorage or default
-            // updateUIForActiveFeed(currentActiveFeedId); // Called by switchFeed
-            // Set the correct radio button checked state on load
-            document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
+            // This will now be handled by initializeFirebase's onAuthStateChanged callback
+            // after Firebase is ready and the initial Firestore snapshot is received.
         });
 
         // Cleanup WebSocket on window unload
