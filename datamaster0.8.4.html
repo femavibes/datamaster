@@ -748,15 +748,15 @@
                 </div>
                 <div id="loadingIndicator" class="loading-indicator" style="display: none;"></div>
 
-                <!-- Grid for rankings -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-                    <div class="md:col-span-1">
+                <!-- Grid for rankings - Adjusted for 10 columns -->
+                <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
+                    <div class="md:col-span-2">
                         <h3 class="stylish-subheader">Top Hashtags</h3>
                         <div id="topTerms">
                             <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-2">
+                    <div class="md:col-span-5">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="stylish-subheader mb-0">Top Links</h3>
                             <!-- REMOVED: Filter Dropdown Menu -->
@@ -765,26 +765,27 @@
                             <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-1"> 
-                        <h3 class="stylish-subheader">Top Posters</h3>
-                        <div id="topPostersList" class="space-y-3">
-                            <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
-                        </div>
-                    </div>
-                    <!-- The next two divs will automatically wrap to the next row in a 4-column grid -->
-                    <div class="md:col-span-2" id="topMentionsSection"> <!-- NEW SECTION for Top Mentions -->
+                    <!-- Moved Top Mentions to be the third item in the first row -->
+                    <div class="md:col-span-3" id="topMentionsSection"> 
                         <h3 class="stylish-subheader">Top Mentions</h3>
                         <div id="topMentionsList" class="space-y-3">
                             <p class="text-gray-500 text-center">No mentions yet to rank from the feed.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-2" id="topSitesSection" style="display: none;">
+                    <!-- The remaining divs will automatically wrap to the next row in a 10-column grid -->
+                    <div class="md:col-span-5"> <!-- Top Posters -->
+                        <h3 class="stylish-subheader">Top Posters</h3>
+                        <div id="topPostersList" class="space-y-3">
+                            <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
+                        </div>
+                    </div>
+                    <div class="md:col-span-5" id="topSitesSection" style="display: none;">
                         <h3 class="stylish-subheader">Top Sites</h3>
                         <div id="topDomains">
                             <p class="text-gray-500 text-center">No domains yet to analyze.</p>
                         </div>
                     </div>
-                    <div class="md:col-span-2" id="contentTypeBreakdownSection" style="display: none;">
+                    <div class="md:col-span-5" id="contentTypeBreakdownSection" style="display: none;">
                         <h3 class="stylish-subheader">Content Type Breakdown</h3>
                         <div id="contentTypeBreakdown">
                             <p class="text-gray-500 text-center">No content types yet to analyze.</p>
@@ -1012,9 +1013,14 @@
         };
 
         // --- Global variables (derived from firebaseConfig or defaults) ---
-        // IMPORTANT: Changed appId to 'datamaster-shared-analytics-x' as per user request.
-        const appId = 'datamaster-shared-analytics-x'; 
-        console.log(`Using fixed appId for analytics: ${appId}`);
+        // This is the project ID where NEW data will be written.
+        const LIVE_APP_ID = 'datamaster-shared-analytics-x'; 
+        console.log(`Using LIVE_APP_ID for writes: ${LIVE_APP_ID}`);
+
+        // This is the project ID from where existing data will be read for display.
+        const DISPLAY_APP_ID = 'datamaster-shared-analytics'; 
+        console.log(`Using DISPLAY_APP_ID for reads: ${DISPLAY_APP_ID}`);
+
 
         // --- Firebase Instances ---
         let app;
@@ -1106,6 +1112,7 @@
 
 
         // --- Analysis Data (synced with Firestore for the CURRENTLY ACTIVE feed) ---
+        // currentFeedData will store data read from DISPLAY_APP_ID
         let currentFeedData = {
             termCounts: {},
             linkCounts: {},
@@ -1178,7 +1185,7 @@
                         // Fetch resolved DIDs once after auth (from public path)
                         await fetchResolvedDids(); 
                         
-                        // Fetch initial all-time summary data for the active feed
+                        // Fetch initial all-time summary data for the active feed from DISPLAY_APP_ID
                         await fetchFeedSummaryData(currentActiveFeedId);
 
                         // Update UI for the initial feed
@@ -1186,8 +1193,6 @@
                         
                         // Set the correct radio button checked state on load
                         document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
-                        
-                        // REMOVED: Set the correct hashtag filter dropdown selection
                         
                         // Ensure view is updated with whatever data is available immediately
                         updateView(currentSelectedTimeframe);
@@ -1240,8 +1245,8 @@
                 return;
             }
 
-            // Path: /artifacts/{appId}/public/data/feeds/{feedId}/summaries/allTime
-            const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
+            // Path: /artifacts/{DISPLAY_APP_ID}/public/data/feeds/{feedId}/summaries/allTime
+            const analysisDocRef = doc(db, 'artifacts', DISPLAY_APP_ID, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
             console.log(`Firestore Fetcher: Attempting to fetch all-time summary for ${feedId} from ${analysisDocRef.path}`);
 
             try {
@@ -1268,21 +1273,8 @@
 
                     console.log(`Firestore Fetcher: All-Time data for ${feedId} received:`, currentFeedData); 
                 } else {
-                    console.warn(`Firestore Fetcher: All-Time summary document for ${feedId} does not exist. Initializing with empty counts.`);
-                    // Initialize the document if it doesn't exist at the new path
-                    await setDoc(analysisDocRef, { 
-                        termCounts: {},
-                        linkCounts: {},
-                        domainCounts: {},
-                        contentTypeCounts: {},
-                        linkCardsData: {}, // Initialize with empty object
-                        imageCardsData: {},
-                        posterCounts: {},
-                        posterLikes: {},
-                        mentionCounts: {} // NEW: Initialize mentionCounts
-                    }, { merge: true });
-                    console.log(`Firestore Fetcher: Successfully created initial all-time summary document for ${feedId}.`);
-                    // Reset currentFeedData to empty if doc doesn't exist
+                    console.warn(`Firestore Fetcher: All-Time summary document for ${feedId} does not exist in ${DISPLAY_APP_ID}. Initializing with empty counts locally.`);
+                    // Reset currentFeedData to empty if doc doesn't exist in DISPLAY_APP_ID
                     currentFeedData = {
                         termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
                         linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}, mentionCounts: {}
@@ -1301,8 +1293,8 @@
                 return;
             }
 
-            // Updated path for public resolved DIDs
-            const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
+            // Read from DISPLAY_APP_ID
+            const resolvedDidsCollectionRef = collection(db, 'artifacts', DISPLAY_APP_ID, 'public', 'data', 'resolvedBlueskyDIDs');
             const q = query(resolvedDidsCollectionRef);
             console.log(`Fetch Resolved DIDs: Attempting to fetch from ${resolvedDidsCollectionRef.path}`);
 
@@ -1366,11 +1358,9 @@
                     }
                 }
 
-                // Step 2: Save to Firestore
-                if (db && currentUserId) { // Ensure Firebase is ready before saving
-                    // Corrected collection name here to reflect public shared data
-                    const resolvedDidsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'resolvedBlueskyDIDs');
-                    // Use setDoc with DID as document ID to ensure uniqueness and allow updates
+                // Step 2: Save to Firestore - ALWAYS write to LIVE_APP_ID
+                if (db && currentUserId) { 
+                    const resolvedDidsCollectionRef = collection(db, 'artifacts', LIVE_APP_ID, 'public', 'data', 'resolvedBlueskyDIDs');
                     await setDoc(doc(resolvedDidsCollectionRef, did), {
                         did: did,
                         handle: resolvedHandle, // Save without '@' for consistency, add for display
@@ -1378,10 +1368,10 @@
                         avatar: resolvedAvatar, // NEW: Save the avatar URL
                         timestamp: serverTimestamp() // Add a timestamp for ordering
                     }, { merge: true })
-                    .then(() => console.log(`DID Resolution: Successfully saved resolved DID ${did} to Firestore.`))
-                    .catch(e => console.error(`DID Resolution: Error saving resolved DID ${did} to Firestore:`, e));
+                    .then(() => console.log(`DID Resolution: Successfully saved resolved DID ${did} to Firestore (${LIVE_APP_ID}).`))
+                    .catch(e => console.error(`DID Resolution: Error saving resolved DID ${did} to Firestore (${LIVE_APP_ID}):`, e));
 
-                    // Update local cache immediately after successful save
+                    // Update local cache from the data that was written to LIVE_APP_ID
                     resolvedDidsCache[did] = { handle: resolvedHandle, displayName: resolvedDisplayName, avatar: resolvedAvatar, timestamp: new Date() };
                 } else {
                     console.warn("DID Resolution: Firestore not ready for saving resolved DID. Data not persisted.");
@@ -1493,9 +1483,9 @@
                         postFacets = post.facets || []; // Capture facets
 
 
-                        // Store the raw post in the new '/posts' collection
+                        // Store the raw post in the new '/posts' collection (writes to LIVE_APP_ID)
                         if (db && currentUserId && postUri && postCid) {
-                            const postDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'posts', postUri);
+                            const postDocRef = doc(db, 'artifacts', LIVE_APP_ID, 'public', 'data', 'posts', postUri);
                             await setDoc(postDocRef, {
                                 $type: post.$type,
                                 uri: postUri,
@@ -1852,22 +1842,23 @@
 
                     console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess} (Daily Doc: ${dailyDocId}):`, JSON.stringify(feedUpdates, null, 2));
 
-                    // REVISED PATH for summary document
-                    const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
-                    const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
+                    // REVISED PATH for summary document - ALWAYS write to LIVE_APP_ID
+                    const summaryDocRef = doc(db, 'artifacts', LIVE_APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
+                    const dailyDocRef = doc(db, 'artifacts', LIVE_APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
                     
-                    console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId}`); // Add this debug log
+                    console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId} in ${LIVE_APP_ID}`); 
 
 
                     try {
-                        // 1. Update All-Time Summary for this feed
-                        const summarySnap = await getDoc(summaryDocRef);
-                        let currentSummaryData = summarySnap.exists() ? summarySnap.data() : {
+                        // 1. Update All-Time Summary for this feed (in LIVE_APP_ID)
+                        // Read from LIVE_APP_ID first to merge new updates
+                        const liveSummarySnap = await getDoc(summaryDocRef);
+                        let currentSummaryData = liveSummarySnap.exists() ? liveSummarySnap.data() : {
                             termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
                             linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
                             mentionCounts: {} // NEW: Initialize
                         };
-                        console.log(`[Firestore Write] Current All-Time Summary Data before merge for ${currentFeedIdToProcess}:`, JSON.stringify(currentSummaryData, null, 2));
+                        console.log(`[Firestore Write] Current All-Time Summary Data before merge for ${currentFeedIdToProcess} (LIVE_APP_ID):`, JSON.stringify(currentSummaryData, null, 2));
 
 
                         // Merge updates into currentSummaryData
@@ -1953,23 +1944,17 @@
                         }
 
                         await setDoc(summaryDocRef, currentSummaryData, { merge: true });
-                        console.log(`[Firestore Write] Successfully updated All-Time Summary for feed ${currentFeedIdToProcess}.`);
-
-                        // If the currently processed feed is the active feed, update currentFeedData in memory
-                        if (currentFeedIdToProcess === currentActiveFeedId) {
-                            currentFeedData = { ...currentSummaryData }; // Shallow copy is fine here
-                            console.log(`[Firestore Write] currentFeedData manually refreshed in memory for active feed ${currentActiveFeedId}.`);
-                        }
+                        console.log(`[Firestore Write] Successfully updated All-Time Summary for feed ${currentFeedIdToProcess} in ${LIVE_APP_ID}.`);
 
 
-                        // 2. Update Daily Aggregate for this feed
+                        // 2. Update Daily Aggregate for this feed (in LIVE_APP_ID)
                         const dailySnap = await getDoc(dailyDocRef);
                         let currentDailyData = dailySnap.exists() ? dailySnap.data() : {
                             termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
                             linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
                             mentionCounts: {} // NEW: Initialize
                         };
-                        console.log(`[Firestore Write] Current Daily Aggregate Data before merge for ${currentFeedIdToProcess} (${dailyDocId}):`, JSON.stringify(currentDailyData, null, 2));
+                        console.log(`[Firestore Write] Current Daily Aggregate Data before merge for ${currentFeedIdToProcess} (${dailyDocId}) in ${LIVE_APP_ID}:`, JSON.stringify(currentDailyData, null, 2));
 
 
                         // Merge updates into currentDailyData
@@ -2054,7 +2039,7 @@
                         }
 
                         await setDoc(dailyDocRef, currentDailyData, { merge: true });
-                        console.log(`[Firestore Write] Successfully updated Daily Aggregate for feed ${currentFeedIdToProcess} (${dailyDocId}).`);
+                        console.log(`[Firestore Write] Successfully updated Daily Aggregate for feed ${currentFeedIdToProcess} (${dailyDocId}) in ${LIVE_APP_ID}.`);
 
 
                     } catch (e) {
@@ -2067,8 +2052,33 @@
                 accumulatedUpdates = {};
                 console.log("[Debounce] Accumulated updates reset.");
                 
+                // After updating Firestore, explicitly re-fetch currentFeedData from DISPLAY_APP_ID
+                // to ensure the UI updates with the very latest state from the historical DB.
+                // This means the UI shows "old" data even if new data is being written elsewhere.
+                if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed being updated
+                    const displaySummaryDocRef = doc(db, 'artifacts', DISPLAY_APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'summaries', 'allTime');
+                    const updatedDisplaySummarySnap = await getDoc(displaySummaryDocRef); 
+                    if (updatedDisplaySummarySnap.exists()) {
+                        const updatedData = updatedDisplaySummarySnap.data();
+                        // Manually update currentFeedData to ensure latest state is used for UI
+                        currentFeedData.termCounts = updatedData.termCounts || {};
+                        currentFeedData.linkCounts = updatedData.linkCounts || {};
+                        currentFeedData.domainCounts = updatedData.domainCounts || {};
+                        currentFeedData.contentTypeCounts = updatedData.contentTypeCounts || {};
+                        currentFeedData.linkCardsData = updatedData.linkCardsData || {};
+                        currentFeedData.imageCardsData = updatedData.imageCardsData || {};
+                        currentFeedData.posterCounts = updatedData.posterCounts || {};
+                        currentFeedData.posterLikes = updatedData.posterLikes || {};
+                        currentFeedData.mentionCounts = updatedData.mentionCounts || {};
+                        console.log(`[Debounce] currentFeedData manually refreshed from DISPLAY_APP_ID for active feed ${currentActiveFeedId}.`);
+                    } else {
+                        console.warn(`[Debounce] All-Time summary doc for ${currentActiveFeedId} does not exist in ${DISPLAY_APP_ID}, cannot refresh currentFeedData.`);
+                        // Ensure currentFeedData is cleared if doc disappeared unexpectedly
+                        currentFeedData = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}, mentionCounts: {} };
+                    }
+                }
+                
                 // Re-render the view with the latest data for the currently active feed
-                // This ensures the UI is immediately populated or updated.
                 updateView(currentSelectedTimeframe); 
 
             }, DEBOUNCE_DELAY);
@@ -2326,11 +2336,11 @@
                     startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 }
                 const startYYYYMMDD = getYYYYMMDD(startDate);
-                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe}.`);
+                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe} from ${DISPLAY_APP_ID}.`);
 
 
-                // Fetch data for the selected timeframe from the active feed's daily aggregates
-                const dailyAggregatesRef = collection(db, 'artifacts', appId, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
+                // Fetch data for the selected timeframe from the active feed's daily aggregates (from DISPLAY_APP_ID)
+                const dailyAggregatesRef = collection(db, 'artifacts', DISPLAY_APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
                 // Query for documents whose ID (date string) is greater than or equal to the start date
                 const q = query(dailyAggregatesRef, where('__name__', '>=', startYYYYMMDD));
 
@@ -2338,7 +2348,7 @@
                     const querySnapshot = await getDocs(q);
                     console.log(`Update View: Found ${querySnapshot.docs.length} daily aggregate documents for ${timeframe}.`);
                     if (querySnapshot.docs.length === 0) {
-                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD}.`);
+                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD} in ${DISPLAY_APP_ID}.`);
                     }
 
                     querySnapshot.forEach((docSnap) => {
@@ -2410,7 +2420,7 @@
                     connectionStatusElem.classList.remove('text-red-600', 'text-orange-600');
                     connectionStatusElem.classList.add('text-green-600');
                 } catch (error) {
-                    console.error(`Update View: Error fetching ${timeframe} data for ${currentActiveFeedId}:`, error);
+                    console.error(`Update View: Error fetching ${timeframe} data for ${currentActiveFeedId} from ${DISPLAY_APP_ID}:`, error);
                     connectionStatusElem.textContent = `Error fetching ${timeframe} data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
                     connectionStatusElem.classList.remove('text-green-600', 'text-orange-600');
                     connectionStatusElem.classList.add('text-red-600');
@@ -2446,7 +2456,7 @@
             // Reconnect WebSocket to the new feed URI
             connectWebSocket(newFeedId);
 
-            // Fetch the all-time summary data for the new feed
+            // Fetch the all-time summary data for the new feed from DISPLAY_APP_ID
             await fetchFeedSummaryData(newFeedId); // Await this to ensure currentFeedData is populated
 
             // Re-fetch and render analysis data for the new feed based on current timeframe
