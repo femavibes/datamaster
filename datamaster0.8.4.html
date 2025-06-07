@@ -1617,8 +1617,9 @@
                     if (!link) link = currentEmbed.external.uri;
                     if (!title) title = currentEmbed.external.title;
                     if (!description) description = currentEmbed.external.description;
+                    if (!thumbnailUrl) thumbnailUrl = currentEmbed.external.thumb; // Get thumbnail from external embed
                 }
-                // Case: Direct image embed
+                // Case: Direct image embed (not a link, but might have a thumb)
                 else if (currentEmbed.$type === 'app.bsky.embed.images' && currentEmbed.images?.length > 0) {
                     // Prioritize the first image thumbnail found
                     if (!thumbnailUrl) thumbnailUrl = currentEmbed.images[0].thumb;
@@ -1701,7 +1702,7 @@
                 accumulatedUpdates[feedId].linkCounts[extractedLink].count += 1;
                 // Only fetch headline if title is not already present from embed or previous fetches
                 if (extractedTitle && accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle === null) {
-                    accumulatedUpdates[feedId].linkCardsData[extractedLink].originalTitle = extractedTitle; // Corrected to linkCardsData for consistent title usage
+                    accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle = extractedTitle;
                 }
                 // Fetch headline if still null from embed
                 if (accumulatedUpdates[feedId].linkCounts[extractedLink].headline === null) {
@@ -1869,7 +1870,7 @@
                                 currentSummaryData.linkCounts[url].headline = headline;
                             }
                             if (originalTitle && currentSummaryData.linkCounts[url].originalTitle === null) {
-                                currentSummaryData.linkCardsData[url].originalTitle = originalTitle; // Corrected to linkCardsData for consistent title usage
+                                currentSummaryData.linkCounts[url].originalTitle = originalTitle;
                             }
                             if (description && currentSummaryData.linkCounts[url].description === null) {
                                 currentSummaryData.linkCounts[url].description = description;
@@ -1964,11 +1965,11 @@
                             if (headline && currentDailyData.linkCounts[url].headline === null) {
                                 currentDailyData.linkCounts[url].headline = headline;
                             }
-                            if (originalTitle && currentDailyData.linkCardsData[url].originalTitle === null) { // Typo fix
-                                currentDailyData.linkCardsData[url].originalTitle = originalTitle;
+                            if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) { // Typo fix
+                                currentDailyData.linkCounts[url].originalTitle = originalTitle;
                             }
-                            if (description && currentDailyData.linkCardsData[url].description === null) {
-                                currentDailyData.linkCardsData[url].description = description;
+                            if (description && currentDailyData.linkCounts[url].description === null) {
+                                currentDailyData.linkCounts[url].description = description;
                             }
                         }
                         for (const simplifiedDomain in feedUpdates.domainCounts) {
@@ -2058,6 +2059,12 @@
                         currentFeedData.domainCounts = updatedData.domainCounts || {};
                         currentFeedData.contentTypeCounts = updatedData.contentTypeCounts || {};
                         currentFeedData.linkCardsData = updatedData.linkCardsData || {};
+                        // Ensure thumbnailUrl is initialized for linkCardsData on refresh
+                        for (const url in currentFeedData.linkCardsData) {
+                            if (currentFeedData.linkCardsData[url].thumbnailUrl === undefined) {
+                                currentFeedData.linkCardsData[url].thumbnailUrl = null;
+                            }
+                        }
                         currentFeedData.imageCardsData = updatedData.imageCardsData || {};
                         currentFeedData.posterCounts = updatedData.posterCounts || {};
                         currentFeedData.posterLikes = updatedData.posterLikes || {};
@@ -2117,21 +2124,23 @@
                 topLinksDiv.innerHTML = '<p class="text-gray-500 text-center">No rich link cards yet to display.</p>';
             } else {
                 sortedRichLinkCards.forEach(([url, data]) => {
-                    const item = document.createElement('div'); // Changed to div, as the whole card is not the link now
+                    const item = document.createElement('div');
                     item.className = 'link-card'; 
-                    // No direct href on the card, but internal elements can have them
-
+                    
                     let imageHtml = '';
                     if (data.thumbnailUrl) {
-                        imageHtml = `<img src="${data.thumbnailUrl}" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e2e8f0/333?text=No+Image';" alt="${data.title || 'Link thumbnail'}" class="w-full h-32 object-cover rounded-t-md mb-2">`;
+                        imageHtml = `<img src="${data.thumbnailUrl}" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e2e8f0/333?text=No+Image';this.alt='No Image Available';" alt="${data.title || 'Link thumbnail'}" class="w-full h-32 object-cover rounded-t-md mb-2">`;
+                    } else {
+                        // Optional: Add a fallback placeholder image if no thumbnail URL is present
+                        imageHtml = `<img src="https://placehold.co/128x128/e2e8f0/333?text=No+Image" alt="No Image Available" class="w-full h-32 object-cover rounded-t-md mb-2">`;
                     }
 
                     item.innerHTML = `
                         ${imageHtml}
                         <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-card-headline">
-                            ${data.title}
+                            ${data.title || 'No Title Available'}
                         </a>
-                        <div class="link-card-description">${data.description}</div>
+                        <div class="link-card-description">${data.description || 'No description available.'}</div>
                         <div class="link-card-url">${url}</div>
                         <div class="link-card-footer">
                             <span class="link-card-count">${data.count} clicks</span>
