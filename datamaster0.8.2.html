@@ -798,7 +798,7 @@
         <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/2 lg:w-1/3 max-h-[90vh] flex flex-col text-center">
             <h3 class="text-xl font-bold mb-4 text-gray-800">Add a Feed to Fema's Datamaster</h3>
             <p class="text-gray-700 mb-4">Want to add a Feed to Fema's datamaster? This is something I am looking to support but for now feel free to reach out to me on Bluesky <a href="https://bsky.app/profile/fema.monster" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">@fema.monster</a>.</p>
-            <p class="text-gray-700 mb-6">Consider donating to my Ko-Fi <a href="https://ko-fi.com/urbanismplus" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">">(https://ko.fi/urbanismplus)</a> and mention "Datamaster" to earmark the funds for this project.</p>
+            <p class="text-gray-700 mb-6">Consider donating to my Ko-Fi <a href="https://ko-fi.co/urbanismplus" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">">(https://ko-fi.com/urbanismplus)</a> and mention "Datamaster" to earmark the funds for this project.</p>
             <button id="closePlusButtonModalBtn" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">Close</button>
         </div>
     </div>
@@ -807,7 +807,7 @@
         // Firebase CDN imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Helper function to fetch headline from a URL (Moved to top for scope visibility) ---
         async function fetchHeadline(url) {
@@ -974,7 +974,6 @@
         let auth;
         let currentUserId = null;
         let isFirebaseReady = false; 
-        let unsubscribeFromFirestore = null; // To store the unsubscribe function for Firestore listener
 
         // --- Feed Configurations ---
         const feeds = {
@@ -1121,14 +1120,18 @@
                         isFirebaseReady = true;
                         console.log("Firebase authenticated and ready. User ID:", currentUserId);
                         
-                        // Setup Firestore listener for the initially active feed
-                        setupFirestoreListener(currentActiveFeedId); 
-                        // Update UI for the initial feed (will fetch data via updateView)
-                        updateUIForActiveFeed(currentActiveFeedId);
                         // Fetch resolved DIDs once after auth (was setupResolvedDidsListener)
-                        fetchResolvedDids();
+                        await fetchResolvedDids(); // Await this to populate cache before first data fetch
+                        
+                        // Fetch initial all-time summary data for the active feed
+                        await fetchFeedSummaryData(currentActiveFeedId);
+
+                        // Update UI for the initial feed
+                        updateUIForActiveFeed(currentActiveFeedId);
+                        
                         // Set the correct radio button checked state on load
                         document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
+                        
                         // Ensure view is updated with whatever data is available immediately
                         updateView(currentSelectedTimeframe);
 
@@ -1169,23 +1172,20 @@
             }
         }
 
-        // --- Firestore Data Listener (onSnapshot for All-Time Summary of specific feed) ---
-        function setupFirestoreListener(feedId) {
-            if (unsubscribeFromFirestore) {
-                unsubscribeFromFirestore(); // Unsubscribe from previous listener if exists
-                console.log(`Firestore Listener: Unsubscribed from previous feed.`); // Corrected log message
-            }
-
+        // --- Firestore Data Fetcher (getDoc for All-Time Summary of specific feed) ---
+        // Renamed from setupFirestoreListener and changed to use getDoc
+        async function fetchFeedSummaryData(feedId) {
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Firestore Listener: Cannot be set up: Firebase not ready or user not authenticated.");
+                console.warn("Firestore Fetcher: Cannot fetch summary: Firebase not ready or user not authenticated.");
                 return;
             }
 
-            // REVISED PATH: /artifacts/{appId}/public/data/feeds/{feedId}/summaries/allTime
+            // Path: /artifacts/{appId}/public/data/feeds/{feedId}/summaries/allTime
             const analysisDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
-            console.log(`Firestore Listener: Attempting to subscribe to ${analysisDocRef.path}`);
+            console.log(`Firestore Fetcher: Attempting to fetch all-time summary for ${feedId} from ${analysisDocRef.path}`);
 
-            unsubscribeFromFirestore = onSnapshot(analysisDocRef, async (docSnap) => {
+            try {
+                const docSnap = await getDoc(analysisDocRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     currentFeedData.termCounts = data.termCounts || {}; 
@@ -1205,11 +1205,11 @@
                     currentFeedData.posterCounts = data.posterCounts || {}; 
                     currentFeedData.posterLikes = data.posterLikes || {}; 
 
-                    console.log(`Firestore Listener: All-Time data for ${feedId} received via onSnapshot:`, currentFeedData); 
+                    console.log(`Firestore Fetcher: All-Time data for ${feedId} received:`, currentFeedData); 
                 } else {
-                    console.warn(`Firestore Listener: All-Time summary document for ${feedId} does not exist. Initializing with empty counts.`);
+                    console.warn(`Firestore Fetcher: All-Time summary document for ${feedId} does not exist. Initializing with empty counts.`);
                     // Initialize the document if it doesn't exist at the new path
-                    setDoc(analysisDocRef, { 
+                    await setDoc(analysisDocRef, { 
                         termCounts: {},
                         linkCounts: {},
                         domainCounts: {},
@@ -1218,22 +1218,18 @@
                         imageCardsData: {},
                         posterCounts: {},
                         posterLikes: {} 
-                    }, { merge: true })
-                        .then(() => console.log(`Firestore Listener: Successfully created initial all-time summary document for ${feedId}.`))
-                        .catch(e => console.error(`Firestore Listener: Error creating all-time summary document for ${feedId}:`, e));
+                    }, { merge: true });
+                    console.log(`Firestore Fetcher: Successfully created initial all-time summary document for ${feedId}.`);
                     // Reset currentFeedData to empty if doc doesn't exist
                     currentFeedData = {
                         termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
                         linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
                     };
                 }
-                // Always update the view after receiving a snapshot for 'allTime' data
-                // This ensures the UI is immediately populated or updated.
-                updateView(currentSelectedTimeframe); 
-            }, (error) => {
-                console.error(`Firestore Listener: Error listening to Firestore (All-Time Summary for ${feedId}):`, error);
-                connectionStatusElem.textContent = `Firestore Listener Error: ${error.message}`;
-            });
+            } catch (error) {
+                console.error(`Firestore Fetcher: Error fetching all-time summary for ${feedId}:`, error);
+                connectionStatusElem.textContent = `Firestore Fetch Error: ${error.message}`;
+            }
         }
 
         // --- New Function to Fetch Resolved DIDs (using getDocs instead of onSnapshot) ---
@@ -1459,6 +1455,7 @@
                         }
                         
                         let postEmbed = post.embed; 
+                        // Pass the timestamp of the actual post to the debounced function
                         debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed, postUri, timestamp); 
 
                     } else {
@@ -1599,7 +1596,8 @@
             if (!accumulatedUpdates[feedId]) {
                 accumulatedUpdates[feedId] = {
                     termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
-                    linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}
+                    linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
+                    latestPostTimestamp: null // Track latest timestamp for dailyDocId calculation
                 };
             }
             
@@ -1737,6 +1735,12 @@
                 accumulatedUpdates[feedId].posterLikes[authorDid] = (accumulatedUpdates[feedId].posterLikes[authorDid] || 0) + 1;
             }
 
+            // Update latestPostTimestamp in accumulatedUpdates for this feed
+            if (!accumulatedUpdates[feedId].latestPostTimestamp || new Date(timestamp) > new Date(accumulatedUpdates[feedId].latestPostTimestamp)) {
+                accumulatedUpdates[feedId].latestPostTimestamp = timestamp;
+            }
+
+
             // Clear any existing timer
             clearTimeout(debounceTimer); // Clear existing timer, ensuring only one pending update
             debounceTimer = setTimeout(async () => {
@@ -1746,19 +1750,19 @@
                     return;
                 }
 
-                // Process all accumulated updates for all feeds
-                for (const currentFeedIdToProcess in accumulatedUpdates) {
+                // Iterate over a copy of accumulatedUpdates keys to avoid issues if accumulatedUpdates is reset during loop
+                const feedsToProcess = Object.keys(accumulatedUpdates);
+
+                for (const currentFeedIdToProcess of feedsToProcess) {
                     const feedUpdates = accumulatedUpdates[currentFeedIdToProcess];
-                    console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess}:`, JSON.stringify(feedUpdates, null, 2));
+                    // IMPORTANT: Use the latestPostTimestamp from the accumulated updates for this specific feed
+                    const dailyDocDate = new Date(feedUpdates.latestPostTimestamp || new Date()); // Fallback to current date if no timestamp
+                    const dailyDocId = getYYYYMMDD(dailyDocDate);
+
+                    console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess} (Daily Doc: ${dailyDocId}):`, JSON.stringify(feedUpdates, null, 2));
 
                     // REVISED PATH for summary document
                     const summaryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
-                    
-                    // CRITICAL CHANGE: Use the timestamp of the last post that triggered this debounce for the dailyDocId
-                    // This ensures the daily aggregate reflects the actual day the post was created on Bluesky.
-                    // Assuming `timestamp` is the latest received post's timestamp for the current debounce batch.
-                    const dailyDocDate = new Date(timestamp); 
-                    const dailyDocId = getYYYYMMDD(dailyDocDate);
                     const dailyDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
                     
                     console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId}`); // Add this debug log
@@ -1856,6 +1860,13 @@
                         await setDoc(summaryDocRef, currentSummaryData, { merge: true });
                         console.log(`[Firestore Write] Successfully updated All-Time Summary for feed ${currentFeedIdToProcess}.`);
 
+                        // If the currently processed feed is the active feed, update currentFeedData in memory
+                        if (currentFeedIdToProcess === currentActiveFeedId) {
+                            currentFeedData = { ...currentSummaryData }; // Shallow copy is fine here
+                            console.log(`[Firestore Write] currentFeedData manually refreshed in memory for active feed ${currentActiveFeedId}.`);
+                        }
+
+
                         // 2. Update Daily Aggregate for this feed
                         const dailySnap = await getDoc(dailyDocRef);
                         let currentDailyData = dailySnap.exists() ? dailySnap.data() : {
@@ -1893,7 +1904,7 @@
                             currentDailyData.domainCounts[simplifiedDomain].count = (currentDailyData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
                             for (const originalHost in updateData.sources) {
                                 currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
-                                    (currentDailyData.domainDocs[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                                    (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost]; // Corrected typo here
                             }
                         }
                         for (const key in feedUpdates.contentTypeCounts) {
@@ -1919,7 +1930,7 @@
                             // Merge recentPosts for daily aggregates too
                             let existingDailyRecentPosts = currentDailyData.linkCardsData[url].recentPosts || [];
                             const newDailyPostsMap = new Map(existingDailyRecentPosts.map(p => [p.postUri, p]));
-                            recentPosts.forEach(newPost => newDailyPostsMap.set(newPost.postUri, newPost));
+                            (recentPosts || []).forEach(newPost => newDailyPostsMap.set(newPost.postUri, newPost));
 
                             existingDailyRecentPosts = Array.from(newDailyPostsMap.values());
                             // Sort by simulatedLikes (descending) before slicing
@@ -1951,42 +1962,14 @@
                         console.error(`[Firestore Write] Error updating Firestore analysis for feed ${currentFeedIdToProcess} (debounced):`, e);
                         // connectionStatusElem.textContent = `Firestore Update Error for ${feeds[currentFeedIdToProcess].displayName}: ${e.message}`;
                     }
-                } // End of for...in loop for accumulatedUpdates
+                } // End of for...of loop for feedsToProcess
 
                 // Reset all accumulated updates after successful write
                 accumulatedUpdates = {};
                 console.log("[Debounce] Accumulated updates reset.");
-
-                // After updating Firestore, explicitly re-fetch currentFeedData from Firestore
-                // to ensure the UI updates with the very latest state.
-                if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed
-                    const updatedSummarySnap = await getDoc(summaryDocRef); // Re-fetch the allTime summary
-                    if (updatedSummarySnap.exists()) {
-                        const updatedData = updatedSummarySnap.data();
-                        // Manually update currentFeedData to ensure latest state is used for UI
-                        currentFeedData.termCounts = updatedData.termCounts || {};
-                        currentFeedData.linkCounts = updatedData.linkCounts || {};
-                        currentFeedData.domainCounts = updatedData.domainCounts || {};
-                        currentFeedData.contentTypeCounts = updatedData.contentTypeCounts || {};
-                        currentFeedData.linkCardsData = updatedData.linkCardsData || {};
-                        // Ensure thumbnailUrl is set for existing linkCardsData
-                        for (const url in currentFeedData.linkCardsData) {
-                            if (currentFeedData.linkCardsData[url].thumbnailUrl === undefined) {
-                                currentFeedData.linkCardsData[url].thumbnailUrl = null;
-                            }
-                        }
-                        currentFeedData.imageCardsData = updatedData.imageCardsData || {};
-                        currentFeedData.posterCounts = updatedData.posterCounts || {};
-                        currentFeedData.posterLikes = updatedData.posterLikes || {};
-                        console.log(`[Debounce] currentFeedData manually refreshed from Firestore for active feed ${currentActiveFeedId}.`);
-                    } else {
-                        console.warn(`[Debounce] All-Time summary doc for ${currentActiveFeedId} still doesn't exist after write, cannot refresh currentFeedData.`);
-                        // Ensure currentFeedData is cleared if doc disappeared unexpectedly
-                        currentFeedData = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {} };
-                    }
-                }
                 
                 // Re-render the view with the latest data for the currently active feed
+                // This ensures the UI is immediately populated or updated.
                 updateView(currentSelectedTimeframe); 
 
             }, DEBOUNCE_DELAY);
@@ -2049,7 +2032,7 @@
                         <div class="link-card-url">${url}</div>
                         <div class="link-card-footer">
                             <span class="link-card-count">${data.count} clicks</span>
-                            <button class="link-card-comment-btn" title="View posts for ${url}">
+                            <button class="link-card-comment-btn" title="View posts for ${url}" data-link-url="${url}">
                                 <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                                     <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.735-1.579l-3.321 1.096A1 1 0 01.328 15.22l1.096-3.321A7.002 7.002 0 002 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"></path>
                                 </svg>
@@ -2160,6 +2143,15 @@
                     topPostersListDiv.appendChild(item);
                 });
             }
+
+            // Attach event listeners for comment buttons after rendering
+            document.querySelectorAll('.link-card-comment-btn').forEach(button => {
+                button.onclick = (event) => {
+                    event.preventDefault(); // Prevent default link behavior if inside an <a>
+                    const url = event.currentTarget.dataset.linkUrl;
+                    openLinkPostsModal(url);
+                };
+            });
         }
 
         // --- Timeframe Selection and Data Fetching/Display ---
@@ -2173,8 +2165,6 @@
             connectionStatusElem.classList.remove('text-green-600', 'text-red-600');
             connectionStatusElem.classList.add('text-orange-600'); // Indicate fetching state
 
-            // IMPORTANT: Fetch resolved DIDs every time the view updates
-            await fetchResolvedDids();
 
             let termsToDisplay = {};
             let linksToDisplay = {}; // This will hold the consolidated link data for display
@@ -2184,9 +2174,9 @@
             let postersToDisplayByLikes = {}; // For ranking by likes
 
             if (timeframe === 'allTime') {
-                // For 'allTime', currentFeedData is already kept up-to-date by onSnapshot listener.
-                // We just use the existing data.
-                console.log("Update View: Using currentFeedData (from onSnapshot) for 'allTime'.");
+                // For 'allTime', currentFeedData is now manually updated by debouncedUpdateFirestoreAnalysis
+                // or fetched on feed switch/init. We just use the existing data.
+                console.log("Update View: Using currentFeedData (from memory) for 'allTime'.");
                 termsToDisplay = currentFeedData.termCounts;
                 linksToDisplay = currentFeedData.linkCardsData; // Use linkCardsData directly for display
                 domainsToDisplay = currentFeedData.domainCounts;
@@ -2309,6 +2299,31 @@
         }
 
         // --- Feed Switching Logic ---
+        async function switchFeed(newFeedId) { // Made async to await fetchFeedSummaryData
+            if (currentActiveFeedId === newFeedId) {
+                console.log(`Switch Feed: Already on ${newFeedId} feed.`);
+                return;
+            }
+
+            console.log(`Switch Feed: Switching feed from ${currentActiveFeedId} to ${newFeedId}`);
+            currentActiveFeedId = newFeedId;
+            // Persist active feed ID
+            localStorage.setItem('activeFeedId', newFeedId);
+
+            // Update UI immediately for responsiveness
+            updateUIForActiveFeed(newFeedId);
+            
+            // Reconnect WebSocket to the new feed URI
+            connectWebSocket(newFeedId);
+
+            // Fetch the all-time summary data for the new feed
+            await fetchFeedSummaryData(newFeedId); // Await this to ensure currentFeedData is populated
+
+            // Re-fetch and render analysis data for the new feed based on current timeframe
+            updateView(currentSelectedTimeframe);
+        }
+
+        // --- UI Update Function for Active Feed (unchanged) ---
         function updateUIForActiveFeed(feedId) {
             const feed = feeds[feedId];
             if (!feed) {
@@ -2413,33 +2428,6 @@
         }
 
 
-        async function switchFeed(newFeedId) {
-            if (currentActiveFeedId === newFeedId) {
-                console.log(`Switch Feed: Already on ${newFeedId} feed.`);
-                return;
-            }
-
-            console.log(`Switch Feed: Switching feed from ${currentActiveFeedId} to ${newFeedId}`);
-            currentActiveFeedId = newFeedId;
-            // Persist active feed ID
-            localStorage.setItem('activeFeedId', newFeedId);
-
-            // Update UI immediately for responsiveness
-            updateUIForActiveFeed(newFeedId);
-            
-            // Reconnect WebSocket to the new feed URI
-            connectWebSocket(newFeedId);
-
-            // Resubscribe Firestore listener to the new feed's summary data
-            // No await here, the listener will update currentFeedData and call updateView when ready.
-            setupFirestoreListener(newFeedId); 
-            
-            // Re-fetch and render analysis data for the new feed based on current timeframe
-            // This will use whatever data is available from the Firestore listener (which might be empty initially)
-            // and will be updated again when the listener provides fresh data.
-            updateView(currentSelectedTimeframe);
-        }
-
         // --- Event Listeners for Timeframe Selector ---
         document.querySelectorAll('input[name="timeframe"]').forEach(radio => {
             radio.addEventListener('change', (event) => {
@@ -2459,6 +2447,7 @@
             // Initial UI update for the feed loaded from localStorage or default
             // This will now be handled by initializeFirebase's onAuthStateChanged callback
             // after Firebase is ready and the initial Firestore snapshot is received.
+            // connectWebSocket is called within initializeFirebase now after initial setup is complete.
         });
 
         // Cleanup WebSocket on window unload
