@@ -1154,23 +1154,23 @@
         }
 
         // --- Firebase Configuration (Provided by User) ---
-        // Using __firebase_config global variable provided by Canvas environment
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "YOUR_API_KEY", // Replace with your actual Firebase API Key if not running in Canvas
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID", // This is the projectId for the auth domain and general Firebase app setup
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID",
-            measurementId: "YOUR_MEASUREMENT_ID"
+        // Using the user's provided Firebase config directly.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCm_h3QFhrtx3zaQ3qMaOaVNfLwzwHg5pA",
+            authDomain: "datamaster-78f8e.firebaseapp.com",
+            projectId: "datamaster-78f8e",
+            storageBucket: "datamaster-78f8e.firebasestorage.app",
+            messagingSenderId: "358109304500",
+            appId: "1:358109304500:web:c65f479e00a5ed46c9e9e1",
+            measurementId: "G-HR3XXTQNZD"
         };
         console.log("Firebase Config loaded:", firebaseConfig);
 
 
         // --- Global variables (derived from firebaseConfig or defaults) ---
         // All read/write operations for analytics data will now use this specified APP_ID.
-        // Using __app_id global variable provided by Canvas environment
-        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'datamaster-shared-analytics-x'; 
+        // Derived APP_ID from the projectId in the firebaseConfig for consistency.
+        const APP_ID = firebaseConfig.projectId; 
         console.log(`Using APP_ID for all public data operations: ${APP_ID}`);
 
 
