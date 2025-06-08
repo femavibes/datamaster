@@ -1,0 +1,3117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urbanism+ Feed & Hashtag Analysis</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define CSS variables for colors */
+        :root {
+            --bg-color: #dae2e8;
+            --card-bg: #f0f0f3;
+            --text-color: #333;
+            --heading-color: #2c3e50;
+            --link-card-bg: #ffffff;
+            --link-card-border: #e2e8f0;
+            --link-card-headline: #2c3e50;
+            --link-card-description: #777;
+            --link-card-url: #666;
+            --subheader-color: #34495e;
+            --timeframe-label-bg: #e2e8f0;
+            --timeframe-label-color: #4a5568;
+            --post-card-bg: #f9f9f9;
+            --post-author-color: #3498db;
+            --post-content-color: #444;
+            --post-timestamp-color: #777;
+            --no-content-color: #a0aec0; /* For "No hashtags yet" messages */
+            --border-gray-200: #e5e7eb; /* For borders, like postsContainer */
+            --modal-bg: #ffffff; /* Modal background */
+            --modal-text: #333; /* Modal text color */
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            --bg-color: #1a202c; /* Dark background */
+            --card-bg: #2d3748; /* Darker card background */
+            --text-color: #e2e8f0; /* Light text */
+            --heading-color: #e2e8f0;
+            --link-card-bg: #4a5568; /* Dark link card bg */
+            --link-card-border: #2d3748;
+            --link-card-headline: #e2e8f0;
+            --link-card-description: #a0aec0;
+            --link-card-url: #a0aec0;
+            --subheader-color: #e2e8f0;
+            --timeframe-label-bg: #4a5568;
+            --timeframe-label-color: #e2e8f0;
+            --post-card-bg: #374151; /* Darker post card */
+            --post-author-color: #63b3ed; /* Lighter blue for dark mode */
+            --post-content-color: #e2e8f0;
+            --post-timestamp-color: #a0aec0;
+            --no-content-color: #a0aec0;
+            --border-gray-200: #4a5568;
+            --modal-bg: #2d3748; /* Darker modal background */
+            --modal-text: #e2e8f0; /* Lighter modal text */
+        }
+
+        /* Apply variables throughout the existing CSS */
+        html, body {
+            height: 100%;
+            min-height: 100vh; /* Ensure minimum viewport height */
+            margin: 0;
+            padding: 0;
+            display: flex; /* Make html a flex container */
+            flex-direction: column; /* Stack children vertically */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color); /* Use variable */
+            color: var(--text-color); /* Use variable */
+            padding: 20px; /* Padding around the main content area */
+            display: flex;
+            flex-direction: column; /* Arrange children vertically */
+            box-sizing: border-box; /* Include padding in height calculation */
+            flex-grow: 1; /* Allow body to grow and fill html height */
+            align-items: center; /* Center the main-wrapper horizontally */
+            /* Background properties are set by JS now */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .main-wrapper {
+            display: flex;
+            flex-direction: column; /* Stack sections on small screens */
+            gap: 30px; /* Default gap for smaller screens */
+            width: 100%; /* Always take 100% of the parent's content width */
+            flex-grow: 1; /* Allow main-wrapper to grow and fill body height */
+        }
+        @media (min-width: 1024px) { /* Side-by-side on larger screens */
+            .main-wrapper {
+                flex-direction: row;
+                max-width: 1840px; /* Increased available space for Rankings box */
+                height: 100%; /* Ensure main-wrapper fills the height of the body */
+                gap: 15px; /* Halved the gap for larger screens */
+            }
+            .section-wrapper {
+                display: flex;
+                flex-direction: column;
+                min-width: 0; /* CRITICAL: Allows flex items to shrink below their content size */
+                height: 100%; /* Ensure each section-wrapper fills the height of main-wrapper */
+            }
+            /* Specific flex properties for the three columns (Updated percentages/widths) */
+            /* Calculated based on 1810px total content width (1840px max-width - 30px total gap):
+               Nav: 64.8px -> flex: 0 0 64.8px;
+               Urbanism+: 615.6px -> flex: 0 0 615.6px;
+               Rankings: 1129.6px (1810 - 64.8 - 615.6) -> flex: 1;
+            */
+            .section-wrapper:nth-child(1) { /* Navigation Box */
+                flex: 0 0 64.8px; /* Fixed width for content */
+            }
+            .section-wrapper:nth-child(2) { /* Urbanism+ Box */
+                flex: 0 0 615.6px; /* Fixed width for content */
+            }
+            .section-wrapper:nth-child(3) { /* Rankings Box - takes all remaining space */
+                flex: 1; /* This will automatically expand to 1129.6px content width */
+            }
+            /* Ensure section-cards inside are also full height */
+            .section-wrapper .section-card {
+                height: 100%;
+            }
+            /* Override padding for the navigation box's card and hide horizontal overflow */
+            .section-wrapper:nth-child(1) .section-card {
+                padding: 10px 5px; /* Reduced horizontal padding */
+                overflow-x: hidden; /* Ensure no horizontal scroll */
+                justify-content: space-between; /* Distribute items top and bottom */
+                align-items: center; /* Center items horizontally */
+                overflow-y: hidden; /* Prevent vertical scroll if content is only a few buttons */
+            }
+        }
+
+        .section-card {
+            background-color: var(--card-bg); /* Use variable */
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            padding: 25px;
+            display: flex;
+            flex-direction: column; /* Crucial for internal flex layout */
+            flex-grow: 1; /* Allow cards to grow and fill space */
+            position: relative; /* Needed for absolute positioning of connection status */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
+        }
+
+        /* Specific rule for Urbanism+ section-card to prevent its own scrolling */
+        .section-wrapper:nth-child(2) .section-card { /* Urbanism+ Box */
+            overflow-y: hidden; /* Ensure only iframe scrolls */
+        }
+
+        /* Specific rule for Rankings section-card (which needs scroll) */
+        .section-wrapper:nth-child(3) .section-card {
+            overflow-y: auto; /* Re-add this to ensure the main card gets a scrollbar if contents overflow */
+        }
+
+        /* Ensure the grid of ranking sections within the Rankings card can shrink */
+        /* Also ensure the flex-col divs within the grid can shrink, critical for inner scrollbars */
+        .section-wrapper:nth-child(3) .section-card .grid,
+        .section-wrapper:nth-child(3) .section-card .grid > .md\:col-span-3.flex.flex-col,
+        .section-wrapper:nth-child(3) .section-card .grid > .md\:col-span-5.flex.flex-col,
+        .section-wrapper:nth-child(3) .section-card .grid > .md\:col-span-4.flex.flex-col {
+            min-height: 0; /* CRITICAL: Allows flex items to shrink below their content size */
+        }
+
+
+        /* Stylish Title for main sections */
+        .stylish-section-title {
+            font-size: 2rem; /* Larger title */
+            font-weight: 800; /* Extra bold */
+            color: var(--heading-color); /* Use variable */
+            /* margin-bottom is handled by the new flex container now */
+            text-align: center;
+            display: flex; /* Use flexbox for image and text alignment */
+            align-items: center; /* Vertically align items */
+            justify-content: flex-start; /* Changed: Left-align content within the title */
+            gap: 10px; /* Space between image and text */
+            padding-bottom: 10px; /* Space for a subtle border/shadow */
+            border-bottom: 3px solid #3498db; /* Accent border */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow below the title */
+            border-radius: 4px; /* Slightly rounded bottom border */
+            flex-shrink: 0; /* Prevent title from shrinking */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        /* Style for the link element wrapping the icon and text in the title */
+        .stylish-section-title a.feed-title-link {
+            text-decoration: none; /* Remove underline from link */
+            color: inherit; /* Inherit text color */
+            display: flex; /* Ensure flex for icon/text alignment */
+            align-items: center; /* Vertically align items */
+            gap: 10px; /* Space between icon and text */
+        }
+        /* Style for the circular container of the icon in the title */
+        .feed-title-icon-wrapper {
+            width: 48px; /* Match navigation button width */
+            height: 48px; /* Match navigation button height */
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0; /* Prevent shrinking */
+            /* Reverted border to 2px for header icons */
+            border: 2px solid rgba(0, 0, 0, 0.1); 
+        }
+        body.dark-mode .feed-title-icon-wrapper {
+            /* Reverted border to 2px for dark mode header icons */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Style for the image inside the feed title icon wrapper */
+        .feed-title-icon-wrapper img {
+            width: 100%; /* Fill parent */
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%; /* Ensure image itself is round */
+            transition: none !important; /* IMPORTANT: Prevent any hover transition on transform */
+            transform: scale(var(--title-icon-scale, 1)); /* Set by JS with default */
+        }
+        /* Style for the SVG inside the feed title icon wrapper */
+        .feed-title-icon-wrapper svg {
+            width: 100%; /* Fill parent */
+            height: 100%;
+            transition: none !important; /* Prevent any hover transition on transform */
+        }
+
+
+        .post-card {
+            background-color: var(--post-card-bg); /* Use variable */
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid var(--post-author-color); /* Accent color */
+            transition: background-color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .post-author {
+            font-weight: bold;
+            color: var(--post-author-color); /* Use variable */
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .post-content {
+            color: var(--post-content-color); /* Use variable */
+            line-height: 1.5;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .post-timestamp {
+            font-size: 0.85rem;
+            color: var(--post-timestamp-color); /* Use variable */
+            margin-top: 10px;
+            text-align: right;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        /* Adjusted analysis-item for general use, but link-cards will override */
+        .analysis-item {
+            display: flex;
+            align-items: flex-start; /* Align items to the top if label wraps */
+            padding: 4px 0; /* Changed: Smaller vertical padding for hashtags */
+            border-bottom: 1px dashed #eee; /* This border will need adjustment for dark mode if kept */
+            gap: 10px; /* Add a small gap between label and value */
+        }
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+        .analysis-label {
+            font-weight: 500;
+            color: var(--text-color); /* Use variable */
+            flex-grow: 1; /* Allow it to grow */
+            word-break: break-word; /* Ensure long words break */
+            min-width: 0; /* Important for flex items to shrink properly */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .analysis-value {
+            font-weight: bold;
+            color: var(--heading-color); /* Use variable */
+            flex-shrink: 0; /* Prevent it from shrinking */
+            white-space: nowrap; /* Keep the count on one line */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+            color: var(--no-content-color); /* Use variable */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .feed-name-display { /* This class is no longer used for display, but kept for consistency */
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-color); /* Use variable */
+            text-align: center;
+            margin-bottom: 15px;
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .iframe-embed {
+            width: 100%;
+            /* Removed height: 100%; to fix double scrollbar - relies on flex-grow: 1 */
+            min-height: 500px; /* Ensure a minimum height for the iframe */
+            border: none;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            flex-grow: 1; /* Allow iframe to grow within its container */
+            display: block; /* Ensures it respects flex properties better */
+            /* The iframe itself will handle its own scrolling if its content overflows */
+        }
+        /* Adjusted timeframe selector for inline display with header */
+        .timeframe-selector {
+            display: flex;
+            justify-content: flex-start; /* Changed: Left-align buttons within the selector */
+            gap: 10px;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            flex-shrink: 0; /* Prevent selector from shrinking */
+        }
+        .timeframe-selector label {
+            background-color: var(--timeframe-label-bg); /* Use variable */
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--timeframe-label-color); /* Use variable */
+            transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap; /* Prevent text from wrapping inside label */
+        }
+        .timeframe-selector input[type="radio"] {
+            display: none;
+        }
+        .timeframe-selector input[type="radio"]:checked + label {
+            background-color: #3498db; /* Keep accent blue consistent */
+            color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        /* Modern Link Card Styling */
+        .link-card {
+            background-color: var(--link-card-bg); /* Use variable */
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            padding: 10px; /* Changed: Smaller vertical padding */
+            margin-bottom: 8px; /* Changed: Smaller margin-bottom */
+            transition: all 0.3s ease; /* Smooth transitions for hover effects */
+            display: block; /* Ensure it behaves like a block for full clickability */
+            text-decoration: none; /* Remove underline from link */
+            color: inherit; /* Inherit text color */
+            border: 1px solid var(--link-card-border); /* Use variable */
+        }
+        .link-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+            border-color: #3498db; /* Highlight border on hover */
+        }
+        .link-card-headline {
+            font-weight: 600; /* Slightly bolder */
+            font-size: 1rem; /* Slightly smaller headline for compactness */
+            color: var(--link-card-headline); /* Use variable */
+            margin-bottom: 4px; /* Reduced margin */
+            line-height: 1.3;
+            white-space: normal; /* Changed: Allow text to wrap */
+            overflow: visible; /* Changed: Allow overflow to be visible (text wraps) */
+            text-overflow: clip; /* Changed: No ellipsis, clip if necessary after wrap */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .link-card-description { /* New style for description */
+            font-size: 0.75rem; /* Smaller font for description */
+            color: var(--link-card-description); /* Use variable */
+            margin-bottom: 6px; /* Space below description */
+            line-height: 1.4;
+            overflow: visible; /* Changed: Allow overflow to be visible (text wraps) */
+            text-overflow: clip; /* Changed: No ellipsis, clip if necessary after wrap */
+            display: block; /* Changed: Ensure it behaves like a block, overriding -webkit-box for full wrapping */
+            -webkit-line-clamp: unset; /* Changed: Remove line clamp */
+            -webkit-box-orient: unset; /* Changed: Remove box orient */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .link-card-url {
+            font-size: 0.8rem; /* Smaller URL text */
+            color: var(--link-card-url); /* Use variable */
+            white-space: nowrap; /* Keep URL on one line */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            margin-bottom: 6px; /* Reduced margin */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .link-card-count {
+            font-size: 0.9rem; /* Slightly smaller count */
+            font-weight: bold;
+            color: #3498db; /* Accent color for count (stays consistent) */
+        }
+        .link-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Space out items */
+        }
+        .link-card-comment-btn {
+            background-color: transparent;
+            border: none;
+            padding: 4px 8px; /* Slightly more padding */
+            border-radius: 6px; /* Slightly rounded */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-color); /* Inherit color, or specific icon color */
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .link-card-comment-btn:hover {
+            background-color: var(--timeframe-label-bg); /* Use a subtle hover background */
+        }
+        .link-card-comment-btn svg {
+            width: 20px; /* Adjust icon size */
+            height: 20px;
+            color: var(--subheader-color); /* Make icon stand out a bit */
+            transition: color 0.3s ease;
+        }
+        body.dark-mode .link-card-comment-btn svg {
+            color: var(--subheader-color); /* Keep distinct in dark mode */
+        }
+        /* New CSS for image inside link card */
+        .link-card img {
+            width: 100%;
+            height: 128px; /* Fixed height for thumbnails */
+            object-fit: cover; /* Cover the area, cropping if necessary */
+            border-radius: 8px 8px 0 0; /* Rounded top corners, sharp bottom */
+            margin-bottom: 8px; /* Space below image */
+        }
+
+        /* Modern Domain Card Styling (similar to link-card) */
+        .domain-card {
+            background-color: var(--link-card-bg); /* Use variable */
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            padding: 10px; /* Changed: Smaller vertical padding */
+            margin-bottom: 8px; /* Changed: Smaller margin-bottom */
+            transition: all 0.3s ease; /* Smooth transitions for hover effects */
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid var(--link-card-border); /* Use variable */
+        }
+        .domain-card:hover {
+            box_shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+            border-color: #3498db; /* Highlight border on hover */
+        }
+        .domain-card-name {
+            font-weight: 600;
+            font-size: 1rem; /* Slightly smaller name for compactness */
+            color: var(--link-card-headline); /* Use variable */
+            margin-bottom: 4px; /* Reduced margin */
+            line-height: 1.3;
+            white-space: nowrap; /* Keep on one line */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .domain-card-count {
+            font-size: 0.9rem; /* Slightly smaller count */
+            font-weight: bold;
+            color: #3498db; /* Accent color for count (stays consistent) */
+        }
+        /* Style for connected status text */
+        .text-green-600 {
+            font-weight: 600;
+        }
+
+        /* Stylish sub-headers for analysis sections */
+        .stylish-subheader {
+            font-size: 1.5rem; /* Slightly larger than before */
+            font-weight: 700; /* Bolder */
+            color: var(--subheader-color); /* Use variable */
+            margin-bottom: 15px;
+            text-align: left; /* Changed: Left-align subheaders */
+            position: relative; /* For pseudo-elements if needed */
+            padding-bottom: 8px;
+            flex-shrink: 0; /* Prevent subheader from shrinking */
+            transition: color 0.3s ease; /* Smooth transition for dark mode */
+        }
+        .stylish-subheader::after {
+            content: '';
+            position: absolute;
+            left: 0; /* Changed: Align underline to the left */
+            bottom: 0;
+            width: 50px; /* Short underline */
+            height: 3px;
+            background-color: #3498db; /* Accent color */
+            border-radius: 2px;
+        }
+
+        /* Added for the rankings section to align its content to the left */
+        .section-wrapper:last-child .section-card {
+            align-items: flex-start;
+        }
+        /* Specific styling for the handle and DID in Top Posters */
+        .poster-card { /* Reusing link-card styles but adjusting */
+            display: flex;
+            align-items: center; /* Align avatar and text */
+            gap: 10px; /* Space between avatar and text */
+            background-color: var(--link-card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 10px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid var(--link-card-border);
+        }
+        .poster-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+            border-color: #3498db;
+        }
+        .poster-avatar {
+            width: 40px; /* Size for poster avatar */
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .poster-info {
+            flex-grow: 1;
+            min-width: 0; /* Allow text to shrink */
+        }
+        .poster-display-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--link-card-headline);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .poster-handle {
+            font-size: 0.85rem;
+            color: var(--link-card-url);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .poster-count {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #3498db;
+            flex-shrink: 0;
+        }
+
+
+        /* Styling for the modal */
+        #settingsModal .bg-white { /* Target the modal content box */
+            background-color: var(--modal-bg);
+            color: var(--modal-text);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        #settingsModal h3,
+        #settingsModal label,
+        #settingsModal select {
+            color: var(--modal-text); /* Ensure modal text is readable in dark mode */
+        }
+        #settingsModal select {
+            background-color: var(--card-bg); /* Use card-bg for select background */
+            border-color: var(--link-card-border); /* Use link-card-border for select border */
+            color: var(--text-color); /* Use text-color for select text */
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+        #settingsModal select option {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        /* Styles for feed selection buttons */
+        .feed-select-btn {
+            padding: 12px; /* Increased padding */
+            border-radius: 50%; /* Make it round */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 48px; /* Fixed width */
+            height: 48px;
+            margin-bottom: 15px; /* Space between buttons */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease-in-out;
+            /* Reverted border to 2px for navigation buttons */
+            border: 2px solid transparent; 
+            overflow: hidden; /* IMPORTANT: Ensures zoomed images are clipped to the circle */
+        }
+        .feed-select-btn:last-of-type {
+            margin-bottom: 0; /* No margin after the last button */
+        }
+        .feed-select-btn:hover {
+            transform: scale(1.08); /* Slightly larger on hover */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .feed-select-btn.active-feed-btn {
+            background-color: #3498db; /* Blue for active state */
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            /* Reverted border to 2px for active navigation buttons */
+            border: 2px solid #287bbd; 
+        }
+        .feed-select-btn.active-feed-btn svg {
+            color: white; /* Ensure SVG icon is white when active */
+        }
+        .feed-select-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%; /* Make image round */
+            /* Default transform, will be overridden by specific rules below */
+            transform: scale(1);
+            transition: transform 0.2s ease-in-out; /* Smooth transition for zoom effect */
+        }
+        /* Specific rule for zooming in the images */
+        #urbanismPlusFeedBtn img {
+            transform: scale(2.42); /* Original value */
+        }
+        #bandcampFeedBtn img {
+            transform: scale(2.80); /* Original value */
+        }
+
+        .feed-select-btn svg {
+            width: 28px; /* Slightly larger SVG icons */
+            height: 28px;
+            color: #333; /* Default SVG color (matches text-color var) */
+            transition: color 0.3s ease;
+        }
+        body.dark-mode .feed-select-btn svg {
+            color: #e2e8f0; /* Light color for dark mode */
+        }
+        /* Specific margin for the plus button to ensure it's at the very top */
+        #plusBtn {
+            margin-bottom: 15px; /* Adjust spacing below plus button */
+        }
+        /* Ensure feed selection buttons don't push the settings button up */
+        .nav-buttons-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1; /* Allows this container to push content to bottom */
+            padding-top: 10px; /* Small padding from the top of the card */
+            padding-bottom: 10px; /* Small padding from the bottom of the card */
+        }
+
+        /* Line spacer styles */
+        .line-spacer {
+            width: 80%; /* Shorter line */
+            height: 2px;
+            background-color: #ddd; /* Light grey line */
+            margin: 10px 0 20px 0; /* Top/bottom margin, 20px on bottom for better separation */
+            border-radius: 1px; /* Rounded ends */
+            opacity: 0.7; /* Slightly transparent */
+        }
+        body.dark-mode .line-spacer {
+            background-color: #4a5568; /* Darker grey for dark mode */
+        }
+
+        /* New: Styling for individual ranking scroll areas */
+        .ranking-scroll-area {
+            overflow-y: auto;
+            padding-right: 10px; /* Space for scrollbar */
+            flex-grow: 1; /* Allow it to fill available vertical space */
+            margin-bottom: 20px; /* Add margin-bottom here to push down if needed */
+        }
+        /* Hide scrollbar for aesthetic purposes if needed, but keep functionality */
+        .ranking-scroll-area::-webkit-scrollbar {
+            width: 8px;
+        }
+        .ranking-scroll-area::-webkit-scrollbar-track {
+            background: var(--card-bg); /* Use card background for track */
+            border-radius: 10px;
+        }
+        .ranking-scroll-area::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .ranking-scroll-area::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        body.dark-mode .ranking-scroll-area::-webkit-scrollbar-thumb {
+            background: #a0aec0;
+        }
+        body.dark-mode .ranking-scroll-area::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+
+        /* Styling for the new ranking toggle buttons */
+        .ranking-toggle-btn {
+            background-color: var(--timeframe-label-bg);
+            color: var(--timeframe-label-color);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .ranking-toggle-btn:hover {
+            background-color: #3498db; /* Blue for hover */
+            color: #ffffff;
+        }
+        .ranking-toggle-btn.active {
+            background-color: #3498db;
+            color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* NEW: Styles for Featured Feeds section */
+        .featured-feed-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background-color: var(--link-card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 15px;
+            margin-bottom: 10px;
+            text-decoration: none; /* For the <a> tag */
+            color: inherit;
+            transition: all 0.3s ease;
+            border: 1px solid var(--link-card-border);
+        }
+        .featured-feed-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            border-color: #3498db;
+        }
+        .featured-feed-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+        body.dark-mode .featured-feed-icon {
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .featured-feed-info {
+            flex-grow: 1;
+        }
+        .featured-feed-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--link-card-headline);
+            margin-bottom: 4px;
+        }
+        .featured-feed-description {
+            font-size: 0.9rem;
+            color: var(--link-card-description);
+            line-height: 1.4;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <!-- Section for Slim Navigation Box - NEW -->
+        <div class="section-wrapper">
+            <div class="section-card flex flex-col justify-between items-center p-3 h-full">
+                <!-- Fema Button at the very top - NEW -->
+                <a id="femaProfileBtn" href="https://bsky.app/profile/fema.monster" target="_blank" rel="noopener noreferrer" 
+                   class="p-0 bg-transparent rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                    <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/fema.jpg" alt="Fema Monster" class="w-12 h-12 rounded-full border-2 border-transparent hover:border-blue-500 transition-all duration-300">
+                </a>
+                <!-- Line spacer under Fema button -->
+                <div class="line-spacer"></div>
+
+                <!-- NEW: Home Button -->
+                <button id="homeFeedBtn" class="feed-select-btn bg-gray-200 mb-4">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path>
+                    </svg>
+                </button>
+                <!-- Line spacer under Home button -->
+                <div class="line-spacer"></div>
+
+
+                <!-- Plus button (now below Home button) -->
+                <button id="plusBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                </button>
+                <!-- Line spacer under plus button -->
+                <div class="line-spacer"></div>
+
+                <!-- Container for feed selection buttons -->
+                <div class="nav-buttons-container">
+                    <button id="urbanismPlusFeedBtn" class="feed-select-btn bg-gray-200">
+                        <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Urbanism+ Logo">
+                    </button>
+                    <button id="bandcampFeedBtn" class="feed-select-btn bg-gray-200">
+                        <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp" alt="Bandcamp Logo">
+                    </button>
+                    <button id="transitSkyFeedBtn" class="feed-select-btn bg-gray-200">
+                        <!-- Generic SVG for TransitSky -->
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>
+                        </svg>
+                    </button>
+                    <!-- Add more feed buttons here as needed -->
+                </div>
+
+                <!-- Gearbox button at the bottom -->
+                <button id="openSettingsBtn" class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.942 1.89 2.395a1.724 1.724 0 00.01 2.59c1.543 1.453-.294 3.333-1.89 2.395a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.942-1.89-2.395a1.724 1.724 0 00-.01-2.59c-1.543-1.453.294-3.333 1.89-2.395a1.724 1.724 0 002.573-1.066z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Section for Iframe Embed (Urbanism+) -->
+        <div class="section-wrapper">
+            <div class="section-card">
+                <!-- New flex container for title and version buttons -->
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="stylish-section-title mb-0 mr-4">
+                        <a id="feedTitleLink" href="#" target="_blank" rel="noopener noreferrer" class="feed-title-link">
+                            <div class="feed-title-icon-wrapper">
+                                <img id="feedTitleIcon" src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Feed Logo">
+                            </div>
+                            <span id="feedTitleText">Urbanism+</span>
+                        </a>
+                    </h2>
+                    <div id="feedVersionButtons" class="flex gap-2">
+                        <!-- Buttons will be rendered here by JS -->
+                    </div>
+                </div>
+                <iframe
+                    id="mainIframe"
+                    src="https://graze.social/feeds/embed/3654"
+                    title="Social Feed"
+                    class="iframe-embed"
+                    allowFullScreen
+                ></iframe>
+            </div>
+        </div>
+
+        <!-- Section for Live Analysis (Contrails data processed in background) - Now on the right -->
+        <div class="section-wrapper">
+            <div class="section-card">
+                <!-- Main header for Rankings section -->
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center w-full mb-4">
+                    <div class="flex flex-col sm:flex-row items-center flex-grow-0 gap-4 mb-4 sm:mb-0">
+                        <h2 class="stylish-section-title mb-0" id="rankingsSectionTitle">Rankings</h2>
+                        <div id="timeframeSelectorContainer" class="timeframe-selector flex-shrink-0 sm:ml-8">
+                            <input type="radio" id="timeframeDay" name="timeframe" value="day">
+                            <label for="timeframeDay">Day</label>
+                            <input type="radio" id="timeframeWeek" name="timeframe" value="week">
+                            <label for="timeframeWeek">Week</label>
+                            <input type="radio" id="timeframeMonth" name="timeframe" value="month">
+                            <label for="timeframeMonth">Month</label>
+                            <input type="radio" id="timeframeAllTime" name="timeframe" value="allTime" checked>
+                            <label for="timeframeAllTime">All Time</label>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-600 flex flex-col items-end flex-shrink-0">
+                        <span id="connectionStatus">Initializing...</span>
+                        <span id="datamasterVersionText" class="text-gray-600">datamaster 0.8.8</span>
+                    </div>
+                </div>
+                
+                <!-- The actual live posts container (hidden) -->
+                <div id="postsContainer" class="flex-grow overflow-y-auto border border-gray-200 rounded-md p-2" style="max-height: 500px; display: none;">
+                    <p id="noPostsMessage" class="text-gray-500 text-center py-4" style="display: none;">Waiting for new posts...</p>
+                </div>
+                <div id="loadingIndicator" class="loading-indicator" style="display: none;"></div>
+
+                <!-- Grid for rankings - Adjusted for 12 columns, and now flex-grow -->
+                <div id="rankingsContent" class="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6 w-full flex-grow">
+                    <div class="md:col-span-3 flex flex-col" id="topHashtagsSection"> <!-- Top Hashtags (3/12) - now flex-col and takes vertical space -->
+                        <h3 class="stylish-subheader">Top Hashtags</h3>
+                        <div id="topTermsWrapper" class="ranking-scroll-area">
+                            <div id="topTerms">
+                                <p class="text-gray-500 text-center">No hashtags yet to analyze.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-5 flex flex-col" id="topLinksSection"> <!-- Top Links (5/12) - now flex-col and takes vertical space -->
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="stylish-subheader mb-0">Top Links</h3>
+                        </div>
+                        <div id="topLinksWrapper" class="ranking-scroll-area">
+                            <div id="topLinks">
+                                <p class="text-gray-500 text-center">No rich link cards yet to display.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-4 flex flex-col" id="rankedUsersSection"> <!-- Top Posters / Top Mentions (4/12) - now flex-col and takes vertical space -->
+                        <div class="flex flex-col flex-grow"> <!-- Added flex-grow to make it take full height -->
+                            <div class="flex items-center justify-between mb-4 flex-wrap"> <!-- Added flex-wrap for small screens -->
+                                <h3 class="stylish-subheader flex-grow mb-0 mr-2">Ranked Users</h3> <!-- Generic title for the section -->
+                                <div class="flex gap-2 flex-shrink-0">
+                                    <button id="showPostersBtn" class="ranking-toggle-btn active">Posters</button>
+                                    <button id="showMentionsBtn" class="ranking-toggle-btn">Mentions</button>
+                                </div>
+                            </div>
+                            <!-- Content for Posters (initially visible) -->
+                            <div id="postersContentWrapper" class="ranking-scroll-area"> <!-- flex-grow already here -->
+                                <div id="topPostersList">
+                                    <p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>
+                                </div>
+                            </div>
+                            <!-- Content for Mentions (initially hidden) -->
+                            <div id="mentionsContentWrapper" class="ranking-scroll-area hidden"> <!-- flex-grow already here -->
+                                <div id="topMentionsList">
+                                    <p class="text-gray-500 text-center">No mentions yet to rank from the feed.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-4 flex flex-col" id="topSitesSection" style="display: none;"> <!-- Now flex-col and takes vertical space -->
+                        <h3 class="stylish-subheader">Top Sites</h3>
+                        <div id="topDomainsWrapper" class="ranking-scroll-area">
+                            <div id="topDomains">
+                                <p class="text-gray-500 text-center">No domains yet to analyze.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-5 flex flex-col" id="contentTypeBreakdownSection" style="display: none;"> <!-- Now flex-col and takes vertical space -->
+                        <h3 class="stylish-subheader">Content Type Breakdown</h3>
+                        <div id="contentTypeBreakdownWrapper" class="ranking-scroll-area">
+                            <div id="contentTypeBreakdown">
+                                <p class="text-gray-500 text-center">No content types yet to analyze.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Featured Feeds Content (hidden by default, shown for Datamaster feed) -->
+                <div id="featuredFeedsContent" class="flex flex-col gap-4 mt-6 w-full" style="display: none;">
+                    <h3 class="text-center text-gray-600 dark:text-gray-400">Explore other curated feeds!</h3>
+                    <a href="#" class="featured-feed-card" data-feed-id="urbanismPlus">
+                        <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Urbanism+ Logo" class="featured-feed-icon">
+                        <div class="featured-feed-info">
+                            <div class="featured-feed-name">Urbanism+</div>
+                            <div class="featured-feed-description">Daily news and insights on urban planning, public transit, and walkable cities.</div>
+                        </div>
+                    </a>
+                    <a href="#" class="featured-feed-card" data-feed-id="bandcamp">
+                        <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp" alt="Bandcamp Logo" class="featured-feed-icon">
+                        <div class="featured-feed-info">
+                            <div class="featured-feed-name">Bandcamp</div>
+                            <div class="featured-feed-description">Discover new music and independent artists trending on Bandcamp.</div>
+                        </div>
+                    </a>
+                    <a href="#" class="featured-feed-card" data-feed-id="transitSky">
+                        <svg class="featured-feed-icon p-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>
+                        </svg>
+                        <div class="featured-feed-info">
+                            <div class="featured-feed-name">TransitSky</div>
+                            <div class="featured-feed-description">Stay updated on all things public transit across the globe.</div>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- HIDDEN: Resolved DIDs List Section -->
+                <div class="mt-8" style="display: none;">
+                    <h3 class="stylish-subheader">Resolved User DIDs (Hidden)</h3>
+                    <div id="resolvedDidsList" class="space-y-3">
+                        <!-- Content for this div will still be generated by JS but not shown -->
+                        <p class="text-gray-500 text-center">This section is hidden but DIDs are still resolved in the background.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal Structure -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/3 lg:w-1/4">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Settings</h3>
+            <div class="mb-4">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="darkModeToggle" class="sr-only peer">
+                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Dark Mode</span>
+                </label>
+            </div>
+            <div class="mb-4">
+                <label for="themeSelect" class="block text-sm font-medium text-gray-700 mb-2">Select Theme:</label>
+                <select id="themeSelect" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                    <option value="none">None</option>
+                    <option value="pride">Pride Theme</option>
+                    <option value="transgenderPride">Transgender Pride Theme</option>
+                    <option value="blm">BLM Theme</option>
+                    <!-- Add more themes here -->
+                </select>
+            </div>
+            <button id="closeModalBtn" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">Close</button>
+        </div>
+    </div>
+
+    <!-- Link Posts Modal Structure -->
+    <div id="linkPostsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/2 lg:w-1/3 max-h-[90vh] flex flex-col">
+            <h3 class="text-xl font-bold mb-4 text-gray-800" id="linkPostsModalTitle">Posts for Link</h3>
+            <div id="linkPostsContent" class="flex-grow overflow-y-auto space-y-4">
+                <!-- Posts will be dynamically loaded here -->
+            </div>
+            <button id="closeLinkPostsModalBtn" class="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">Close</button>
+        </div>
+    </div>
+
+    <!-- Plus Button Modal (New Feed Suggestion) -->
+    <div id="plusButtonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/2 lg:w-1/3 max-h-[90vh] flex flex-col text-center">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Add a Feed to Fema's Datamaster</h3>
+            <p class="text-gray-700 mb-4">Want to add a Feed to Fema's datamaster? This is something I am looking to support but for now feel free to reach out to me on Bluesky <a href="https://bsky.app/profile/fema.monster" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">@fema.monster</a>.</p>
+            <p class="text-gray-700 mb-6">Consider donating to my Ko-Fi <a href="https://ko-fi.co/urbanismplus" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">">(https://ko.fi/urbanismplus)</a> and mention "Datamaster" to earmark the funds for this project.</p>
+            <button id="closePlusButtonModalBtn" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase CDN imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Helper function to fetch headline from a URL (Moved to top for scope visibility) ---
+        async function fetchHeadline(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.warn(`Failed to fetch ${url} for headline: ${response.status} ${response.statusText}`);
+                    return null;
+                }
+                // Check if content type is HTML before parsing
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('text/html')) {
+                    console.warn(`Skipping headline fetch for non-HTML content at ${url}. Content-Type: ${contentType}`);
+                    return null;
+                }
+
+                const text = await response.text();
+                const match = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+                return match && match[1] ? match[1].trim() : null;
+            } catch (e) {
+                console.warn(`CORS or network error fetching headline for ${url}:`, e.message);
+                // Important: Log a warning about CORS if it's likely the cause
+                if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
+                    console.warn(`CORS likely prevented fetching headline for ${url}. Headline will not be displayed.`);
+                }
+                return null; // Return null if fetching fails
+            }
+        }
+
+        // Helper function to extract simplified base domain from a URL
+        function getSimplifiedDomain(url) {
+            let hostname;
+            try {
+                // Attempt to create a URL object. If it fails, prepend 'http://' and try again.
+                // This handles cases where the link might just be a domain string (e.g., "example.com")
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    hostname = new URL(`http://${url}`).hostname.toLowerCase();
+                } else {
+                    hostname = new URL(url).hostname.toLowerCase();
+                }
+            } catch (e) {
+                console.warn(`Could not parse URL "${url}", returning as is for domain extraction attempt:`, e);
+                // Fallback: If URL parsing fails, try to extract something sensible from the raw string
+                // This is a last resort to avoid 'Invalid Domain' for potentially malformed but recognizable strings
+                const parts = url.toLowerCase().split('.');
+                if (parts.length > 1) {
+                    // Take the last part before the TLD (e.g., 'streetsblog' from 'streetsblog.org')
+                    // This is a heuristic and might not be perfect for all TLDs (e.g., .co.uk)
+                    const potentialDomain = parts[parts.length - 2] || parts[0];
+                    return potentialDomain.replace(/^www\./, ''); // Ensure www is also removed from this fallback
+                }
+                return 'Invalid Domain'; // If all attempts fail
+            }
+
+            let domain = hostname.replace(/^www\./, ''); // Remove www. prefix from the hostname
+
+            // List of common multi-part TLDs and then single-part TLDs.
+            // Sorted by length descending to ensure longer TLDs (like .co.uk) are matched first.
+            const knownTlds = [
+                '.co.uk', '.com.au', '.org.uk', '.net.au', '.ac.uk', '.gov.uk',
+                '.co.nz', '.org.nz', '.net.nz', '.ac.nz',
+                '.co.jp', '.ne.jp', '.or.jp', '.ac.jp', '.ad.jp', '.ed.jp', '.go.jp', '.gr.jp', '.lg.jp',
+                '.com.br', '.net.br', '.org.br',
+                '.com.cn', '.net.cn', '.org.cn',
+                '.com.hk', '.net.hk', '.org.hk',
+                '.com', '.org', '.net', '.info', '.biz', '.co', '.io', '.app', '.news', '.blog', '.tech', '.store', '.online', '.site', '.xyz'
+            ].sort((a, b) => b.length - a.length);
+
+            // Attempt to strip the longest matching known TLD from the end of the domain
+            for (const tld of knownTlds) {
+                if (domain.endsWith(tld)) {
+                    domain = domain.substring(0, domain.length - tld.length);
+                    break; // Stop after stripping the most specific TLD
+                }
+            }
+
+            // After stripping TLDs, the remaining 'domain' might still have subdomains (e.g., 'cal.streetsblog').
+            // We want the part before the last dot (the registrable domain name).
+            const parts = domain.split('.');
+            if (parts.length > 1) {
+                // If there are multiple parts (e.g., "cal.streetsblog"), take the last one.
+                // This effectively removes subdomains.
+                return parts[parts.length - 1];
+            } else {
+                // If there's only one part remaining (e.g., "streetsblog", "bbc"),
+                // it means we've successfully isolated the main domain.
+                return domain;
+            }
+        }
+
+        // Function to canonicalize domain names for display, merging known duplicates and preserving original sources
+        function canonicalizeDisplayDomains(rawDomainDataWithSources) {
+            const canonicalMap = {
+                "streetsblog.org": "streetsblog",
+                "theguardian.com": "theguardian",
+                "bbc.co.uk": "bbc",
+                "bbc.com": "bbc" 
+                // Add more canonical mappings here as needed
+            };
+
+            const finalDisplayData = {}; // Will store { "canonical_domain": { count: N, original_full_domains_list: ["orig1.com", "orig2.co.uk"] } }
+
+            for (const simplifiedDomainKey in rawDomainDataWithSources) {
+                const domainEntry = rawDomainDataWithSources[simplifiedDomainKey]; // { count: N, sources: { "orig.com": X, ... } }
+                
+                let canonicalName = simplifiedDomainKey;
+                // Apply the canonical map for the main display key
+                for (const mapKey in canonicalMap) {
+                    if (simplifiedDomainKey === mapKey) {
+                        canonicalName = canonicalMap[mapKey];
+                        break;
+                    }
+                }
+
+                if (!finalDisplayData[canonicalName]) {
+                    finalDisplayData[canonicalName] = { count: 0, original_full_domains_list: new Set() }; // Use Set to avoid duplicates
+                }
+
+                // Aggregate count
+                finalDisplayData[canonicalName].count += domainEntry.count;
+
+                // Add all original source domains from the `sources` object to the set
+                for (const sourceDomain in domainEntry.sources) {
+                    finalDisplayData[canonicalName].original_full_domains_list.add(sourceDomain);
+                }
+            }
+
+            // Convert Set to Array and sort for consistent tooltip display
+            for (const canonicalName in finalDisplayData) {
+                finalDisplayData[canonicalName].original_full_domains_list = 
+                    Array.from(finalDisplayData[canonicalName].original_full_domains_list).sort();
+            }
+            
+            return finalDisplayData;
+        }
+
+        // Helper function to getYYYY-MM-DD format for daily aggregate document IDs
+        function getYYYYMMDD(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // --- Firebase Configuration (Provided by User) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCm_h3QFhrtx3zaQ3qMaOaVNfLwzwHg5pA",
+            authDomain: "datamaster-78f8e.firebaseapp.com",
+            projectId: "datamaster-78f8e",
+            storageBucket: "datamaster-78f8e.firebasestorage.app",
+            messagingSenderId: "358109304500",
+            appId: "1:358109304500:web:c65f479e00a5ed46c9e9e1",
+            measurementId: "G-HR3XXTQNZD"
+        };
+
+        // --- Global variables (derived from firebaseConfig or defaults) ---
+        // All read/write operations will now use this single APP_ID.
+        const APP_ID = firebaseConfig.projectId; 
+        console.log(`Using APP_ID for all operations: ${APP_ID}`);
+
+
+        // --- Firebase Instances ---
+        let app;
+        let db;
+        let auth;
+        let currentUserId = null;
+        let isFirebaseReady = false; 
+
+        // --- Feed Configurations ---
+        const feeds = {
+            'datamaster': { // NEW: Datamaster feed (Home)
+                id: 'datamaster',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/datamaster',
+                displayName: 'Home',
+                versions: [{ name: 'Default', src: 'https://graze.social/feeds/embed/8796' }],
+                icon: 'home', // Using a generic SVG icon for home
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/datamaster',
+                titleIconScale: '1',
+                analyzeData: false // IMPORTANT: Do NOT analyze data for this feed
+            },
+            'urbanismPlus': {
+                id: 'urbanismPlus',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaotfjzjplna',
+                displayName: 'Urbanism+',
+                versions: [
+                    { name: 'Default', src: 'https://graze.social/feeds/embed/3654' }
+                ],
+                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg',
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaotfjzjplna', 
+                titleIconScale: '1.0',
+                analyzeData: true // Analyze data for this feed
+            },
+            'bandcamp': {
+                id: 'bandcamp',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/bandcamp', 
+                displayName: 'Bandcamp', 
+                versions: [
+                    { name: 'Trending', src: 'https://graze.social/feeds/embed/8723' },
+                    { name: 'New', src: 'https://graze.social/feeds/embed/8768' }
+                ],
+                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp',
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp', 
+                titleIconScale: '1.3225',
+                analyzeData: true // Analyze data for this feed
+            },
+            'transitSky': { 
+                id: 'transitSky',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaic34mdicfg', 
+                displayName: 'TransitSky', 
+                versions: [
+                    { name: 'Default', src: 'https://graze.social/feeds/embed/5511' }
+                ],
+                icon: 'train', 
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg', 
+                titleIconScale: '1',
+                analyzeData: true // Analyze data for this feed
+            }
+            // Add more feeds here
+        };
+
+        // Initialize currentActiveFeedId from localStorage, or default to 'datamaster' (NEW DEFAULT)
+        let currentActiveFeedId = localStorage.getItem('activeFeedId') || 'datamaster';
+
+        // --- DOM Elements ---
+        const postsContainer = document.getElementById('postsContainer');
+        const connectionStatusElem = document.getElementById('connectionStatus');
+        const datamasterVersionTextElem = document.getElementById('datamasterVersionText'); // Element for "datamaster 0.7.8" text
+        const loadingIndicatorElem = document.getElementById('loadingIndicator'); // This will now be hidden
+        
+        // Ranking Section Wrappers (for independent scrolling)
+        const topTermsWrapper = document.getElementById('topTermsWrapper');
+        const topLinksWrapper = document.getElementById('topLinksWrapper');
+        const postersContentWrapper = document.getElementById('postersContentWrapper');
+        const mentionsContentWrapper = document.getElementById('mentionsContentWrapper');
+        const topDomainsWrapper = document.getElementById('topDomainsWrapper'); // For Top Sites
+        const contentTypeBreakdownWrapper = document.getElementById('contentTypeBreakdownWrapper'); // For Content Type Breakdown
+
+        // Individual Ranking Display Elements
+        const topTermsDiv = document.getElementById('topTerms'); 
+        const topLinksDiv = document.getElementById('topLinks'); // Now used for Link Cards (with Title & Description)
+        const topDomainsDiv = document.getElementById('topDomains'); 
+        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown');
+        const resolvedDidsListDiv = document.getElementById('resolvedDidsList'); // Original resolved DIDs list (now hidden)
+        const topPostersListDiv = document.getElementById('topPostersList'); // NEW: Top Posters List
+        const topMentionsListDiv = document.getElementById('topMentionsList'); // NEW: Top Mentions List
+        const noPostsMessage = document.getElementById('noPostsMessage');
+        const mainIframe = document.getElementById('mainIframe'); // Reference to the iframe
+        const feedTitleIcon = document.getElementById('feedTitleIcon'); // Image in the title
+        const feedTitleText = document.getElementById('feedTitleText'); // Text in the title
+        const feedTitleLink = document.getElementById('feedTitleLink'); // New link for title image and text
+        
+        // Feed buttons
+        const homeFeedBtn = document.getElementById('homeFeedBtn'); // NEW: Home button
+        const urbanismPlusFeedBtn = document.getElementById('urbanismPlusFeedBtn');
+        const bandcampFeedBtn = document.getElementById('bandcampFeedBtn');
+        const transitSkyFeedBtn = document.getElementById('transitSkyFeedBtn'); // NEW: Event Listener for TransitSky
+        const feedVersionButtonsContainer = document.getElementById('feedVersionButtons'); // New container for version buttons
+
+        // NEW: Toggle buttons for Posters/Mentions
+        const showPostersBtn = document.getElementById('showPostersBtn');
+        const showMentionsBtn = document.getElementById('showMentionsBtn');
+
+        // NEW: Elements related to the Rankings/Featured Feeds section
+        const rankingsSectionTitle = document.getElementById('rankingsSectionTitle');
+        const timeframeSelectorContainer = document.getElementById('timeframeSelectorContainer');
+        const rankingsContent = document.getElementById('rankingsContent'); // The grid containing all ranking sections
+        const featuredFeedsContent = document.getElementById('featuredFeedsContent'); // The new featured feeds section
+        const topHashtagsSection = document.getElementById('topHashtagsSection');
+        const topLinksSection = document.getElementById('topLinksSection');
+        const rankedUsersSection = document.getElementById('rankedUsersSection'); // Contains posters/mentions
+        const topSitesSection = document.getElementById('topSitesSection');
+        const contentTypeBreakdownSection = document.getElementById('contentTypeBreakdownSection');
+
+
+        // Link Posts Modal elements
+        const linkPostsModal = document.getElementById('linkPostsModal');
+        const linkPostsModalTitle = document.getElementById('linkPostsModalTitle');
+        const linkPostsContent = document.getElementById('linkPostsContent');
+        const closeLinkPostsModalBtn = document.getElementById('closeLinkPostsModalBtn');
+
+        // Plus Button Modal elements
+        const plusButtonModal = document.getElementById('plusButtonModal');
+        const closePlusButtonModalBtn = document.getElementById('closePlusButtonModalBtn');
+
+
+        // --- Analysis Data (synced with Firestore for the CURRENTLY ACTIVE feed) ---
+        // currentFeedData will store data read from the unified APP_ID
+        let currentFeedData = {
+            termCounts: {},
+            linkCounts: {},
+            domainCounts: {},
+            contentTypeCounts: {},
+            linkCardsData: {}, // linkCardsData will now store recentPosts and thumbnailUrl
+            imageCardsData: {},
+            posterCounts: {},
+            posterLikes: {}, // This will now explicitly be based on posterCounts
+            mentionCounts: {} // NEW: For mentions
+        };
+        // Cache for already resolved DIDs { did: { handle, displayName, avatar, timestamp } }
+        let resolvedDidsCache = {}; 
+
+        // These will hold the counts for the CURRENTLY SELECTED timeframe (derived from currentFeedData or daily aggregates)
+        let currentDisplayTermCounts = {};
+        let currentDisplayLinkCounts = {}; 
+        let currentDisplayDomainCounts = {}; 
+        let currentDisplayContentTypeCounts = {}; 
+        let currentDisplayPosterCounts = {}; // For displaying current timeframe poster counts
+        let currentDisplayPosterLikes = {}; // NEW: For displaying current timeframe poster likes (same as posts)
+        let currentDisplayMentionCounts = {}; // NEW: For displaying current timeframe mention counts
+
+        let currentSelectedTimeframe = localStorage.getItem('selectedTimeframe') || 'allTime'; // Default timeframe to 'allTime'
+        // REMOVED: let currentLinkFilterHashtag = localStorage.getItem('linkFilterHashtag') || ''; // Default to no filter
+
+        // State for Top Posters/Mentions toggle
+        let currentPosterMentionsView = localStorage.getItem('posterMentionsView') || 'posters'; // 'posters' or 'mentions'
+
+
+        // --- WebSocket Variables ---
+        let ws = null; // Global variable for the currently active WebSocket instance
+        let reconnectInterval = null; // Global variable for the reconnect interval
+        let currentConnectingFeedId = null; // New variable to track which feed is currently attempting connection
+
+        // Debounce variables for Firestore updates
+        let debounceTimer = null;
+        const RECONNECT_DELAY = 10000; // 10 seconds
+        const DEBOUNCE_DELAY = 60000; // Changed: Increased debounce delay to 1 minute (60 seconds)
+
+        // Stop words for term analysis (still relevant for hashtags)
+        const stopWords = new Set([
+            'a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by',
+            'with', 'in', 'of', 'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have',
+            'has', 'had', 'do', 'does', 'did', 'not', 'no', 'yes', 'it', 'its', 'he', 'she', 'they',
+            'we', 'you', 'i', 'me', 'him', 'her', 'us', 'them', 'this', 'that', 'these', 'those',
+            'my', 'your', 'his', 'her', 'our', 'their', 'which', 'who', 'whom', 'where', 'when',
+            'why', 'how', 'what', 'then', 'than', 'as', 'so', 'if', 'else', 'about', 'just', 'can',
+            'will', 'would', 'should', 'could', 'get', 'like', 'one', 'two', 'new', 'time', 'good',
+            'great', 'very', 'much', 'more', 'also', 'up', 'down', 'out', 'in', 'on', 'off', 'all',
+            'any', 'some', 'such', 'only', 'very', 'through', 'into', 'from', 'here', 'there', 'when',
+            'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other',
+            'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+            's', 't', 'can', 'will', 'just', 'don', 'should', 'now'
+        ]);
+
+        // --- Firebase Initialization ---
+        function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Use the __initial_auth_token if available, otherwise sign in anonymously.
+                // This ensures authentication works correctly in the Canvas environment.
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        isFirebaseReady = true;
+                        console.log("Firebase authenticated and ready. User ID:", currentUserId);
+                        
+                        // Fetch resolved DIDs once after auth
+                        await fetchResolvedDids(); 
+                        
+                        // Fetch initial all-time summary data for the active feed
+                        await fetchFeedSummaryData(currentActiveFeedId);
+
+                        // Update UI for the initial feed
+                        updateUIForActiveFeed(currentActiveFeedId);
+                        
+                        // Set the correct radio button checked state on load
+                        document.getElementById(`timeframe${currentSelectedTimeframe.charAt(0).toUpperCase() + currentSelectedTimeframe.slice(1)}`).checked = true;
+                        
+                        // Ensure view is updated with whatever data is available immediately
+                        updateView(currentSelectedTimeframe);
+
+                        // Update poster/mentions view on load
+                        updatePosterMentionsDisplay();
+
+                        // Start WebSocket connection for data-analyzing feeds
+                        if (feeds[currentActiveFeedId].analyzeData) {
+                            connectWebSocket(currentActiveFeedId);
+                        } else {
+                            connectionStatusElem.textContent = `No real-time data needed for ${feeds[currentActiveFeedId].displayName}`;
+                            connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-orange-600');
+                            connectionStatusElem.classList.add('text-gray-600');
+                        }
+
+
+                    } else {
+                        // FIX: Added more robust error handling for signInWithCustomToken.
+                        // If signInWithCustomToken fails (e.g., token mismatch/expired),
+                        // it will fall back to signInAnonymously.
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                                console.log("Signed in with custom token.");
+                            } else {
+                                await signInAnonymously(auth);
+                                console.log("Signed in anonymously.");
+                            }
+                        } catch (signInError) {
+                            console.warn("Firebase: Attempted signInWithCustomToken failed, falling back to signInAnonymously:", signInError);
+                            // If custom token sign-in fails, try anonymous sign-in as a fallback
+                            try {
+                                await signInAnonymously(auth);
+                            } catch (anonymousSignInError) {
+                                console.error("Firebase Auth error (after fallback):", anonymousSignInError);
+                                let errorMessage = `Auth Error: ${anonymousSignInError.message}`;
+                                if (anonymousSignInError.code === 'auth/configuration-not-found') {
+                                    errorMessage += ". This usually means Anonymous Authentication is not enabled in your Firebase project. Please go to Firebase Console > Authentication > Sign-in method, and enable 'Anonymous' provider.";
+                                } else if (anonymousSignInError.code === 'auth/network-request-failed') {
+                                    errorMessage += ". Please check your internet connection and ensure Firebase services are not blocked by a firewall or proxy.";
+                                }
+                                connectionStatusElem.textContent = errorMessage;
+                                isFirebaseReady = false;
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                connectionStatusElem.textContent = `Firebase Init Error: ${error.message}`;
+            }
+        }
+
+        // --- Firestore Data Fetcher (getDoc for All-Time Summary of specific feed) ---
+        // Renamed from setupFirestoreListener and changed to use getDoc
+        async function fetchFeedSummaryData(feedId) {
+            if (!db || !isFirebaseReady || !currentUserId) {
+                console.warn("Firestore Fetcher: Cannot fetch summary: Firebase not ready or user not authenticated.");
+                return;
+            }
+
+            // NEW: If feed is not for analysis, clear currentFeedData and return
+            if (!feeds[feedId].analyzeData) {
+                console.log(`Firestore Fetcher: Skipping data fetch for ${feedId} (analyzeData is false).`);
+                currentFeedData = {
+                    termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                    linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}, mentionCounts: {}
+                };
+                return;
+            }
+
+            // Path: /artifacts/{APP_ID}/public/data/feeds/{feedId}/summaries/allTime
+            const analysisDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', feedId, 'summaries', 'allTime');
+            console.log(`Firestore Fetcher: Attempting to fetch all-time summary for ${feedId} from ${analysisDocRef.path}`);
+
+            try {
+                const docSnap = await getDoc(analysisDocRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    currentFeedData.termCounts = data.termCounts || {}; 
+                    currentFeedData.linkCounts = data.linkCounts || {}; 
+                    currentFeedData.domainCounts = data.domainCounts || {}; 
+                    currentFeedData.contentTypeCounts = data.contentTypeCounts || {}; 
+                    // Ensure thumbnailUrl is initialized in the object structure
+                    currentFeedData.linkCardsData = data.linkCardsData || {}; 
+                    // Iterate and ensure thumbnailUrl is set for existing linkCardsData
+                    for (const url in currentFeedData.linkCardsData) {
+                        if (currentFeedData.linkCardsData[url].thumbnailUrl === undefined) {
+                            currentFeedData.linkCardsData[url].thumbnailUrl = null;
+                        }
+                    }
+
+                    currentFeedData.imageCardsData = data.imageCardsData || {}; 
+                    currentFeedData.posterCounts = data.posterCounts || {}; 
+                    currentFeedData.posterLikes = data.posterLikes || {}; 
+                    currentFeedData.mentionCounts = data.mentionCounts || {}; // NEW: Load mentionCounts
+
+                    console.log(`Firestore Fetcher: All-Time data for ${feedId} received:`, currentFeedData); 
+                } else {
+                    console.warn(`Firestore Fetcher: All-Time summary document for ${feedId} does not exist in ${APP_ID}. Initializing with empty counts locally.`);
+                    // Reset currentFeedData to empty if doc doesn't exist in APP_ID
+                    currentFeedData = {
+                        termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                        linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}, mentionCounts: {}
+                    };
+                }
+            } catch (error) {
+                console.error(`Firestore Fetcher: Error fetching all-time summary for ${feedId}:`, error);
+                connectionStatusElem.textContent = `Firestore Fetch Error: ${error.message}`;
+            }
+        }
+
+        // --- New Function to Fetch Resolved DIDs (using getDocs instead of onSnapshot) ---
+        async function fetchResolvedDids() {
+            if (!db || !isFirebaseReady || !currentUserId) {
+                console.warn("Fetch Resolved DIDs: Cannot fetch: Firebase not ready or user not authenticated.");
+                return;
+            }
+
+            // Read from APP_ID
+            const resolvedDidsCollectionRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'resolvedBlueskyDIDs');
+            const q = query(resolvedDidsCollectionRef);
+            console.log(`Fetch Resolved DIDs: Attempting to fetch from ${resolvedDidsCollectionRef.path}`);
+
+            try {
+                const querySnapshot = await getDocs(q);
+                const fetchedDids = {};
+                querySnapshot.forEach(docSnap => {
+                    fetchedDids[docSnap.id] = docSnap.data();
+                });
+                resolvedDidsCache = fetchedDids; // Update the cache
+                console.log("Fetch Resolved DIDs: Fetched resolved DIDs from Firestore:", resolvedDidsCache);
+            } catch (error) {
+                console.error("Fetch Resolved DIDs: Error fetching resolved DIDs:", error);
+                // Optionally update a UI status for this specific section
+            }
+        }
+
+        // --- DID Resolution Function (extracted from React App logic) ---
+        async function resolveBlueskyDidAndProfile(did) {
+            // Only did:plc DIDs are supported here.
+            if (!did || !did.startsWith('did:plc:')) {
+                console.warn(`DID Resolution: Attempted to resolve unsupported DID type or invalid DID: ${did}`);
+                return null;
+            }
+
+            // Check if already in cache
+            if (resolvedDidsCache[did]) {
+                console.log(`DID Resolution: DID ${did} already in cache. Using cached data.`);
+                return resolvedDidsCache[did];
+            }
+
+            let resolvedHandle = '';
+            let resolvedDisplayName = '';
+            let resolvedAvatar = null; // NEW: To store avatar URL
+
+            try {
+                // Step 1: Fetch profile from Bluesky AppView API to get handle, display name, and avatar
+                // This is preferred over plc.directory first, as it gives full profile data.
+                const profileApiUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`;
+                console.log(`Fetching profile from: ${profileApiUrl}`);
+
+                const profileResponse = await fetch(profileApiUrl);
+
+                if (!profileResponse.ok) {
+                    const errorText = await profileResponse.text();
+                    console.warn(`DID Resolution: Failed to fetch profile from Bluesky AppView for ${did}: HTTP status ${profileResponse.status} - ${errorText}`);
+                    resolvedHandle = `[Error Fetching Handle]`;
+                    resolvedDisplayName = 'Display name not available';
+                    resolvedAvatar = null;
+                } else {
+                    const profileData = await profileResponse.json();
+                    console.log('Received profile data:', profileData);
+                    if (profileData) {
+                        resolvedHandle = profileData.handle || `[No Handle]`;
+                        resolvedDisplayName = profileData.displayName || 'Display name not set';
+                        resolvedAvatar = profileData.avatar || null; // Capture the avatar URL
+                    } else {
+                        resolvedHandle = `[No Handle]`;
+                        resolvedDisplayName = 'Display name not set';
+                        resolvedAvatar = null;
+                    }
+                }
+
+                // Step 2: Save to Firestore - ALWAYS write to APP_ID
+                if (db && currentUserId) { 
+                    const resolvedDidsCollectionRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'resolvedBlueskyDIDs');
+                    await setDoc(doc(resolvedDidsCollectionRef, did), {
+                        did: did,
+                        handle: resolvedHandle, // Save without '@' for consistency, add for display
+                        displayName: resolvedDisplayName,
+                        avatar: resolvedAvatar, // NEW: Save the avatar URL
+                        timestamp: serverTimestamp() // Add a timestamp for ordering
+                    }, { merge: true })
+                    .then(() => console.log(`DID Resolution: Successfully saved resolved DID ${did} to Firestore (${APP_ID}).`))
+                    .catch(e => console.error(`DID Resolution: Error saving resolved DID ${did} to Firestore (${APP_ID}):`, e));
+
+                    // Update local cache from the data that was written
+                    resolvedDidsCache[did] = { handle: resolvedHandle, displayName: resolvedDisplayName, avatar: resolvedAvatar, timestamp: new Date() };
+                } else {
+                    console.warn("DID Resolution: Firestore not ready for saving resolved DID. Data not persisted.");
+                }
+
+                return { handle: resolvedHandle, displayName: resolvedDisplayName, avatar: resolvedAvatar };
+
+            } catch (err) {
+                console.error(`DID Resolution: Error resolving DID ${did} or fetching profile:`, err);
+                return null;
+            }
+        }
+
+        // Function to stop the current WebSocket connection and clear any pending reconnects
+        function stopWebSocket() {
+            console.log("[stopWebSocket] Attempting to stop current WebSocket and clear interval.");
+            if (reconnectInterval) {
+                clearInterval(reconnectInterval);
+                reconnectInterval = null;
+                console.log("[stopWebSocket] Cleared existing reconnectInterval.");
+            }
+            if (ws) {
+                // Check if the WebSocket is in a state where it can be closed (OPEN or CONNECTING)
+                if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                    ws.close(1000, "Stopping old connection"); // Clean close
+                    console.log("[stopWebSocket] Closed existing WebSocket with code 1000.");
+                } else {
+                    console.log(`[stopWebSocket] WebSocket not in OPEN/CONNECTING state (readyState: ${ws.readyState}). Skipping close.`);
+                }
+                ws = null; // Immediately clear the global reference
+                console.log("[stopWebSocket] Nullified global ws reference.");
+            }
+            currentConnectingFeedId = null; // Also clear the connecting feed ID
+        }
+
+        // WebSocket Connection Logic - MODIFIED to always use Contrails
+        function connectWebSocket(feedId) {
+            // NEW: Check if this feed is configured to analyze data
+            if (!feeds[feedId].analyzeData) {
+                console.log(`[connectWebSocket] Skipping WebSocket connection for ${feedId} (analyzeData is false).`);
+                stopWebSocket(); // Ensure any existing WS is stopped if switching to non-analyzing feed
+                connectionStatusElem.textContent = `No real-time data for ${feeds[feedId].displayName}`;
+                connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-orange-600');
+                connectionStatusElem.classList.add('text-gray-600');
+                return;
+            }
+
+            if (!isFirebaseReady || !feeds[feedId]) {
+                console.warn(`[connectWebSocket] Firebase not ready or invalid feedId (${feedId}), delaying connection. isFirebaseReady: ${isFirebaseReady}.`);
+                setTimeout(() => connectWebSocket(feedId), 1000);
+                return;
+            }
+
+            // If we're already trying to connect to this exact feed, do nothing.
+            if (currentConnectingFeedId === feedId && ws && ws.readyState === WebSocket.CONNECTING) {
+                console.log(`[connectWebSocket] Already in CONNECTING state for ${feedId}. Aborting duplicate attempt.`);
+                return;
+            }
+            if (ws && ws.readyState === WebSocket.OPEN && currentConnectingFeedId === feedId) {
+                 console.log(`[connectWebSocket] Already OPEN to ${feedId}. Aborting duplicate attempt.`);
+                 return;
+            }
+
+            stopWebSocket(); // Stop any existing WebSocket activity
+
+            currentConnectingFeedId = feedId; // Mark this feed as the one we are now trying to connect to
+
+            const feedUri = feeds[feedId].uri;
+            // ALWAYS use Contrails for all configured feeds
+            const websocketUrl = `wss://api.graze.social/app/contrail?feed=${encodeURIComponent(feedUri)}`;
+
+            console.log(`[DEBUG] connectWebSocket - Processing feedId: ${feedId}`);
+            console.log(`[DEBUG] connectWebSocket - Attempting to connect to Contrails API URL: ${websocketUrl}`);
+
+            // Update connection status immediately
+            connectionStatusElem.textContent = `Connecting to ${feeds[feedId].displayName} feed via Contrails...`;
+            connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-gray-600');
+            connectionStatusElem.classList.add('text-orange-600'); // Indicate connecting state
+            // loadingIndicatorElem.style.display = 'none'; // This element is already hidden via HTML/CSS
+
+            console.log(`[connectWebSocket] Starting new WebSocket connection attempt for: ${websocketUrl} (Feed: ${feedId})`);
+
+            const newWs = new WebSocket(websocketUrl); // Create the new WebSocket instance
+            ws = newWs; // Assign to global ws
+
+            newWs.onopen = () => {
+                console.log(`[WS: ${feedId}] WebSocket connected successfully!`);
+                connectionStatusElem.textContent = `Connected to ${feeds[feedId].displayName}`;
+                connectionStatusElem.classList.remove('text-red-600', 'text-orange-600', 'text-gray-600');
+                connectionStatusElem.classList.add('text-green-600');
+                
+                if (reconnectInterval) { 
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                    console.log(`[WS: ${feedId}] Cleared reconnectInterval on successful open.`);
+                }
+                currentConnectingFeedId = null; // Connection established, no longer "connecting"
+            };
+
+            newWs.onmessage = async (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Safely get authorDid, defaulting if not present
+                    let authorDid = data.did || (data.commit?.did) || 'unknown-did'; // Added data.commit?.did for robustness
+                    let authorDisplayName = 'User'; 
+                    let postText = '';
+                    let timestamp = ''; 
+                    let postCid = data.cid || (data.commit?.cid); // Get CID for post document ID
+                    let postFacets = []; // Default empty array for facets
+
+                    // Check if it's a commit and contains a record of type app.bsky.feed.post
+                    if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
+                        const post = data.commit.record; 
+
+                        postText = String(post.text || ''); // Ensure text is always a string
+                        timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
+                        const postUri = data.commit.uri; // Get the full URI of the post
+                        postFacets = post.facets || []; // Capture facets
+
+
+                        // Store the raw post in the new '/posts' collection (writes to APP_ID)
+                        if (db && currentUserId && postUri && postCid) {
+                            const postDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'posts', postUri);
+                            await setDoc(postDocRef, {
+                                $type: post.$type,
+                                uri: postUri,
+                                cid: postCid,
+                                repo: authorDid,
+                                seq: data.seq, // Preserve sequence number
+                                createdAt: timestamp, // Original creation timestamp
+                                text_content: postText,
+                                langs: post.langs || [],
+                                facets: postFacets, // Store raw facets
+                                embed: post.embed || null,
+                                author_did: authorDid,
+                                // These would ideally be derived by a backend worker, but for now
+                                // we'll re-extract simple things here to keep the structure.
+                                hashtags: (postText.toLowerCase().match(/#\b\w+\b/g) || []).map(tag => tag.substring(1)), // Remove '#'
+                                links_extracted: [], // Populate below if embed exists
+                                images_extracted: [], // Populate below if embed exists
+                                quotes_extracted: [] // Populate below if embed exists
+                            }, { merge: true }).catch(e => console.error(`Firestore: Error saving raw post ${postUri}:`, e));
+                        } else {
+                            console.warn(`Firestore: Skipping saving raw post, missing data (postUri: ${postUri}, postCid: ${postCid}) or Firebase not ready.`);
+                        }
+
+                        const resolvedInfo = await resolveBlueskyDidAndProfile(authorDid); 
+                        if (resolvedInfo) {
+                            authorDisplayName = resolvedInfo.displayName;
+                            addPostToDisplay(postText, authorDisplayName, `@${resolvedInfo.handle}`, new Date(timestamp).toLocaleString()); 
+                        } else {
+                            addPostToDisplay(postText, authorDisplayName, authorDid, new Date(timestamp).toLocaleString()); 
+                        }
+                        
+                        let postEmbed = post.embed; 
+                        // Pass the timestamp and facets of the actual post to the debounced function
+                        debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed, postUri, timestamp, postFacets); 
+
+                    } else {
+                        // console.log(`[WS: ${feedId} - onmessage] WebSocket message is not a recognized post type or missing expected fields. Received data:`, data);
+                    }
+
+                } catch (e) {
+                    console.error(`[WS: ${feedId} - onmessage] Failed to parse message or process data:`, e);
+                    if (event.data) {
+                        try {
+                            const problematicData = JSON.parse(event.data);
+                            console.error(`[WS: ${feedId} - onmessage] Problematic JSON structure:`, problematicData);
+                        } catch (parseError) {
+                            console.error(`[WS: ${feedId} - onmessage] Raw data (could not be parsed):`, event.data);
+                        }
+                    }
+                }
+            };
+
+            newWs.onerror = (error) => {
+                console.error(`[WS: ${feedId}] WebSocket error:`, error);
+                connectionStatusElem.textContent = `WebSocket error for ${feeds[feedId].displayName}. Attempting reconnect...`;
+                connectionStatusElem.classList.remove('text-green-600', 'text-orange-600', 'text-gray-600');
+                connectionStatusElem.classList.add('text-red-600'); 
+            };
+
+            newWs.onclose = (event) => {
+                console.warn(`[WS: ${feedId}] WebSocket closed. Code: ${event.code}, Reason: "${event.reason || 'No reason provided'}"`);
+
+                if (ws !== newWs) {
+                    console.log(`[WS: ${feedId}] Closed instance is not the current global active WS. Ignoring.`);
+                    return;
+                }
+                ws = null;
+                console.log(`[WS: ${feedId}] Global ws reference nullified on close.`);
+
+                if (event.code === 1000 && event.reason === "Stopping old connection") {
+                    console.log(`[WS: ${feedId}] Cleanly stopped by stopWebSocket function. No reconnection needed.`);
+                    return;
+                }
+
+                let disconnectMessage = `Disconnected from ${feeds[feedId].displayName}. Code: ${event.code}`;
+                if (event.reason) {
+                    disconnectMessage += `, Reason: ${event.reason}`;
+                }
+                if (event.code === 1006) {
+                    disconnectMessage += `. Abnormal closure.`;
+                }
+                disconnectMessage += ` Reconnecting in ${RECONNECT_DELAY / 1000}s...`;
+                connectionStatusElem.textContent = disconnectMessage;
+                connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-gray-600');
+                connectionStatusElem.classList.add('text-orange-600');
+            };
+        }
+
+        // --- UI Update Functions ---
+        function addPostToDisplay(content, displayName, handle, timestamp) {
+            const postCard = document.createElement('div');
+            postCard.className = 'post-card';
+            postCard.innerHTML = `
+                <div class="post-author">
+                    <div class="text-gray-700">${displayName}</div> 
+                    <div class="text-blue-600 text-sm">${handle}</div> 
+                </div>
+                <div class="post-content">${content}</div>
+                <div class="post-timestamp">${timestamp}</div>
+            `;
+            // The postsContainer is currently hidden, so this will still update it in the DOM,
+            // but the user won't see it. This is fine as per the user's implicit instruction
+            // (to not display the live feed).
+            if (postsContainer.firstChild) {
+                postsContainer.insertBefore(postCard, postsContainer.firstChild);
+            } else {
+                postsContainer.appendChild(postCard);
+            }
+            while (postsContainer.children.length > 50) {
+                postsContainer.removeChild(postsContainer.lastChild);
+            }
+        }
+
+        /**
+         * Recursively extracts link, title, description, and the first found thumbnail URL from a Bluesky embed object.
+         * Handles direct external/image embeds, and also nested recordWithMedia/record structures.
+         * @param {object} embed The Bluesky embed object (e.g., post.embed).
+         * @returns {{link: string|null, title: string|null, description: string|null, thumbnailUrl: string|null}}
+         */
+        function extractEmbedData(embed) {
+            let link = null;
+            let title = null;
+            let description = null;
+            let thumbnailUrl = null;
+
+            if (!embed) return { link, title, description, thumbnailUrl };
+
+            // Helper to recursively find content within nested embeds
+            const findContent = (currentEmbed) => {
+                if (!currentEmbed) return;
+
+                // Case: Direct external link embed
+                if (currentEmbed.$type === 'app.bsky.embed.external' && currentEmbed.external?.uri) {
+                    // Prioritize the first link found
+                    if (!link) link = currentEmbed.external.uri;
+                    if (!title) title = currentEmbed.external.title;
+                    if (!description) description = currentEmbed.external.description;
+                    if (!thumbnailUrl) thumbnailUrl = currentEmbed.external.thumb; // Get thumbnail from external embed
+                }
+                // Case: Direct image embed (not a link, but might have a thumb)
+                else if (currentEmbed.$type === 'app.bsky.embed.images' && currentEmbed.images?.length > 0) {
+                    // Prioritize the first image thumbnail found
+                    if (!thumbnailUrl) thumbnailUrl = currentEmbed.images[0].thumb;
+                }
+                // Case: RecordWithMedia embed (contains a record and media)
+                else if (currentEmbed.$type === 'app.bsky.embed.recordWithMedia') {
+                    findContent(currentEmbed.media); // Recursively check the media part
+                    // Recursively check the quoted record's embed (common for link-quotes with images)
+                    findContent(currentEmbed.record?.record?.value?.embed);
+                }
+                // Case: Record embed (points to another record, which might have its own embed)
+                else if (currentEmbed.$type === 'app.bsky.embed.record' && currentEmbed.record?.value?.embed) {
+                    findContent(currentEmbed.record.value.embed); // Recursively check the quoted record's embed
+                }
+            };
+
+            findContent(embed); // Start the search from the top-level embed object
+
+            return { link, title, description, thumbnailUrl };
+        }
+
+
+        // --- Debounced Firestore Update Function (Existing logic) ---
+        // This accumulatedUpdates object will now be per-feed.
+        // We will pass the feedId to ensure updates go to the correct feed's data.
+        let accumulatedUpdates = {}; // This will be reset and populated per-feed during debounce
+
+        // Modified to accept feedId and post details
+        async function debouncedUpdateFirestoreAnalysis(feedId, authorDid, text, embed, postUri, timestamp, facets) { 
+            // NEW: Do not process updates if the feed is not set to analyze data
+            if (!feeds[feedId].analyzeData) {
+                console.log(`[Debounce] Skipping data processing for feed: ${feedId} (analyzeData is false).`);
+                return;
+            }
+
+            console.log(`[Debounce] Processing data for feed: ${feedId}, Author DID: ${authorDid}`);
+            // Ensure accumulatedUpdates for this feedId exists and has all expected keys
+            if (!accumulatedUpdates[feedId]) {
+                accumulatedUpdates[feedId] = {
+                    termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                    linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
+                    mentionCounts: {}, // NEW: Initialize mentionCounts
+                    latestPostTimestamp: null // Track latest timestamp for dailyDocId calculation
+                };
+            }
+            
+            const safeText = String(text || '');
+            
+            // --- Hashtag Counting ---
+            let hashtags = [];
+            try {
+                const matchedHashtags = safeText.toLowerCase().match(/#\b\w+\b/g);
+                hashtags = matchedHashtags ? [...matchedHashtags] : []; 
+            } catch (e) {
+                console.error("[Debounce] Error during hashtag matching:", e, "Text:", safeText);
+                hashtags = []; 
+            }
+            hashtags.forEach(tag => {
+                accumulatedUpdates[feedId].termCounts[tag] = (accumulatedUpdates[feedId].termCounts[tag] || 0) + 1;
+            });
+
+            // --- Mention Counting (NEW) ---
+            if (Array.isArray(facets)) {
+                facets.forEach(facet => {
+                    if (facet.features && Array.isArray(facet.features)) {
+                        facet.features.forEach(feature => {
+                            if (feature.$type === 'app.bsky.richtext.facet#mention' && feature.did) {
+                                accumulatedUpdates[feedId].mentionCounts[feature.did] = (accumulatedUpdates[feedId].mentionCounts[feature.did] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+            }
+
+
+            // --- Extract embed data using the new helper ---
+            const { link: extractedLink, title: extractedTitle, description: extractedDescription, thumbnailUrl: extractedThumbnailUrl } = extractEmbedData(embed);
+
+
+            // --- Link and Domain Counting (now includes thumbnail if found) ---
+            if (extractedLink) {
+                // Update linkCounts (simplified for backend aggregation)
+                if (!accumulatedUpdates[feedId].linkCounts[extractedLink]) {
+                    accumulatedUpdates[feedId].linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null }; // thumbnailUrl not stored here
+                }
+                accumulatedUpdates[feedId].linkCounts[extractedLink].count += 1;
+                // Only fetch headline if title is not already present from embed or previous fetches
+                if (extractedTitle && accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle === null) {
+                    accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle = extractedTitle;
+                }
+                // Fetch headline if still null from embed
+                if (accumulatedUpdates[feedId].linkCounts[extractedLink].headline === null) {
+                    fetchHeadline(extractedLink).then(fetchedTitle => {
+                        if (fetchedTitle) {
+                            accumulatedUpdates[feedId].linkCounts[extractedLink].headline = fetchedTitle;
+                        }
+                    });
+                }
+                if (extractedDescription && accumulatedUpdates[feedId].linkCounts[extractedLink].description === null) {
+                    accumulatedUpdates[feedId].linkCounts[extractedLink].description = extractedDescription;
+                }
+
+
+                // Update linkCardsData (for display, combining title and description, thumbnail, AND RECENT POSTS)
+                if (!accumulatedUpdates[feedId].linkCardsData[extractedLink]) {
+                    // Initialize thumbnailUrl to null if it doesn't exist
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                }
+                accumulatedUpdates[feedId].linkCardsData[extractedLink].count += 1;
+                if (extractedTitle && accumulatedUpdates[feedId].linkCardsData[extractedLink].title === null) {
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink].title = extractedTitle;
+                }
+                if (extractedDescription && accumulatedUpdates[feedId].linkCardsData[extractedLink].description === null) {
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink].description = extractedDescription;
+                }
+                // Set thumbnailUrl only if it's found and not already set
+                if (extractedThumbnailUrl && accumulatedUpdates[feedId].linkCardsData[extractedLink].thumbnailUrl === null) {
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink].thumbnailUrl = extractedThumbnailUrl;
+                }
+
+                // Add or update recentPosts for this link
+                if (postUri && timestamp) {
+                    // Get current poster's total posts
+                    const currentPosterPosts = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1; // Add 1 for the current post
+                    const newPost = {
+                        postUri: postUri,
+                        authorDid: authorDid,
+                        textPreview: safeText.substring(0, 150) + (safeText.length > 150 ? '...' : ''), // Truncate for preview
+                        timestamp: timestamp,
+                        // For link cards, we'll now store the *actual* post count of the author as a proxy for engagement.
+                        // This aligns with user's request to use "posts" instead of "simulated likes".
+                        posterTotalPosts: currentPosterPosts, 
+                        hashtags: hashtags // Store identified hashtags with the post
+                    };
+
+                    let posts = accumulatedUpdates[feedId].linkCardsData[extractedLink].recentPosts;
+                    // Check if this post URI already exists to avoid duplicates (e.g., from retries)
+                    const existingPostIndex = posts.findIndex(p => p.postUri === newPost.postUri);
+                    if (existingPostIndex !== -1) {
+                        // Update existing post if found (e.g., for timestamp freshness or updated posterTotalPosts)
+                        posts[existingPostIndex] = newPost;
+                    } else {
+                        // Add new post
+                        posts.push(newPost);
+                    }
+                    
+                    // Keep only the top 5 posts, sorted by posterTotalPosts (descending)
+                    posts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                    accumulatedUpdates[feedId].linkCardsData[extractedLink].recentPosts = posts.slice(0, 5);
+                }
+
+                const baseDomain = getSimplifiedDomain(extractedLink);
+                if (baseDomain && baseDomain !== 'Invalid Domain') {
+                    const originalHost = new URL(extractedLink).hostname.toLowerCase();
+                    if (!accumulatedUpdates[feedId].domainCounts[baseDomain]) {
+                        accumulatedUpdates[feedId].domainCounts[baseDomain] = { count: 0, sources: {} };
+                    }
+                    accumulatedUpdates[feedId].domainCounts[baseDomain].count++;
+                    accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] || 0) + 1; // Corrected key for sources
+                }
+            }
+            // Only update imageCardsData if it's purely an image post and no link was found
+            else if (extractedThumbnailUrl) { // This handles cases where only an image embed exists and no link was extracted
+                // Using the thumbnail URL as a key for imageCardsData for now.
+                // If the image had specific alt text from its embed, we'd use that here.
+                const imageKey = extractedThumbnailUrl; 
+                if (!accumulatedUpdates[feedId].imageCardsData[imageKey]) {
+                    accumulatedUpdates[feedId].imageCardsData[imageKey] = { count: 0, alt: 'Image' }; // Default alt or extract more detailed alt from embed
+                }
+                accumulatedUpdates[feedId].imageCardsData[imageKey].count += 1;
+            }
+
+
+            // --- Content Type Counting ---
+            let contentType = 'Text-only';
+            if (embed) {
+                if (embed.$type === 'app.bsky.embed.external') {
+                    contentType = 'Link';
+                } else if (embed.$type === 'app.bsky.embed.images') {
+                    contentType = 'Image';
+                } else if (embed.$type === 'app.bsky.embed.record') { // Handle record embeds explicitly
+                    contentType = 'Quote/Record';
+                } else if (embed.$type === 'app.bsky.embed.recordWithMedia') { // Handle record with media embeds
+                    contentType = 'Record with Media';
+                } else {
+                    contentType = 'Other Embed';
+                }
+            }
+            accumulatedUpdates[feedId].contentTypeCounts[contentType] = (accumulatedUpdates[feedId].contentTypeCounts[contentType] || 0) + 1;
+
+            // --- Poster Counting (by number of posts) ---
+            if (authorDid && authorDid !== 'unknown-did') { // Ensure authorDid is valid
+                accumulatedUpdates[feedId].posterCounts[authorDid] = (accumulatedUpdates[feedId].posterCounts[authorDid] || 0) + 1;
+                // PosterLikes will now be identical to posterCounts as per user request to drop simulated likes
+                accumulatedUpdates[feedId].posterLikes[authorDid] = accumulatedUpdates[feedId].posterCounts[authorDid]; 
+            }
+
+            // Update latestPostTimestamp in accumulatedUpdates for this feed
+            if (!accumulatedUpdates[feedId].latestPostTimestamp || new Date(timestamp) > new Date(accumulatedUpdates[feedId].latestPostTimestamp)) {
+                accumulatedUpdates[feedId].latestPostTimestamp = timestamp;
+            }
+
+
+            // Clear any existing timer
+            clearTimeout(debounceTimer); // Clear existing timer, ensuring only one pending update
+            debounceTimer = setTimeout(async () => {
+                console.log(`[Debounce] Executing debounced Firestore update for feed: ${currentActiveFeedId}.`);
+                if (!db || !isFirebaseReady) {
+                    console.warn("Firestore: Not ready for update after debounce. Cannot update analysis.");
+                    return;
+                }
+
+                // Iterate over a copy of accumulatedUpdates keys to avoid issues if accumulatedUpdates is reset during loop
+                const feedsToProcess = Object.keys(accumulatedUpdates);
+
+                for (const currentFeedIdToProcess of feedsToProcess) {
+                    // NEW: Skip processing for feeds not marked for analysis
+                    if (!feeds[currentFeedIdToProcess].analyzeData) {
+                        console.log(`[Debounce] Skipping Firestore write for feed: ${currentFeedIdToProcess} (analyzeData is false).`);
+                        continue; // Skip to the next feed in the loop
+                    }
+
+                    const feedUpdates = accumulatedUpdates[currentFeedIdToProcess];
+                    // IMPORTANT: Use the latestPostTimestamp from the accumulated updates for this specific feed
+                    const dailyDocDate = new Date(feedUpdates.latestPostTimestamp || new Date()); // Fallback to current date if no timestamp
+                    const dailyDocId = getYYYYMMDD(dailyDocDate);
+
+                    console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess} (Daily Doc: ${dailyDocId}):`, JSON.stringify(feedUpdates, null, 2));
+
+                    // REVISED PATH for summary document - ALWAYS write to APP_ID
+                    const summaryDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
+                    const dailyDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
+                    
+                    console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId} in ${APP_ID}`); 
+
+
+                    try {
+                        // 1. Update All-Time Summary for this feed (in APP_ID)
+                        // Read from APP_ID first to merge new updates
+                        const liveSummarySnap = await getDoc(summaryDocRef);
+                        let currentSummaryData = liveSummarySnap.exists() ? liveSummarySnap.data() : {
+                            termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
+                            mentionCounts: {} // NEW: Initialize
+                        };
+                        console.log(`[Firestore Write] Current All-Time Summary Data before merge for ${currentFeedIdToProcess} (${APP_ID}):`, JSON.stringify(currentSummaryData, null, 2));
+
+
+                        // Merge updates into currentSummaryData
+                        for (const key in feedUpdates.termCounts) {
+                            currentSummaryData.termCounts[key] = (currentSummaryData.termCounts[key] || 0) + feedUpdates.termCounts[key];
+                        }
+                        for (const url in feedUpdates.linkCounts) {
+                            const { count, headline, originalTitle, description } = feedUpdates.linkCounts[url];
+                            if (typeof currentSummaryData.linkCounts[url] !== 'object' || currentSummaryData.linkCounts[url] === null) {
+                                currentSummaryData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
+                            }
+                            currentSummaryData.linkCounts[url].count = (currentSummaryData.linkCounts[url].count || 0) + count;
+                            if (headline && currentSummaryData.linkCounts[url].headline === null) {
+                                currentSummaryData.linkCounts[url].headline = headline;
+                            }
+                            if (originalTitle && currentSummaryData.linkCounts[url].originalTitle === null) {
+                                currentSummaryData.linkCounts[url].originalTitle = originalTitle;
+                            }
+                            if (description && currentSummaryData.linkCounts[url].description === null) {
+                                currentSummaryData.linkCounts[url].description = description;
+                            }
+                        }
+                        for (const simplifiedDomain in feedUpdates.domainCounts) {
+                            const updateData = feedUpdates.domainCounts[simplifiedDomain];
+                            if (!currentSummaryData.domainCounts[simplifiedDomain]) {
+                                currentSummaryData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
+                            }
+                            currentSummaryData.domainCounts[simplifiedDomain].count = (currentSummaryData.domainCounts[simplifiedDomain].count || 0) + updateData.count;
+                            for (const originalHost in updateData.sources) {
+                                currentSummaryData.domainCounts[simplifiedDomain].sources[originalHost] = 
+                                    (currentSummaryData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + updateData.sources[originalHost];
+                            }
+                        }
+                        for (const key in feedUpdates.contentTypeCounts) {
+                            currentSummaryData.contentTypeCounts[key] = (currentSummaryData.contentTypeCounts[key] || 0) + feedUpdates.contentTypeCounts[key];
+                        }
+                        for (const url in feedUpdates.linkCardsData) {
+                            const { count, title, description, recentPosts, thumbnailUrl } = feedUpdates.linkCardsData[url]; // Get thumbnailUrl
+                            if (typeof currentSummaryData.linkCardsData[url] !== 'object' || currentSummaryData.linkCardsData[url] === null) {
+                                // Initialize thumbnailUrl to null
+                                currentSummaryData.linkCardsData[url] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                            }
+                            currentSummaryData.linkCardsData[url].count = (currentSummaryData.linkCardsData[url].count || 0) + count;
+                            if (title && currentSummaryData.linkCardsData[url].title === null) {
+                                currentSummaryData.linkCardsData[url].title = title;
+                            }
+                            if (description && currentSummaryData.linkCardsData[url].description === null) {
+                                currentSummaryData.linkCardsData[url].description = description;
+                            }
+                            // Only set thumbnailUrl if it's found and not already set
+                            if (thumbnailUrl && currentSummaryData.linkCardsData[url].thumbnailUrl === null) {
+                                currentSummaryData.linkCardsData[url].thumbnailUrl = thumbnailUrl;
+                            }
+
+                            // Merge recentPosts, ensure uniqueness by postUri, and re-sort/trim
+                            let existingRecentPosts = currentSummaryData.linkCardsData[url].recentPosts || [];
+                            const newPostsMap = new Map(existingRecentPosts.map(p => [p.postUri, p]));
+                            recentPosts.forEach(newPost => newPostsMap.set(newPost.postUri, newPost)); // Add/overwrite new posts
+
+                            existingRecentPosts = Array.from(newPostsMap.values());
+                            // Sort by posterTotalPosts (descending) before slicing
+                            existingRecentPosts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                            currentSummaryData.linkCardsData[url].recentPosts = existingRecentPosts.slice(0, 5);
+                        }
+                        for (const key in feedUpdates.imageCardsData) {
+                            const { count, alt } = feedUpdates.imageCardsData[key];
+                            if (typeof currentSummaryData.imageCardsData[key] !== 'object' || currentSummaryData.imageCardsData[key] === null) {
+                                currentSummaryData.imageCardsData[key] = { count: 0, alt: null };
+                            }
+                            currentSummaryData.imageCardsData[key].count = (currentSummaryData.imageCardsData[key] || 0) + count;
+                            if (alt && currentSummaryData.imageCardsData[key].alt === null) {
+                                currentSummaryData.imageCardsData[key].alt = alt;
+                            }
+                        }
+                        for (const didKey in feedUpdates.posterCounts) {
+                            currentSummaryData.posterCounts[didKey] = (currentSummaryData.posterCounts[didKey] || 0) + feedUpdates.posterCounts[didKey];
+                        }
+                        for (const didKey in feedUpdates.posterLikes) {
+                            currentSummaryData.posterLikes[didKey] = (currentSummaryData.posterLikes[didKey] || 0) + feedUpdates.posterLikes[didKey];
+                        }
+                        for (const didKey in feedUpdates.mentionCounts) { // NEW: Merge mentionCounts
+                            currentSummaryData.mentionCounts[didKey] = (currentSummaryData.mentionCounts[didKey] || 0) + feedUpdates.mentionCounts[didKey];
+                        }
+
+                        await setDoc(summaryDocRef, currentSummaryData, { merge: true });
+                        console.log(`[Firestore Write] Successfully updated All-Time Summary for feed ${currentFeedIdToProcess} in ${APP_ID}.`);
+
+
+                        // 2. Update Daily Aggregate for this feed (in APP_ID)
+                        const dailySnap = await getDoc(dailyDocRef);
+                        let currentDailyData = dailySnap.exists() ? dailySnap.data() : {
+                            termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {},
+                            linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {},
+                            mentionCounts: {} // NEW: Initialize
+                        };
+                        console.log(`[Firestore Write] Current Daily Aggregate Data before merge for ${currentFeedIdToProcess} (${dailyDocId}) in ${APP_ID}:`, JSON.stringify(currentDailyData, null, 2));
+
+
+                        // Merge updates into currentDailyData
+                        for (const key in feedUpdates.termCounts) {
+                            currentDailyData.termCounts[key] = (currentDailyData.termCounts[key] || 0) + feedUpdates.termCounts[key];
+                        }
+                        for (const url in feedUpdates.linkCounts) {
+                            const { count, headline, originalTitle, description } = feedUpdates.linkCounts[url];
+                            if (typeof currentDailyData.linkCounts[url] !== 'object' || currentDailyData.linkCounts[url] === null) {
+                                currentDailyData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
+                            }
+                            currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
+                            if (headline && currentDailyData.linkCounts[url].headline === null) {
+                                currentDailyData.linkCounts[url].headline = headline;
+                            }
+                            if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) { // Typo fix
+                                currentDailyData.linkCounts[url].originalTitle = originalTitle;
+                            }
+                            if (description && currentDailyData.linkCounts[url].description === null) {
+                                currentDailyData.linkCounts[url].description = description;
+                            }
+                        }
+                        for (const simplifiedDomain in feedUpdates.domainCounts) {
+                            const dailyEntry = feedUpdates.domainCounts[simplifiedDomain];
+                            if (!currentDailyData.domainCounts[simplifiedDomain]) {
+                                currentDailyData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
+                            }
+                            currentDailyData.domainCounts[simplifiedDomain].count += dailyEntry.count;
+                            for (const originalHost in dailyEntry.sources) {
+                                currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
+                                    (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + dailyEntry.sources[originalHost];
+                            }
+                        }
+                        for (const type in feedUpdates.contentTypeCounts) {
+                            currentDailyData.contentTypeCounts[type] = (currentDailyData.contentTypeCounts[type] || 0) + feedUpdates.contentTypeCounts[type];
+                        }
+                        for (const url in feedUpdates.linkCardsData) {
+                             const { count, title, description, recentPosts, thumbnailUrl } = feedUpdates.linkCardsData[url];
+                            if (typeof currentDailyData.linkCardsData[url] !== 'object' || currentDailyData.linkCardsData[url] === null) {
+                                currentDailyData.linkCardsData[url] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                            }
+                            currentDailyData.linkCardsData[url].count = (currentDailyData.linkCardsData[url].count || 0) + count;
+                            if (title && currentDailyData.linkCardsData[url].title === null) {
+                                currentDailyData.linkCardsData[url].title = title;
+                            }
+                            if (description && currentDailyData.linkCardsData[url].description === null) {
+                                currentDailyData.linkCardsData[url].description = description;
+                            }
+                            // Only set thumbnailUrl if it's found and not already set in Firestore
+                            if (thumbnailUrl && currentDailyData.linkCardsData[url].thumbnailUrl === null) {
+                                currentDailyData.linkCardsData[url].thumbnailUrl = thumbnailUrl;
+                            }
+
+                            // Merge recentPosts for daily aggregates too
+                            let existingDailyRecentPosts = currentDailyData.linkCardsData[url].recentPosts || [];
+                            const newDailyPostsMap = new Map(existingDailyRecentPosts.map(p => [p.postUri, p]));
+                            (recentPosts || []).forEach(newPost => newDailyPostsMap.set(newPost.postUri, newPost));
+
+                            existingDailyRecentPosts = Array.from(newDailyPostsMap.values());
+                            // Sort by posterTotalPosts (descending) before slicing
+                            existingDailyRecentPosts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                            currentDailyData.linkCardsData[url].recentPosts = existingDailyRecentPosts.slice(0, 5); // Keep top 5
+                        }
+                        for (const key in feedUpdates.imageCardsData) {
+                            const { count, alt } = feedUpdates.imageCardsData[key];
+                            if (typeof currentDailyData.imageCardsData[key] !== 'object' || currentDailyData.imageCardsData[key] === null) {
+                                currentDailyData.imageCardsData[key] = { count: 0, alt: null };
+                            }
+                            currentDailyData.imageCardsData[key].count = (currentDailyData.imageCardsData[key] || 0) + count;
+                            if (alt && currentDailyData.imageCardsData[key].alt === null) {
+                                currentDailyData.imageCardsData[key].alt = alt;
+                            }
+                        }
+                        for (const didKey in feedUpdates.posterCounts) {
+                            currentDailyData.posterCounts[didKey] = (currentDailyData.posterCounts[didKey] || 0) + feedUpdates.posterCounts[didKey];
+                        }
+                        for (const didKey in feedUpdates.posterLikes) {
+                            currentDailyData.posterLikes[didKey] = (currentDailyData.posterLikes[didKey] || 0) + feedUpdates.posterLikes[didKey];
+                        }
+                        for (const didKey in feedUpdates.mentionCounts) { // NEW: Merge mentionCounts
+                            currentDailyData.mentionCounts[didKey] = (currentDailyData.mentionCounts[didKey] || 0) + feedUpdates.mentionCounts[didKey];
+                        }
+
+                        await setDoc(dailyDocRef, currentDailyData, { merge: true });
+                        console.log(`[Firestore Write] Successfully updated Daily Aggregate for feed ${currentFeedIdToProcess} (${dailyDocId}) in ${APP_ID}.`);
+
+
+                    } catch (e) {
+                        console.error(`[Firestore Write] Error updating Firestore analysis for feed ${currentFeedIdToProcess} (debounced):`, e);
+                        // connectionStatusElem.textContent = `Firestore Update Error for ${feeds[currentFeedIdToProcess].displayName}: ${e.message}`;
+                    }
+                } // End of for...of loop for feedsToProcess
+
+                // Reset all accumulated updates after successful write
+                accumulatedUpdates = {};
+                console.log("[Debounce] Accumulated updates reset.");
+                
+                // After updating Firestore, re-fetch currentFeedData from the single APP_ID
+                if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed being updated
+                    const updatedSummaryDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'summaries', 'allTime');
+                    const updatedDisplaySummarySnap = await getDoc(updatedSummaryDocRef); 
+                    if (updatedDisplaySummarySnap.exists()) {
+                        const updatedData = updatedDisplaySummarySnap.data();
+                        // Manually update currentFeedData to ensure latest state is used for UI
+                        currentFeedData.termCounts = updatedData.termCounts || {};
+                        currentFeedData.linkCounts = updatedData.linkCounts || {};
+                        currentFeedData.domainCounts = updatedData.domainCounts || {};
+                        currentFeedData.contentTypeCounts = updatedData.contentTypeCounts || {};
+                        currentFeedData.linkCardsData = updatedData.linkCardsData || {};
+                        // Ensure thumbnailUrl is initialized for linkCardsData on refresh
+                        for (const url in currentFeedData.linkCardsData) {
+                            if (currentFeedData.linkCardsData[url].thumbnailUrl === undefined) {
+                                currentFeedData.linkCardsData[url].thumbnailUrl = null;
+                            }
+                        }
+                        currentFeedData.imageCardsData = updatedData.imageCardsData || {};
+                        currentFeedData.posterCounts = updatedData.posterCounts || {};
+                        currentFeedData.posterLikes = updatedData.posterLikes || {};
+                        currentFeedData.mentionCounts = updatedData.mentionCounts || {};
+                        console.log(`[Debounce] currentFeedData manually refreshed from ${APP_ID} for active feed ${currentActiveFeedId}.`);
+                    } else {
+                        console.warn(`[Debounce] All-Time summary doc for ${currentActiveFeedId} does not exist in ${APP_ID}, cannot refresh currentFeedData.`);
+                        // Ensure currentFeedData is cleared if doc disappeared unexpectedly
+                        currentFeedData = { termCounts: {}, linkCounts: {}, domainCounts: {}, contentTypeCounts: {}, linkCardsData: {}, imageCardsData: {}, posterCounts: {}, posterLikes: {}, mentionCounts: {} };
+                    }
+                }
+                
+                // Re-render the view with the latest data for the currently active feed
+                updateView(currentSelectedTimeframe); 
+
+            }, DEBOUNCE_DELAY);
+        }
+
+        // --- UI Update Functions ---
+        function renderAnalysis(termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData, mentionCountsData) { 
+            console.log("Rendering analysis with data:", { termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData, mentionCountsData });
+
+            // NEW: Conditional display for Rankings vs Featured Feeds
+            if (currentActiveFeedId === 'datamaster') { // 'datamaster' is the Home feed
+                rankingsContent.style.display = 'none'; // Hide the ranking grid
+                featuredFeedsContent.style.display = 'flex'; // Show featured feeds content
+                timeframeSelectorContainer.style.display = 'none'; // Hide timeframe selector for Home
+                rankingsSectionTitle.textContent = 'Featured Feeds'; // Change title
+                connectionStatusElem.textContent = `No real-time data for ${feeds[currentActiveFeedId].displayName}`;
+                connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-orange-600');
+                connectionStatusElem.classList.add('text-gray-600');
+
+                // Attach event listeners for featured feed cards
+                document.querySelectorAll('.featured-feed-card').forEach(card => {
+                    card.onclick = (event) => {
+                        event.preventDefault(); // Prevent default <a> behavior
+                        const feedIdToSwitch = event.currentTarget.dataset.feedId;
+                        if (feedIdToSwitch) {
+                            switchFeed(feedIdToSwitch);
+                        }
+                    };
+                });
+
+
+            } else {
+                rankingsContent.style.display = 'grid'; // Show the ranking grid
+                featuredFeedsContent.style.display = 'none'; // Hide featured feeds content
+                timeframeSelectorContainer.style.display = 'flex'; // Show timeframe selector
+                rankingsSectionTitle.textContent = 'Rankings'; // Revert title
+                // Connection status will be set by connectWebSocket or fetchFeedSummaryData for this type of feed
+
+                // Render Top Hashtags
+                const sortedTerms = Object.entries(termData)
+                    .sort(([, countA], [, countB]) => countB - countA)
+                    .slice(0, 20);
+
+                topTermsDiv.innerHTML = '';
+                if (sortedTerms.length === 0) {
+                    topTermsDiv.innerHTML = '<p class="text-gray-500 text-center">No hashtags yet to analyze.</p>';
+                } else {
+                    sortedTerms.forEach(([term, count], index) => {
+                        const item = document.createElement('div');
+                        item.className = 'domain-card'; 
+                        item.title = term;
+                        item.innerHTML = `
+                            <div class="domain-card-name">
+                                ${index + 1}. ${term}
+                            </div>
+                            <div class="domain-card-count">
+                                ${count} uses
+                            </div>
+                        `;
+                        topTermsDiv.appendChild(item);
+                    });
+                }
+
+                // No filtering applied to richLinkCardsData now
+                const sortedRichLinkCards = Object.entries(richLinkCardsData)
+                    .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
+                    .slice(0, 10);
+
+                topLinksDiv.innerHTML = ''; // Clear topLinksDiv
+                if (sortedRichLinkCards.length === 0) {
+                    topLinksDiv.innerHTML = '<p class="text-gray-500 text-center">No rich link cards yet to display.</p>';
+                } else {
+                    sortedRichLinkCards.forEach(([url, data]) => {
+                        // Changed to an <a> tag that wraps the entire card content
+                        const item = document.createElement('a'); 
+                        item.href = url; // Set the href for the whole card
+                        item.target = "_blank"; // Open in new tab
+                        item.rel = "noopener noreferrer"; // Security best practice
+                        item.className = 'link-card'; // Retain existing card styling
+                        
+                        let imageHtml = '';
+                        if (data.thumbnailUrl) {
+                            imageHtml = `<img src="${data.thumbnailUrl}" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e2e8f0/333?text=No+Image';this.alt='No Image Available';" alt="${data.title || 'Link thumbnail'}" class="w-full h-32 object-cover rounded-t-md mb-2">`;
+                        } else {
+                            // Optional: Add a fallback placeholder image if no thumbnail URL is present
+                            imageHtml = `<img src="https://placehold.co/128x128/e2e8f0/333?text=No+Image" alt="No Image Available" class="w-full h-32 object-cover rounded-t-md mb-2">`;
+                        }
+
+                        item.innerHTML = `
+                            ${imageHtml}
+                            <div class="link-card-headline">
+                                ${data.title || 'No Title Available'}
+                            </div>
+                            <div class="link-card-description">${data.description || 'No description available.'}</div>
+                            <div class="link-card-url">${url}</div>
+                            <div class="link-card-footer">
+                                <span class="link-card-count">${data.count} shares</span>
+                                <button type="button" class="link-card-comment-btn" title="View posts for ${url}" data-link-url="${url}">
+                                    <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.735-1.579l-3.321 1.096A1 1 0 01.328 15.22l1.096-3.321A7.002 7.002 0 002 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        `;
+                        topLinksDiv.appendChild(item);
+                    });
+                }
+
+                // Render Top Domains - Apply canonicalization here for display
+                const canonicalizedDomainData = canonicalizeDisplayDomains(domainData);
+
+                const sortedDomains = Object.entries(canonicalizedDomainData)
+                    .sort(([, dataA], [, dataB]) => dataB.count - dataA.count)
+                    .slice(0, 10);
+
+                topDomainsDiv.innerHTML = '';
+                if (sortedDomains.length === 0) {
+                    topDomainsDiv.innerHTML = '<p class="text-gray-500 text-center">No domains yet to analyze.</p>';
+                } else {
+                    sortedDomains.forEach(([domain, data]) => {
+                        const item = document.createElement('div');
+                        item.className = 'domain-card';
+                        
+                        // Construct the tooltip string with original full domains
+                        let tooltipText = `Website: ${domain}`;
+                        if (data.original_full_domains_list && data.original_full_domains_list.length > 0) {
+                            tooltipText += `\nIncludes: ${Array.from(data.original_full_domains_list).join(', ')}`; // Ensure it's an array for join
+                        }
+                        item.title = tooltipText;
+
+                        item.innerHTML = `
+                            <div class="domain-card-name">
+                                ${domain}
+                            </div>
+                            <div class="domain-card-count">
+                                ${data.count} visits
+                            </div>
+                        `;
+                        topDomainsDiv.appendChild(item);
+                    });
+                }
+
+                // Render Content Type Breakdown
+                const sortedContentTypes = Object.entries(contentTypeData)
+                    .sort(([, countA], [, countB]) => countB - countA)
+                    .slice(0, 5);
+
+                contentTypeBreakdownDiv.innerHTML = '';
+                if (sortedContentTypes.length === 0) {
+                    contentTypeBreakdownDiv.innerHTML = '<p class="text-gray-500 text-center">No content types yet to analyze.</p>';
+                } else {
+                    sortedContentTypes.forEach(([type, count]) => {
+                        const item = document.createElement('div');
+                        item.className = 'domain-card';
+                        item.innerHTML = `
+                            <div class="domain-card-name">
+                                ${type}
+                            </div>
+                            <div class="domain-card-count">
+                                ${count} posts
+                            </div>
+                        `;
+                        contentTypeBreakdownDiv.appendChild(item);
+                    });
+                }
+
+                // NEW: Render Top Posters (using posterCountsData)
+                const sortedPosters = Object.entries(posterCountsData)
+                    .sort(([, countA], [, countB]) => countB - countA)
+                    .slice(0, 10); // Get top 10 posters
+
+                topPostersListDiv.innerHTML = ''; // Clear previous content
+                if (sortedPosters.length === 0) {
+                    topPostersListDiv.innerHTML = '<p class="text-gray-500 text-center">No posters yet to rank from the feed.</p>';
+                } else {
+                    sortedPosters.forEach(([did, count]) => {
+                        const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?' }; // Default avatar
+                        const item = document.createElement('a');
+                        item.href = `https://bsky.app/profile/${resolvedInfo.handle}`; // Link to Bluesky profile
+                        item.target = "_blank";
+                        item.rel = "noopener noreferrer";
+                        item.className = 'poster-card'; // Use new poster-card styling
+                        item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
+
+                        item.innerHTML = `
+                            <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
+                            <div class="poster-info">
+                                <div class="poster-display-name">${resolvedInfo.displayName}</div> 
+                                <div class="poster-handle">@${resolvedInfo.handle}</div> 
+                            </div>
+                            <div class="poster-count">
+                                ${count} posts
+                            </div>
+                        `;
+                        topPostersListDiv.appendChild(item);
+                    });
+                }
+
+                // NEW: Render Top Mentions
+                const sortedMentions = Object.entries(mentionCountsData)
+                    .sort(([, countA], [, countB]) => countB - countA)
+                    .slice(0, 10); // Get top 10 mentioned users
+
+                topMentionsListDiv.innerHTML = ''; // Clear previous content
+                if (sortedMentions.length === 0) {
+                    topMentionsListDiv.innerHTML = '<p class="text-gray-500 text-center">No mentions yet to rank from the feed.</p>';
+                } else {
+                    sortedMentions.forEach(([did, count]) => {
+                        const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?m' }; // Default avatar
+                        const item = document.createElement('a');
+                        item.href = `https://bsky.app/profile/${resolvedInfo.handle}`; // Link to Bluesky profile
+                        item.target = "_blank";
+                        item.rel = "noopener noreferrer";
+                        item.className = 'poster-card'; // Reuse poster-card styling
+                        item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
+
+                        item.innerHTML = `
+                            <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
+                            <div class="poster-info">
+                                <div class="poster-display-name">${resolvedInfo.displayName}</div> 
+                                <div class="poster-handle">@${resolvedInfo.handle}</div> 
+                            </div>
+                            <div class="poster-count">
+                                ${count} mentions
+                            </div>
+                        `;
+                        topMentionsListDiv.appendChild(item);
+                    });
+                }
+
+
+                // Attach event listeners for comment buttons after rendering
+                document.querySelectorAll('.link-card-comment-btn').forEach(button => {
+                    button.onclick = (event) => {
+                        event.preventDefault(); // Prevent default link behavior if inside an<a>
+                        const url = event.currentTarget.dataset.linkUrl;
+                        openLinkPostsModal(url);
+                    };
+                });
+            }
+        }
+
+        // --- Timeframe Selection and Data Fetching/Display ---
+        async function updateView(timeframe) {
+            console.log(`Update View: Switching to timeframe: ${timeframe}`);
+            currentSelectedTimeframe = timeframe;
+            // Persist selected timeframe
+            localStorage.setItem('selectedTimeframe', timeframe);
+            
+            // NEW: If the current feed is not for analysis, skip data fetching and display static content
+            if (!feeds[currentActiveFeedId].analyzeData) {
+                console.log(`Update View: Skipping data fetch for ${currentActiveFeedId} (analyzeData is false).`);
+                renderAnalysis({}, {}, {}, {}, {}, {}, {}); // Render with empty data
+                // Connection status already set by connectWebSocket or switchFeed
+                return;
+            }
+
+            // Update connection status immediately
+            connectionStatusElem.textContent = `Fetching data for ${timeframe}...`;
+            connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-gray-600');
+            connectionStatusElem.classList.add('text-orange-600'); // Indicate fetching state
+
+
+            let termsToDisplay = {};
+            let linksToDisplay = {}; // This will hold the consolidated link data for display
+            let domainsToDisplay = {}; 
+            let contentTypesToDisplay = {};
+            let postersToDisplayByCount = {}; // For ranking by posts
+            let postersToDisplayByLikes = {}; // For ranking by likes (now same as posts)
+            let mentionsToDisplay = {}; // NEW: For mentions
+
+            if (timeframe === 'allTime') {
+                // For 'allTime', currentFeedData is now manually updated by debouncedUpdateFirestoreAnalysis
+                // or fetched on feed switch/init. We just use the existing data.
+                console.log("Update View: Using currentFeedData (from memory) for 'allTime'.");
+                termsToDisplay = currentFeedData.termCounts;
+                linksToDisplay = currentFeedData.linkCardsData; // Use linkCardsData directly for display
+                domainsToDisplay = currentFeedData.domainCounts;
+                contentTypesToDisplay = currentFeedData.contentTypeCounts;
+                postersToDisplayByCount = currentFeedData.posterCounts;
+                postersToDisplayByLikes = currentFeedData.posterLikes; 
+                mentionsToDisplay = currentFeedData.mentionCounts; // NEW: Use mentionCounts
+                connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
+                connectionStatusElem.classList.remove('text-red-600', 'text-orange-600', 'text-gray-600');
+                connectionStatusElem.classList.add('text-green-600');
+
+            } else {
+                const today = new Date();
+                let startDate;
+
+                if (timeframe === 'day') {
+                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                } else if (timeframe === 'week') {
+                    // Start of the current week (Sunday)
+                    startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+                } else if (timeframe === 'month') {
+                    // Start of the current month
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                }
+                const startYYYYMMDD = getYYYYMMDD(startDate);
+                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe} from ${APP_ID}.`);
+
+
+                // Fetch data for the selected timeframe from the active feed's daily aggregates (from APP_ID)
+                const dailyAggregatesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
+                // Query for documents whose ID (date string) is greater than or equal to the start date
+                const q = query(dailyAggregatesRef, where('__name__', '>=', startYYYYMMDD));
+
+                try {
+                    const querySnapshot = await getDocs(q);
+                    console.log(`Update View: Found ${querySnapshot.docs.length} daily aggregate documents for ${timeframe}.`);
+                    if (querySnapshot.docs.length === 0) {
+                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD} in ${APP_ID}.`);
+                    }
+
+                    querySnapshot.forEach((docSnap) => {
+                        console.log(`Aggregating data from daily doc: ${docSnap.id}`);
+                        const data = docSnap.data();
+                        const dailyTerms = data.termCounts || {};
+                        const dailyLinkCards = data.linkCardsData || {}; // Use dailyLinkCards
+                        const dailyDomains = data.domainCounts || {};
+                        const dailyContentTypes = data.contentTypeCounts || {};
+                        const dailyPosterCounts = data.posterCounts || {};
+                        const dailyPosterLikes = data.posterLikes || {}; 
+                        const dailyMentionCounts = data.mentionCounts || {}; // NEW: Load daily mentionCounts
+
+                        for (const term in dailyTerms) {
+                            termsToDisplay[term] = (termsToDisplay[term] || 0) + dailyTerms[term];
+                        }
+                        // Aggregate linkCardsData (including recentPosts and thumbnailUrl)
+                        for (const url in dailyLinkCards) {
+                            const { count, title, description, recentPosts, thumbnailUrl } = dailyLinkCards[url];
+                            if (!linksToDisplay[url]) { 
+                                linksToDisplay[url] = { count: 0, title: null, description: null, recentPosts: [], thumbnailUrl: null };
+                            }
+                            linksToDisplay[url].count += count;
+                            if (title && linksToDisplay[url].title === null) {
+                                linksToDisplay[url].title = title;
+                            }
+                            if (description && linksToDisplay[url].description === null) {
+                                linksToDisplay[url].description = description;
+                            }
+                            if (thumbnailUrl && linksToDisplay[url].thumbnailUrl === null) {
+                                linksToDisplay[url].thumbnailUrl = thumbnailUrl;
+                            }
+
+                            // Merge recentPosts, ensure uniqueness by postUri, and re-sort/trim
+                            let existingRecentPosts = linksToDisplay[url].recentPosts || [];
+                            const newPostsMap = new Map(existingRecentPosts.map(p => [p.postUri, p]));
+                            (recentPosts || []).forEach(newPost => newPostsMap.set(newPost.postUri, newPost));
+
+                            existingRecentPosts = Array.from(newPostsMap.values());
+                            // Sort by posterTotalPosts (descending) before slicing
+                            existingRecentPosts.sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+                            linksToDisplay[url].recentPosts = existingRecentPosts.slice(0, 5); // Keep top 5
+                        }
+                        for (const simplifiedDomain in dailyDomains) {
+                            const dailyEntry = dailyDomains[simplifiedDomain];
+                            if (!domainsToDisplay[simplifiedDomain]) {
+                                domainsToDisplay[simplifiedDomain] = { count: 0, sources: {} };
+                            }
+                            domainsToDisplay[simplifiedDomain].count += dailyEntry.count;
+                            for (const originalHost in dailyEntry.sources) {
+                                domainsToDisplay[simplifiedDomain].sources[originalHost] = 
+                                    (domainsToDisplay[simplifiedDomain].sources[originalHost] || 0) + dailyEntry.sources[originalHost];
+                            }
+                        }
+                        for (const type in dailyContentTypes) {
+                            contentTypesToDisplay[type] = (contentTypesToDisplay[type] || 0) + dailyContentTypes[type];
+                        }
+                        for (const didKey in dailyPosterCounts) {
+                            postersToDisplayByCount[didKey] = (postersToDisplayByCount[didKey] || 0) + dailyPosterCounts[didKey];
+                        }
+                        for (const didKey in dailyPosterLikes) {
+                            postersToDisplayByLikes[didKey] = (postersToDisplayByLikes[didKey] || 0) + dailyPosterLikes[didKey];
+                        }
+                        for (const didKey in dailyMentionCounts) { // NEW: Aggregate daily mentionCounts
+                            mentionsToDisplay[didKey] = (mentionsToDisplay[didKey] || 0) + dailyMentionCounts[didKey];
+                        }
+                    });
+                    connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
+                    connectionStatusElem.classList.remove('text-red-600', 'text-orange-600', 'text-gray-600');
+                    connectionStatusElem.classList.add('text-green-600');
+                } catch (error) {
+                    console.error(`Update View: Error fetching ${timeframe} data for ${currentActiveFeedId} from ${APP_ID}:`, error);
+                    connectionStatusElem.textContent = `Error fetching ${timeframe} data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
+                    connectionStatusElem.classList.remove('text-green-600', 'text-orange-600', 'text-gray-600');
+                    connectionStatusElem.classList.add('text-red-600');
+                }
+            }
+
+            currentDisplayTermCounts = termsToDisplay;
+            currentDisplayLinkCounts = linksToDisplay; 
+            currentDisplayDomainCounts = domainsToDisplay;
+            currentDisplayContentTypeCounts = contentTypesToDisplay;
+            currentDisplayPosterCounts = postersToDisplayByCount;
+            currentDisplayPosterLikes = postersToDisplayByLikes; 
+            currentDisplayMentionCounts = mentionsToDisplay; // NEW: Set current display mentions
+
+            renderAnalysis(currentDisplayTermCounts, currentDisplayLinkCounts, currentDisplayDomainCounts, currentDisplayContentTypeCounts, currentDisplayPosterCounts, currentDisplayPosterLikes, currentDisplayMentionCounts); 
+        }
+
+        // --- Feed Switching Logic ---
+        async function switchFeed(newFeedId) { // Made async to await fetchFeedSummaryData
+            if (currentActiveFeedId === newFeedId) {
+                console.log(`Switch Feed: Already on ${newFeedId} feed.`);
+                // If switching to the same feed, just ensure the UI reflects the current state (e.g., if coming back from settings)
+                updateUIForActiveFeed(newFeedId);
+                updateView(currentSelectedTimeframe);
+                return;
+            }
+
+            console.log(`Switch Feed: Switching feed from ${currentActiveFeedId} to ${newFeedId}`);
+            currentActiveFeedId = newFeedId;
+            // Persist active feed ID
+            localStorage.setItem('activeFeedId', newFeedId);
+
+            // Update UI immediately for responsiveness
+            updateUIForActiveFeed(newFeedId);
+            
+            // Reconnect WebSocket to the new feed URI if it analyzes data, otherwise stop it.
+            if (feeds[newFeedId].analyzeData) {
+                connectWebSocket(newFeedId);
+            } else {
+                stopWebSocket(); // Stop any existing WebSocket connection
+                connectionStatusElem.textContent = `No real-time data for ${feeds[newFeedId].displayName}`;
+                connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-orange-600');
+                connectionStatusElem.classList.add('text-gray-600');
+            }
+
+            // Fetch the all-time summary data for the new feed from APP_ID
+            await fetchFeedSummaryData(newFeedId); // Await this to ensure currentFeedData is populated
+
+            // Re-fetch and render analysis data for the new feed based on current timeframe
+            updateView(currentSelectedTimeframe);
+        }
+
+        // --- UI Update Function for Active Feed (unchanged) ---
+        function updateUIForActiveFeed(feedId) {
+            const feed = feeds[feedId];
+            if (!feed) {
+                console.error("UI Update: Invalid feedId provided for UI update:", feedId);
+                return;
+            }
+            console.log(`UI Update: Updating UI for feed: ${feedId}`);
+
+            // Determine the current version to load for the active feed
+            const activeVersionKey = `activeVersion_${feedId}`;
+            let currentVersionSrc = localStorage.getItem(activeVersionKey) || feed.versions[0].src;
+            mainIframe.src = currentVersionSrc;
+
+            // Update title link href
+            feedTitleLink.href = feed.blueskyProfileUrl;
+
+            // Update title and icon
+            feedTitleText.textContent = feed.displayName;
+            // Get the icon wrapper for applying consistent styles
+            const iconWrapper = feedTitleIcon.parentNode;
+
+            if (feed.icon.startsWith('http')) {
+                feedTitleIcon.src = feed.icon;
+                feedTitleIcon.style.display = 'inline'; // Show image
+                // Apply the CSS variable for scale to the image
+                feedTitleIcon.style.setProperty('--title-icon-scale', feed.titleIconScale);
+                
+                // Remove existing SVG if it was previously displayed
+                const existingSvg = iconWrapper.querySelector('svg');
+                if (existingSvg) { // Check if any SVG exists
+                    // Only remove if it's the one we placed for 'train' or 'home'
+                    if (existingSvg.id === 'feedTitleSvgIcon' || existingSvg.id === 'homeFeedTitleSvgIcon') { 
+                        existingSvg.remove();
+                    }
+                }
+            } else if (feed.icon === 'train') { // Handle 'train' icon
+                feedTitleIcon.style.display = 'none'; // Hide the image
+                feedTitleIcon.style.setProperty('--title-icon-scale', '1'); // Reset image scale
+                
+                let svgIcon = iconWrapper.querySelector('svg');
+                // If the SVG doesn't exist or is not the one we created, create it
+                if (!svgIcon || svgIcon.id !== 'feedTitleSvgIcon') {
+                    if (svgIcon) svgIcon.remove(); // Remove incorrect sibling if it exists
+                    svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svgIcon.setAttribute('id', 'feedTitleSvgIcon'); // Add an ID to track it
+                    iconWrapper.appendChild(svgIcon); // Append to the wrapper
+                }
+                svgIcon.setAttribute('class', 'w-full h-full'); // Fill the wrapper
+                svgIcon.setAttribute('fill', 'currentColor');
+                svgIcon.setAttribute('viewBox', '0 0 24 24');
+                // Path for a simple train/subway icon (example using a common rail icon shape)
+                svgIcon.innerHTML = `<path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>`;
+                svgIcon.style.display = 'inline'; // Show SVG
+            } else if (feed.icon === 'home') { // NEW: Handle 'home' icon for Datamaster feed
+                feedTitleIcon.style.display = 'none'; // Hide the image
+                feedTitleIcon.style.setProperty('--title-icon-scale', '1'); // Reset image scale
+
+                let svgIcon = iconWrapper.querySelector('svg');
+                if (!svgIcon || svgIcon.id !== 'homeFeedTitleSvgIcon') { // Check for home specific ID
+                    if (svgIcon) svgIcon.remove(); // Remove incorrect sibling if it exists
+                    svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svgIcon.setAttribute('id', 'homeFeedTitleSvgIcon'); // Add an ID to track it
+                    iconWrapper.appendChild(svgIcon);
+                }
+                svgIcon.setAttribute('class', 'w-full h-full');
+                svgIcon.setAttribute('fill', 'currentColor');
+                svgIcon.setAttribute('viewBox', '0 0 24 24');
+                svgIcon.innerHTML = `<path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path>`;
+                svgIcon.style.display = 'inline'; // Show SVG
+            }
+
+
+            // Update active state of feed buttons
+            document.querySelectorAll('.feed-select-btn').forEach(btn => {
+                btn.classList.remove('active-feed-btn');
+                btn.style.backgroundColor = ''; // Reset background for non-active
+                // Also reset icon color for non-active SVG buttons
+                const svgInBtn = btn.querySelector('svg');
+                if (svgInBtn) {
+                    // Check if it's the specific SVG icon we manage, don't touch if it's another SVG for other purpose
+                    if (svgInBtn.id === 'feedTitleSvgIcon' || btn.id === 'transitSkyFeedBtn' || btn.id === 'homeFeedBtn') { 
+                        if (document.body.classList.contains('dark-mode')) {
+                            svgInBtn.style.color = '#e2e8f0'; // Light color for dark mode
+                        } else {
+                            svgInBtn.style.color = '#333'; // Default color from CSS variable
+                        }
+                    }
+                }
+            });
+            const activeBtn = document.getElementById(`${feedId}FeedBtn`);
+            if (activeBtn) {
+                activeBtn.classList.add('active-feed-btn');
+                // Active button's background and SVG color will be handled by .active-feed-btn CSS
+            }
+            renderFeedVersionButtons(feedId); // Render version buttons specific to this feed
+        }
+
+        function renderFeedVersionButtons(feedId) {
+            feedVersionButtonsContainer.innerHTML = ''; // Clear previous buttons
+            const feed = feeds[feedId];
+
+            if (feed && feed.versions && feed.versions.length > 1) { // Only render if multiple versions exist
+                const activeVersionKey = `activeVersion_${feedId}`;
+                let currentActiveVersionSrc = localStorage.getItem(activeVersionKey) || feed.versions[0].src;
+
+                feed.versions.forEach((version) => {
+                    const button = document.createElement('button');
+                    button.textContent = version.name;
+                    button.className = 'px-4 py-2 text-sm font-medium rounded-md transition duration-200';
+                    
+                    if (version.src === currentActiveVersionSrc) {
+                        button.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                    } else {
+                        button.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                    }
+
+                    button.addEventListener('click', () => {
+                        mainIframe.src = version.src;
+                        localStorage.setItem(activeVersionKey, version.src);
+                        // Re-render buttons to update active state
+                        renderFeedVersionButtons(feedId);
+                    });
+                    feedVersionButtonsContainer.appendChild(button);
+                });
+                feedVersionButtonsContainer.style.display = 'flex'; // Show the container
+            } else {
+                feedVersionButtonsContainer.style.display = 'none'; // Hide if no multiple versions
+            }
+        }
+
+
+        // --- Event Listeners for Timeframe Selector ---
+        document.querySelectorAll('input[name="timeframe"]').forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                updateView(event.target.value);
+            });
+        });
+
+        // --- Event Listeners for Feed Selector Buttons ---
+        homeFeedBtn.addEventListener('click', () => switchFeed('datamaster')); // NEW: Home button listener
+        urbanismPlusFeedBtn.addEventListener('click', () => switchFeed('urbanismPlus'));
+        bandcampFeedBtn.addEventListener('click', () => switchFeed('bandcamp'));
+        transitSkyFeedBtn.addEventListener('click', () => switchFeed('transitSky')); // NEW: Event Listener for TransitSky
+
+        // --- NEW: Event Listeners for Poster/Mentions Toggle ---
+        function updatePosterMentionsDisplay() {
+            if (currentPosterMentionsView === 'posters') {
+                postersContentWrapper.classList.remove('hidden');
+                mentionsContentWrapper.classList.add('hidden');
+                showPostersBtn.classList.add('active');
+                showMentionsBtn.classList.remove('active');
+            } else {
+                postersContentWrapper.classList.add('hidden');
+                mentionsContentWrapper.classList.remove('hidden');
+                showPostersBtn.classList.remove('active');
+                showMentionsBtn.classList.add('active');
+            }
+            localStorage.setItem('posterMentionsView', currentPosterMentionsView); // Persist state
+        }
+
+        showPostersBtn.addEventListener('click', () => {
+            currentPosterMentionsView = 'posters';
+            updatePosterMentionsDisplay();
+        });
+
+        showMentionsBtn.addEventListener('click', () => {
+            currentPosterMentionsView = 'mentions';
+            updatePosterMentionsDisplay();
+        });
+
+
+        // --- Initialize on DOMContentLoaded ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update version text immediately
+            datamasterVersionTextElem.textContent = 'datamaster 0.8.8';
+            
+            initializeFirebase(); // Start Firebase initialization and auth
+            // Initial UI update for the feed loaded from localStorage or default
+            // This will now be handled by initializeFirebase's onAuthStateChanged callback
+            // after Firebase is ready and the initial Firestore snapshot is received.
+            // connectWebSocket is called within initializeFirebase now after initial setup is complete.
+        });
+
+        // Cleanup WebSocket on window unload
+        window.addEventListener('beforeunload', () => {
+            console.log("[window.beforeunload] Performing clean WebSocket shutdown.");
+            stopWebSocket(); // Use the dedicated stop function
+        });
+
+        // --- Settings Modal and Theme/Dark Mode Logic ---
+        const settingsModal = document.getElementById('settingsModal');
+        const openSettingsBtn = document.getElementById('openSettingsBtn'); 
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const themeSelect = document.getElementById('themeSelect');
+        const plusBtn = document.getElementById('plusBtn'); // Get the new plus button
+
+        // Define themes
+        const themes = {
+            'none': { 
+                backgroundImage: 'none', 
+                backgroundSize: 'auto', 
+                backgroundRepeat: 'no-repeat', 
+                backgroundPosition: 'center center', 
+                backgroundAttachment: 'fixed' 
+            },
+            'pride': { 
+                backgroundImage: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/flag-36423_1920.png)', 
+                backgroundSize: 'cover', 
+                backgroundRepeat: 'no-repeat', 
+                backgroundPosition: 'center center', 
+                backgroundAttachment: 'fixed' 
+            },
+            'transgenderPride': {
+                backgroundImage: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/transgender-flag.png)',
+                backgroundSize: 'cover',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center center',
+                backgroundAttachment: 'fixed'
+            },
+            'blm': {
+                backgroundImage: 'url(https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/BLM_flag.svg.png)',
+                backgroundSize: '80px 80px', /* Set fixed tile size */
+                backgroundRepeat: 'repeat',  /* Make it repeat */
+                backgroundPosition: 'center center',
+                backgroundAttachment: 'fixed'
+            }
+            // Add more themes here
+        };
+
+        // Function to apply theme
+        function applyTheme(themeName) {
+            const theme = themes[themeName];
+            if (theme) {
+                document.body.style.backgroundImage = theme.backgroundImage;
+                document.body.style.backgroundSize = theme.backgroundSize;
+                document.body.style.backgroundRepeat = theme.backgroundRepeat;
+                document.body.style.backgroundPosition = theme.backgroundPosition;
+                document.body.style.backgroundAttachment = theme.backgroundAttachment;
+            } else {
+                // Fallback to 'none' theme if themeName is not found
+                applyTheme('none');
+            }
+            localStorage.setItem('selectedTheme', themeName);
+        }
+
+        // Function to apply dark mode
+        function applyDarkMode(isDarkMode) {
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            localStorage.setItem('darkModeEnabled', isDarkMode);
+            // Re-apply feed button SVG colors based on new dark mode state
+            updateUIForActiveFeed(currentActiveFeedId); 
+        }
+
+        // Event listeners for settings modal
+        openSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        darkModeToggle.addEventListener('change', (event) => {
+            applyDarkMode(event.target.checked);
+        });
+
+        themeSelect.addEventListener('change', (event) => {
+            applyTheme(event.target.value);
+        });
+
+        // Event listener for the new plus button to open its modal
+        plusBtn.addEventListener('click', () => {
+            plusButtonModal.classList.remove('hidden');
+        });
+
+        // Event listener for closing the plus button modal
+        closePlusButtonModalBtn.addEventListener('click', () => {
+            plusButtonModal.classList.add('hidden');
+        });
+
+
+        // Load settings on initial page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load Dark mode preference
+            const savedDarkMode = localStorage.getItem('darkModeEnabled');
+            if (savedDarkMode === 'true') {
+                darkModeToggle.checked = true;
+                applyDarkMode(true);
+            } else {
+                darkModeToggle.checked = false;
+                applyDarkMode(false);
+            }
+
+            // Load Theme preference
+            const savedTheme = localStorage.getItem('selectedTheme');
+            if (savedTheme && themes[savedTheme]) {
+                themeSelect.value = savedTheme;
+                applyTheme(savedTheme);
+            } else {
+                themeSelect.value = 'none'; // Default to 'None' if no saved theme or invalid
+                applyTheme('none');
+            }
+
+            // Load poster/mentions view preference
+            currentPosterMentionsView = localStorage.getItem('posterMentionsView') || 'posters';
+            updatePosterMentionsDisplay(); // Apply the saved view
+
+            // REMOVED: Load Link Filter Hashtag preference (no longer needed)
+        });
+
+        // --- Link Posts Modal Functions ---
+        function openLinkPostsModal(url) {
+            const linkData = currentDisplayLinkCounts[url];
+            if (!linkData || !linkData.recentPosts || linkData.recentPosts.length === 0) {
+                linkPostsModalTitle.textContent = `No posts found for: ${linkData?.title || url}`; // Use title if available
+                linkPostsContent.innerHTML = '<p class="text-gray-500 text-center p-4">No recent posts found for this link.</p>';
+            } else {
+                linkPostsModalTitle.textContent = `Top Posts for: ${linkData.title || url}`;
+                linkPostsContent.innerHTML = ''; // Clear previous content
+
+                // Sort posts by posterTotalPosts (descending)
+                const sortedPosts = [...linkData.recentPosts].sort((a, b) => (b.posterTotalPosts || 0) - (a.posterTotalPosts || 0));
+
+                sortedPosts.forEach(post => {
+                    const resolvedInfo = resolvedDidsCache[post.authorDid] || { handle: '[unknown]', displayName: '[unknown]' };
+                    const postElement = document.createElement('div');
+                    postElement.className = 'post-card'; // Reuse post-card styling
+                    postElement.innerHTML = `
+                        <div class="post-author">
+                            <div class="text-gray-700">${resolvedInfo.displayName}</div> 
+                            <div class="text-blue-600 text-sm">@${resolvedInfo.handle}</div> 
+                        </div>
+                        <div class="post-content">${post.textPreview}</div>
+                        <div class="post-timestamp">
+                            ${new Date(post.timestamp).toLocaleString()}
+                            ${post.posterTotalPosts !== undefined ? ` (Posts by author: ${post.posterTotalPosts})` : ''}
+                        </div>
+                    `;
+                    linkPostsContent.appendChild(postElement);
+                });
+            }
+            linkPostsModal.classList.remove('hidden');
+        }
+
+        closeLinkPostsModalBtn.addEventListener('click', () => {
+            linkPostsModal.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
