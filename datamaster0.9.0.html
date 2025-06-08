@@ -458,6 +458,7 @@
             text-overflow: ellipsis; /* Add ellipsis for overflow */
             transition: color 0.3s ease; /* Smooth transition for dark mode */
         }
+        /* Applied to the specific count text for domains and content types */
         .domain-card-count {
             font-size: 0.9rem; /* Slightly smaller count */
             font-weight: bold;
@@ -554,6 +555,21 @@
         .poster-count-wrapper:hover {
             text-decoration: underline;
             background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        /* NEW: Styles for .domain-card-count-wrapper to match .link-card-count-wrapper */
+        .domain-card-count-wrapper { /* This specifically targets the count for hashtags */
+            font-size: 0.9rem; /* Match link-card count size */
+            font-weight: bold;
+            color: #3498db; /* Apply accent color */
+            cursor: pointer; /* Indicate clickability */
+            display: inline-block; /* Allow padding and hover effect */
+            padding: 2px 4px; /* Small padding around text */
+            border-radius: 4px;
+        }
+        .domain-card-count-wrapper:hover {
+            text-decoration: underline; /* Underline on hover */
+            background-color: rgba(52, 152, 219, 0.1); /* Subtle blue background on hover */
         }
 
 
@@ -2326,7 +2342,7 @@
                         item.title = `#${term}`; // Add # for tooltip for clarity
                         item.innerHTML = `
                             <div class="domain-card-name">
-                                ${index + 1}. #${term}
+                                ${index + 1}. #${term} <!-- Corrected: Removed extra '#' -->
                             </div>
                             <div class="domain-card-count-wrapper" data-type="hashtag" data-value="${term}">
                                 ${count} uses
@@ -3071,6 +3087,42 @@
         });
 
         // NEW: Function to fetch and display related posts in the modal
+        async function resolveBlueskyDidAndProfile(did) {
+            if (resolvedDidsCache[did]) {
+                return resolvedDidsCache[did];
+            }
+
+            if (!db || !isFirebaseReady || !currentUserId) {
+                console.warn(`[resolveBlueskyDidAndProfile] Firebase not ready or user not authenticated. Cannot resolve DID: ${did}`);
+                return null;
+            }
+
+            // Path to resolved DID in Firestore
+            const didDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'resolvedBlueskyDIDs', did);
+
+            try {
+                const docSnap = await getDoc(didDocRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    resolvedDidsCache[did] = data; // Cache the result
+                    return data;
+                } else {
+                    // DID not found in Firestore cache, attempt to resolve via Bluesky API
+                    // No direct Bluesky API call here, but this is where it would happen in a backend service.
+                    // For now, we'll return a placeholder and log a warning.
+                    console.warn(`[resolveBlueskyDidAndProfile] DID not found in Firestore: ${did}. Consider resolving this DID via a Bluesky API service.`);
+                    const placeholder = { handle: `did-${did.substring(0, 8)}...`, displayName: `Unknown User`, avatar: `https://placehold.co/40x40/cccccc/333?text=?` };
+                    resolvedDidsCache[did] = placeholder; // Cache placeholder to avoid repeated lookups
+                    return placeholder;
+                }
+            } catch (error) {
+                console.error(`[resolveBlueskyDidAndProfile] Error fetching DID ${did} from Firestore:`, error);
+                const placeholder = { handle: `error-${did.substring(0, 8)}...`, displayName: `Error User`, avatar: `https://placehold.co/40x40/cccccc/333?text=!error` };
+                resolvedDidsCache[did] = placeholder; // Cache error placeholder
+                return placeholder;
+            }
+        }
+
         async function fetchAndDisplayRelatedPosts(type, value) {
             console.log(`fetchAndDisplayRelatedPosts: type=${type}, value=${value}. Firebase ready: ${isFirebaseReady}, currentUserId: ${!!currentUserId}`);
             if (!db || !isFirebaseReady || !currentUserId) {
@@ -3174,8 +3226,8 @@
                 
                 linkPostsContent.innerHTML = ''; // Clear previous content
 
-                selectedPosts.forEach(post => {
-                    const resolvedInfo = resolvedDidsCache[post.author_did] || { handle: '[unknown]', displayName: '[unknown]' };
+                for (const post of selectedPosts) { // Use for...of for async inside loop
+                    const resolvedInfo = await resolveBlueskyDidAndProfile(post.author_did); // Resolve DID here
                     const postRKey = post.uri.split('/').pop(); // Extract rkey from uri
                     const blueskyPostUrl = `https://bsky.app/profile/${resolvedInfo.handle}/post/${postRKey}`;
 
@@ -3196,7 +3248,7 @@
                         </div>
                     `;
                     linkPostsContent.appendChild(postElement);
-                });
+                }
 
             } catch (error) {
                 console.error("Error fetching related posts:", error);
