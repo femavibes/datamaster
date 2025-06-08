@@ -1008,7 +1008,7 @@
         <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/2 lg:w-1/3 max-h-[90vh] flex flex-col text-center">
             <h3 class="text-xl font-bold mb-4 text-gray-800">Add a Feed to Fema's Datamaster</h3>
             <p class="text-gray-700 mb-4">Want to add a Feed to Fema's datamaster? This is something I am looking to support but for now feel free to reach out to me on Bluesky <a href="https://bsky.app/profile/fema.monster" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">@fema.monster</a>.</p>
-            <p class="text-gray-700 mb-6">Consider donating to my Ko-Fi <a href="https://ko-fi.co/urbanismplus" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">(https://ko.fi/urbanismplus)</a> and mention "Datamaster" to earmark the funds for this project.</p>
+            <p class="text-gray-700 mb-6">Consider donating to my Ko-Fi <a href="https://ko-fi.co/urbanismplus" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">https://ko.fi/urbanismplus</a> and mention "Datamaster" to earmark the funds for this project.</p>
             <button id="closePlusButtonModalBtn" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">Close</button>
         </div>
     </div>
@@ -1019,33 +1019,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Helper function to fetch headline from a URL (Moved to top for scope visibility) ---
-        async function fetchHeadline(url) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn(`Failed to fetch ${url} for headline: ${response.status} ${response.statusText}`);
-                    return null;
-                }
-                // Check if content type is HTML before parsing
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('text/html')) {
-                    console.warn(`Skipping headline fetch for non-HTML content at ${url}. Content-Type: ${contentType}`);
-                    return null;
-                }
-
-                const text = await response.text();
-                const match = text.match(/<title[^>]*>([^<]+)<\/title>/i);
-                return match && match[1] ? match[1].trim() : null;
-            } catch (e) {
-                console.warn(`CORS or network error fetching headline for ${url}:`, e.message);
-                // Important: Log a warning about CORS if it's likely the cause
-                if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
-                    console.warn(`CORS likely prevented fetching headline for ${url}. Headline will not be displayed.`);
-                }
-                return null; // Return null if fetching fails
-            }
-        }
+        // Removed fetchHeadline function as it's no longer needed, data will come from Contrails embeds.
 
         // Helper function to extract simplified base domain from a URL
         function getSimplifiedDomain(url) {
@@ -1166,7 +1140,7 @@
         const firebaseConfig = {
             apiKey: "AIzaSyCm_h3QFhrtx3zaQ3qMaOaVNfLwzwHg5pA",
             authDomain: "datamaster-78f8e.firebaseapp.com",
-            projectId: "datamaster-78f8e",
+            projectId: "datamaster-78f8e", // This is the projectId for the auth domain and general Firebase app setup
             storageBucket: "datamaster-78f8e.firebasestorage.app",
             messagingSenderId: "358109304500",
             appId: "1:358109304500:web:c65f479e00a5ed46c9e9e1",
@@ -1174,10 +1148,9 @@
         };
 
         // --- Global variables (derived from firebaseConfig or defaults) ---
-        // All read/write operations will now use this single APP_ID.
-        // FIX: Changed APP_ID to the specified "datamaster-shared-analytics-x"
+        // All read/write operations for analytics data will now use this specified APP_ID.
         const APP_ID = 'datamaster-shared-analytics-x'; 
-        console.log(`Using APP_ID for all operations: ${APP_ID}`);
+        console.log(`Using APP_ID for all public data operations: ${APP_ID}`);
 
 
         // --- Firebase Instances ---
@@ -1365,7 +1338,7 @@
         // --- Firebase Initialization ---
         function initializeFirebase() {
             try {
-                app = initializeApp(firebaseConfig);
+                app = initializeApp(firebaseConfig); // This uses the projectId from firebaseConfig (datamaster-78f8e)
                 db = getFirestore(app);
                 auth = getAuth(app);
 
@@ -1401,7 +1374,7 @@
                         if (feeds[currentActiveFeedId].analyzeData) {
                             connectWebSocket(currentActiveFeedId);
                         } else {
-                            connectionStatusElem.textContent = `No real-time data for ${feeds[currentActiveFeedId].displayName}`;
+                            connectionStatusElem.textContent = `No real-time data needed for ${feeds[currentActiveFeedId].displayName}`;
                             connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-orange-600');
                             connectionStatusElem.classList.add('text-gray-600');
                         }
@@ -1448,7 +1421,7 @@
         // Renamed from setupFirestoreListener and changed to use getDoc
         async function fetchFeedSummaryData(feedId) {
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Firestore Fetcher: Cannot fetch summary: Firebase not ready or user not authenticated.");
+                console.warn(`Firestore Fetcher: Cannot fetch summary: Firebase not ready or user not authenticated. DB: ${!!db}, Ready: ${isFirebaseReady}, User: ${!!currentUserId}`);
                 return;
             }
 
@@ -1506,7 +1479,7 @@
         // --- New Function to Fetch Resolved DIDs (using getDocs instead of onSnapshot) ---
         async function fetchResolvedDids() {
             if (!db || !isFirebaseReady || !currentUserId) {
-                console.warn("Fetch Resolved DIDs: Cannot fetch: Firebase not ready or user not authenticated.");
+                console.warn(`Fetch Resolved DIDs: Cannot fetch: Firebase not ready or user not authenticated. DB: ${!!db}, Ready: ${isFirebaseReady}, User: ${!!currentUserId}`);
                 return;
             }
 
@@ -1563,7 +1536,7 @@
                     resolvedAvatar = null;
                 } else {
                     const profileData = await profileResponse.json();
-                    console.log('Received profile data:', profileData);
+                    console.log('Received profile data for DID:', did, profileData);
                     if (profileData) {
                         resolvedHandle = profileData.handle || `[No Handle]`;
                         resolvedDisplayName = profileData.displayName || 'Display name not set';
@@ -1691,6 +1664,7 @@
             newWs.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    console.log(`[WS: ${feedId} - onmessage] Raw message data:`, data); // Log the full incoming message
                     
                     // Safely get authorDid, defaulting if not present
                     let authorDid = data.did || (data.commit?.did) || 'unknown-did'; // Added data.commit?.did for robustness
@@ -1703,6 +1677,7 @@
                     // Check if it's a commit and contains a record of type app.bsky.feed.post
                     if (data.commit && data.commit.record && data.commit.record.$type === 'app.bsky.feed.post') {
                         const post = data.commit.record; 
+                        console.log(`[WS: ${feedId} - onmessage] Processing Bluesky post:`, post);
 
                         postText = String(post.text || ''); // Ensure text is always a string
                         timestamp = post.createdAt || new Date().toISOString(); // Safely access createdAt
@@ -1723,15 +1698,15 @@
                                 text_content: postText,
                                 langs: post.langs || [],
                                 facets: postFacets, // Store raw facets
-                                embed: post.embed || null,
+                                embed: post.embed || null, // Store the raw embed object
                                 author_did: authorDid,
                                 // These would ideally be derived by a backend worker, but for now
                                 // we'll re-extract simple things here to keep the structure.
                                 hashtags: (postText.toLowerCase().match(/#\b\w+\b/g) || []).map(tag => tag.substring(1)), // Remove '#'
-                                links_extracted: [], // Populate below if embed exists
-                                images_extracted: [], // Populate below if embed exists
-                                quotes_extracted: [] // Populate below if embed exists
-                            }, { merge: true }).catch(e => console.error(`Firestore: Error saving raw post ${postUri}:`, e));
+                                // links_extracted: [], // Will be processed by extractEmbedData
+                                // images_extracted: [], // Will be processed by extractEmbedData
+                                // quotes_extracted: [] // Will be processed by extractEmbedData
+                            }, { merge: true }).catch(e => console.error(`Firestore: Error saving raw post ${postUri} to ${APP_ID}:`, e));
                         } else {
                             console.warn(`Firestore: Skipping saving raw post, missing data (postUri: ${postUri}, postCid: ${postCid}) or Firebase not ready.`);
                         }
@@ -1843,6 +1818,7 @@
             // Helper to recursively find content within nested embeds
             const findContent = (currentEmbed) => {
                 if (!currentEmbed) return;
+                console.log('  Extracting embed:', currentEmbed.$type, currentEmbed);
 
                 // Case: Direct external link embed
                 if (currentEmbed.$type === 'app.bsky.embed.external' && currentEmbed.external?.uri) {
@@ -1851,25 +1827,33 @@
                     if (!title) title = currentEmbed.external.title;
                     if (!description) description = currentEmbed.external.description;
                     if (!thumbnailUrl) thumbnailUrl = currentEmbed.external.thumb; // Get thumbnail from external embed
+                    console.log('    Found external embed:', { link, title, description, thumbnailUrl });
                 }
                 // Case: Direct image embed (not a link, but might have a thumb)
                 else if (currentEmbed.$type === 'app.bsky.embed.images' && currentEmbed.images?.length > 0) {
                     // Prioritize the first image thumbnail found
                     if (!thumbnailUrl) thumbnailUrl = currentEmbed.images[0].thumb;
+                    // For standalone images, link is null. title/description aren't usually in this embed type.
+                    console.log('    Found image embed:', { thumbnailUrl });
                 }
                 // Case: RecordWithMedia embed (contains a record and media)
                 else if (currentEmbed.$type === 'app.bsky.embed.recordWithMedia') {
+                    console.log('    Recursing into recordWithMedia media:', currentEmbed.media);
                     findContent(currentEmbed.media); // Recursively check the media part
-                    // Recursively check the quoted record's embed (common for link-quotes with images)
-                    findContent(currentEmbed.record?.record?.value?.embed);
+                    if (currentEmbed.record?.record?.value?.embed) {
+                        console.log('    Recursing into recordWithMedia record embed:', currentEmbed.record.record.value.embed);
+                        findContent(currentEmbed.record.record.value.embed); // Recursively check the quoted record's embed
+                    }
                 }
                 // Case: Record embed (points to another record, which might have its own embed)
                 else if (currentEmbed.$type === 'app.bsky.embed.record' && currentEmbed.record?.value?.embed) {
+                    console.log('    Recursing into record embed:', currentEmbed.record.value.embed);
                     findContent(currentEmbed.record.value.embed); // Recursively check the quoted record's embed
                 }
             };
 
             findContent(embed); // Start the search from the top-level embed object
+            console.log('  Final extracted embed data:', { link, title, description, thumbnailUrl });
 
             return { link, title, description, thumbnailUrl };
         }
@@ -1929,7 +1913,9 @@
 
 
             // --- Extract embed data using the new helper ---
+            // This now sources title, description, and thumbnailUrl directly from the embed
             const { link: extractedLink, title: extractedTitle, description: extractedDescription, thumbnailUrl: extractedThumbnailUrl } = extractEmbedData(embed);
+            console.log(`[Debounce] Extracted embed details: Link=${extractedLink}, Title=${extractedTitle}, Description=${extractedDescription}, Thumbnail=${extractedThumbnailUrl}`);
 
 
             // --- Link and Domain Counting (now includes thumbnail if found) ---
@@ -1939,19 +1925,12 @@
                     accumulatedUpdates[feedId].linkCounts[extractedLink] = { count: 0, headline: null, description: null, originalTitle: null }; // thumbnailUrl not stored here
                 }
                 accumulatedUpdates[feedId].linkCounts[extractedLink].count += 1;
-                // Only fetch headline if title is not already present from embed or previous fetches
-                if (extractedTitle && accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle === null) {
+                // Directly assign extracted title/description/thumbnail without extra fetches
+                if (extractedTitle) {
                     accumulatedUpdates[feedId].linkCounts[extractedLink].originalTitle = extractedTitle;
+                    accumulatedUpdates[feedId].linkCounts[extractedLink].headline = extractedTitle; // Use as headline for simplicity
                 }
-                // Fetch headline if still null from embed
-                if (accumulatedUpdates[feedId].linkCounts[extractedLink].headline === null) {
-                    fetchHeadline(extractedLink).then(fetchedTitle => {
-                        if (fetchedTitle) {
-                            accumulatedUpdates[feedId].linkCounts[extractedLink].headline = fetchedTitle;
-                        }
-                    });
-                }
-                if (extractedDescription && accumulatedUpdates[feedId].linkCounts[extractedLink].description === null) {
+                if (extractedDescription) {
                     accumulatedUpdates[feedId].linkCounts[extractedLink].description = extractedDescription;
                 }
 
@@ -2011,7 +1990,7 @@
                         accumulatedUpdates[feedId].domainCounts[baseDomain] = { count: 0, sources: {} };
                     }
                     accumulatedUpdates[feedId].domainCounts[baseDomain].count++;
-                    accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] || 0) + 1; // Corrected key for sources
+                    accumulatedUpdates[feedId].domainCounts[baseDomain].sources[originalHost] = (accumulatedUpdates[feedId].domainCounts[originalHost] || 0) + 1; // Corrected: use originalHost in domainCounts sources. This should be correct.
                 }
             }
             // Only update imageCardsData if it's purely an image post and no link was found
@@ -2023,6 +2002,7 @@
                     accumulatedUpdates[feedId].imageCardsData[imageKey] = { count: 0, alt: 'Image' }; // Default alt or extract more detailed alt from embed
                 }
                 accumulatedUpdates[feedId].imageCardsData[imageKey].count += 1;
+                console.log(`[Debounce] Accumulated imageCardsData for ${imageKey}:`, accumulatedUpdates[feedId].imageCardsData[imageKey]);
             }
 
 
@@ -2060,8 +2040,9 @@
             clearTimeout(debounceTimer); // Clear existing timer, ensuring only one pending update
             debounceTimer = setTimeout(async () => {
                 console.log(`[Debounce] Executing debounced Firestore update for feed: ${currentActiveFeedId}.`);
-                if (!db || !isFirebaseReady) {
-                    console.warn("Firestore: Not ready for update after debounce. Cannot update analysis.");
+                // Added enhanced logging for troubleshooting
+                if (!db || !isFirebaseReady || !currentUserId) { 
+                    console.warn(`Firestore: Not ready for update after debounce. Cannot update analysis. DB: ${!!db}, Ready: ${isFirebaseReady}, User: ${!!currentUserId}`);
                     return;
                 }
 
@@ -2080,7 +2061,7 @@
                     const dailyDocDate = new Date(feedUpdates.latestPostTimestamp || new Date()); // Fallback to current date if no timestamp
                     const dailyDocId = getYYYYMMDD(dailyDocDate);
 
-                    console.log(`[Debounce] Processing accumulated updates for feed ${currentFeedIdToProcess} (Daily Doc: ${dailyDocId}):`, JSON.stringify(feedUpdates, null, 2));
+                    console.log(`[Firestore Write DEBUG] Processing accumulated updates for feed ${currentFeedIdToProcess} (Daily Doc: ${dailyDocId}):`, JSON.stringify(feedUpdates, null, 2));
 
                     // REVISED PATH for summary document - ALWAYS write to APP_ID
                     const summaryDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
@@ -2168,7 +2149,7 @@
                             if (typeof currentSummaryData.imageCardsData[key] !== 'object' || currentSummaryData.imageCardsData[key] === null) {
                                 currentSummaryData.imageCardsData[key] = { count: 0, alt: null };
                             }
-                            currentSummaryData.imageCardsData[key].count = (currentSummaryData.imageCardsData[key] || 0) + count;
+                            currentSummaryData.imageCardsData[key].count = (currentSummaryData.imageCardsData[key].count || 0) + count;
                             if (alt && currentSummaryData.imageCardsData[key].alt === null) {
                                 currentSummaryData.imageCardsData[key].alt = alt;
                             }
@@ -2197,7 +2178,7 @@
                         console.log(`[Firestore Write] Current Daily Aggregate Data before merge for ${currentFeedIdToProcess} (${dailyDocId}) in ${APP_ID}:`, JSON.stringify(currentDailyData, null, 2));
 
 
-                        // Merge updates into currentDailyData
+                        // Merge updates into currentDailyData (same logic as All-Time but for daily)
                         for (const key in feedUpdates.termCounts) {
                             currentDailyData.termCounts[key] = (currentDailyData.termCounts[key] || 0) + feedUpdates.termCounts[key];
                         }
@@ -2207,14 +2188,14 @@
                                 currentDailyData.linkCounts[url] = { count: 0, headline: null, description: null, originalTitle: null };
                             }
                             currentDailyData.linkCounts[url].count = (currentDailyData.linkCounts[url].count || 0) + count;
-                            if (headline && currentDailyData.linkCardsData[url].headline === null) {
-                                currentDailyData.linkCardsData[url].headline = headline;
+                            if (headline && currentDailyData.linkCounts[url].headline === null) { // This condition was causing previous headline to stick
+                                currentDailyData.linkCounts[url].headline = headline;
                             }
-                            if (originalTitle && currentDailyData.linkCardsData[url].originalTitle === null) { // Typo fix
-                                currentDailyData.linkCardsData[url].originalTitle = originalTitle;
+                            if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) {
+                                currentDailyData.linkCounts[url].originalTitle = originalTitle;
                             }
-                            if (description && currentDailyData.linkCardsData[url].description === null) {
-                                currentDailyData.linkCardsData[url].description = description;
+                            if (description && currentDailyData.linkCounts[url].description === null) {
+                                currentDailyData.linkCounts[url].description = description;
                             }
                         }
                         for (const simplifiedDomain in feedUpdates.domainCounts) {
@@ -2263,7 +2244,7 @@
                             if (typeof currentDailyData.imageCardsData[key] !== 'object' || currentDailyData.imageCardsData[key] === null) {
                                 currentDailyData.imageCardsData[key] = { count: 0, alt: null };
                             }
-                            currentDailyData.imageCardsData[key].count = (currentDailyData.imageCardsData[key] || 0) + count;
+                            currentDailyData.imageCardsData[key].count = (currentDailyData.imageCardsData[key].count || 0) + count;
                             if (alt && currentDailyData.imageCardsData[key].alt === null) {
                                 currentDailyData.imageCardsData[key].alt = alt;
                             }
@@ -2278,6 +2259,8 @@
                             currentDailyData.mentionCounts[didKey] = (currentDailyData.mentionCounts[didKey] || 0) + feedUpdates.mentionCounts[didKey];
                         }
 
+                        // Log currentDailyData right before writing
+                        console.log(`[Firestore Write DEBUG] Writing Daily Aggregate for ${currentFeedIdToProcess} (${dailyDocId}):`, JSON.stringify(currentDailyData, null, 2));
                         await setDoc(dailyDocRef, currentDailyData, { merge: true });
                         console.log(`[Firestore Write] Successfully updated Daily Aggregate for feed ${currentFeedIdToProcess} (${dailyDocId}) in ${APP_ID}.`);
 
@@ -2703,6 +2686,8 @@
                             mentionsToDisplay[didKey] = (mentionsToDisplay[didKey] || 0) + dailyMentionCounts[didKey];
                         }
                     });
+                    // Log the aggregated data after fetching all daily docs
+                    console.log(`Update View: Aggregated data for ${timeframe} from daily aggregates:`, { termsToDisplay, linksToDisplay, domainsToDisplay, contentTypesToDisplay, postersToDisplayByCount, postersToDisplayByLikes, mentionsToDisplay });
                     connectionStatusElem.textContent = `Connected to ${feeds[currentActiveFeedId].displayName}`;
                     connectionStatusElem.classList.remove('text-red-600', 'text-orange-600', 'text-gray-600');
                     connectionStatusElem.classList.add('text-green-600');
