@@ -1673,6 +1673,7 @@
                         // Make sure Firebase is ready and currentUserId exists before writing
                         if (db && currentUserId && postUri && postCid) {
                             const postDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'posts', postUri);
+                            console.log(`Firestore: Saving raw post to path: ${postDocRef.path}`); // Added log
                             await setDoc(postDocRef, {
                                 $type: post.$type,
                                 uri: postUri,
@@ -2191,8 +2192,8 @@
                                     (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + dailyEntry.sources[originalHost];
                             }
                         }
-                        for (const type in feedUpdates.contentTypeCounts) {
-                            currentDailyData.contentTypeCounts[type] = (currentDailyData.contentTypeCounts[type] || 0) + feedUpdates.contentTypeCounts[type];
+                        for (const type in dailyContentTypes) {
+                            currentDailyData.contentTypeCounts[type] = (currentDailyData.contentTypeCounts[type] || 0) + dailyContentTypes[type];
                         }
                         for (const url in feedUpdates.linkCardsData) {
                              const { count, title, description, recentPosts, thumbnailUrl } = feedUpdates.linkCardsData[url];
@@ -2337,14 +2338,16 @@
                     topTermsDiv.innerHTML = '<p class="text-gray-500 text-center">No hashtags yet to analyze.</p>';
                 } else {
                     sortedTerms.forEach(([term, count], index) => {
+                        // NEW FIX: Ensure term has no leading '#' before displaying
+                        const cleanTerm = term.startsWith('#') ? term.substring(1) : term;
                         const item = document.createElement('div');
                         item.className = 'domain-card'; 
-                        item.title = `#${term}`; // Add # for tooltip for clarity
+                        item.title = `#${cleanTerm}`; // Add # for tooltip for clarity
                         item.innerHTML = `
                             <div class="domain-card-name">
-                                ${index + 1}. #${term} <!-- Corrected: Removed extra '#' -->
+                                ${index + 1}. #${cleanTerm} 
                             </div>
-                            <div class="domain-card-count-wrapper" data-type="hashtag" data-value="${term}">
+                            <div class="domain-card-count-wrapper" data-type="hashtag" data-value="${cleanTerm}">
                                 ${count} uses
                             </div>
                         `;
@@ -3144,6 +3147,7 @@
             }
 
             const postsCollectionRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'posts');
+            console.log(`Firestore: Querying posts from collection path: ${postsCollectionRef.path}`); // Added log
             let q;
             const limitCount = 100; // Fetch up to 100 recent posts to pick random from
             const postsToDisplayCount = 10;
