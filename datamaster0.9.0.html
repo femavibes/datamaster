@@ -529,7 +529,7 @@
             transition: background-color 0.2s ease;
         }
         .poster-card .poster-profile-link:hover {
-            background-color: var(--timeframe-label-bg); /* Subtle hover effect */
+            background-color: rgba(52, 152, 219, 0.05); /* Subtle hover effect */
         }
         .poster-avatar {
             width: 40px; /* Size for poster avatar */
@@ -2201,10 +2201,10 @@
                             if (!currentDailyData.domainCounts[simplifiedDomain]) {
                                 currentDailyData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
                             }
-                            currentDailyData.domainCounts[simplifiedDomain].count += dailyEntry.count;
+                            domainsToDisplay[simplifiedDomain].count += dailyEntry.count;
                             for (const originalHost in dailyEntry.sources) {
-                                currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] = 
-                                    (currentDailyData.domainCounts[simplifiedDomain].sources[originalHost] || 0) + dailyEntry.sources[originalHost];
+                                domainsToDisplay[simplifiedDomain].sources[originalHost] = 
+                                    (domainsToDisplay[simplifiedDomain].sources[originalHost] || 0) + dailyEntry.sources[originalHost];
                             }
                         }
                         for (const type in dailyContentTypes) {
@@ -2808,7 +2808,7 @@
 
                 let svgIcon = iconWrapper.querySelector('svg');
                 if (!svgIcon || svgIcon.id !== 'homeFeedTitleSvgIcon') { // Check for home specific ID
-                    if (svgIcon) svgIcon.remove(); // Remove incorrect sibling if it exists
+                    if (svgIcon) svgIcon.remove(); // Remove incorrect sibling if it's not the correct ID
                     svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     svgIcon.setAttribute('id', 'homeFeedTitleSvgIcon'); // Add an ID to track it
                     iconWrapper.appendChild(svgIcon);
@@ -3246,7 +3246,7 @@
                 for (const post of selectedPosts) { // Use for...of for async inside loop
                     const resolvedInfo = await resolveBlueskyDidAndProfile(post.author_did); // Resolve DID here
                     const postRKey = post.uri.split('/').pop(); // Extract rkey from uri
-                    const blueskyPostUrl = `httpsky.app/profile/${resolvedInfo.handle}/post/${postRKey}`;
+                    const blueskyPostUrl = `https://bsky.app/profile/${resolvedInfo.handle}/post/${postRKey}`;
 
                     const postElement = document.createElement('div'); // Use div as container
                     postElement.className = 'post-card cursor-pointer'; // Reuse post-card styling
