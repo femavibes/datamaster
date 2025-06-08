@@ -1137,7 +1137,8 @@
         }
 
         // --- Firebase Configuration (Provided by User) ---
-        const firebaseConfig = {
+        // Using __firebase_config global variable provided by Canvas environment
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyCm_h3QFhrtx3zaQ3qMaOaVNfLwzwHg5pA",
             authDomain: "datamaster-78f8e.firebaseapp.com",
             projectId: "datamaster-78f8e", // This is the projectId for the auth domain and general Firebase app setup
@@ -1146,10 +1147,13 @@
             appId: "1:358109304500:web:c65f479e00a5ed46c9e9e1",
             measurementId: "G-HR3XXTQNZD"
         };
+        console.log("Firebase Config loaded:", firebaseConfig);
+
 
         // --- Global variables (derived from firebaseConfig or defaults) ---
         // All read/write operations for analytics data will now use this specified APP_ID.
-        const APP_ID = 'datamaster-shared-analytics-x'; 
+        // Using __app_id global variable provided by Canvas environment
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'datamaster-shared-analytics-x'; 
         console.log(`Using APP_ID for all public data operations: ${APP_ID}`);
 
 
@@ -1317,7 +1321,7 @@
         // Debounce variables for Firestore updates
         let debounceTimer = null;
         const RECONNECT_DELAY = 10000; // 10 seconds
-        const DEBOUNCE_DELAY = 60000; // Changed: Increased debounce delay to 1 minute (60 seconds)
+        const DEBOUNCE_DELAY = 60000; // Reverted: 60 seconds (1 minute) to reduce Firestore writes
 
         // Stop words for term analysis (still relevant for hashtags)
         const stopWords = new Set([
@@ -1664,7 +1668,7 @@
             newWs.onmessage = async (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log(`[WS: ${feedId} - onmessage] Raw message data:`, data); // Log the full incoming message
+                    // console.log(`[WS: ${feedId} - onmessage] Raw message data:`, data); // Log the full incoming message
                     
                     // Safely get authorDid, defaulting if not present
                     let authorDid = data.did || (data.commit?.did) || 'unknown-did'; // Added data.commit?.did for robustness
@@ -2065,9 +2069,10 @@
 
                     // REVISED PATH for summary document - ALWAYS write to APP_ID
                     const summaryDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'summaries', 'allTime');
+                    // Ensure the dailyDocRef path correctly includes the feedId as a subcollection under dailyAggregates
                     const dailyDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentFeedIdToProcess, 'dailyAggregates', dailyDocId); 
                     
-                    console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId} in ${APP_ID}`); 
+                    console.log(`[Firestore Write DEBUG] Attempting to write to Daily Aggregate for date: ${dailyDocId} for feed ${currentFeedIdToProcess} in ${APP_ID}. Full path: ${dailyDocRef.path}`); 
 
 
                     try {
@@ -2191,7 +2196,7 @@
                             if (headline && currentDailyData.linkCounts[url].headline === null) { // This condition was causing previous headline to stick
                                 currentDailyData.linkCounts[url].headline = headline;
                             }
-                            if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) {
+                            if (originalTitle && currentDailyData.linkCardsData[url] && currentDailyData.linkCardsData[url].originalTitle === null) {
                                 currentDailyData.linkCounts[url].originalTitle = originalTitle;
                             }
                             if (description && currentDailyData.linkCounts[url].description === null) {
@@ -2256,7 +2261,7 @@
                             currentDailyData.posterLikes[didKey] = (currentDailyData.posterLikes[didKey] || 0) + feedUpdates.posterLikes[didKey];
                         }
                         for (const didKey in feedUpdates.mentionCounts) { // NEW: Merge mentionCounts
-                            currentDailyData.mentionCounts[didKey] = (currentDailyData.mentionCounts[didKey] || 0) + feedUpdates.mentionCounts[didKey];
+                            currentDailyData.mentionCounts[didKey] = (currentDailyData.mentionCounts[didKey] || 0) + dailyMentionCounts[didKey];
                         }
 
                         // Log currentDailyData right before writing
@@ -2276,6 +2281,7 @@
                 console.log("[Debounce] Accumulated updates reset.");
                 
                 // After updating Firestore, re-fetch currentFeedData from the single APP_ID
+                // This ensures the UI for 'allTime' or any subsequent daily toggle uses the absolute latest data
                 if (currentFeedIdToProcess === currentActiveFeedId) { // Only if this was the active feed being updated
                     const updatedSummaryDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'summaries', 'allTime');
                     const updatedDisplaySummarySnap = await getDoc(updatedSummaryDocRef); 
@@ -2606,19 +2612,20 @@
                     startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 }
                 const startYYYYMMDD = getYYYYMMDD(startDate);
-                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe} from ${APP_ID}.`);
+                console.log(`Update View: Fetching daily aggregates from ${startYYYYMMDD} for timeframe: ${timeframe} from ${APP_ID} for feed: ${currentActiveFeedId}.`);
 
 
                 // Fetch data for the selected timeframe from the active feed's daily aggregates (from APP_ID)
+                // The path should be: artifacts/{APP_ID}/public/data/feeds/{currentActiveFeedId}/dailyAggregates
                 const dailyAggregatesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'feeds', currentActiveFeedId, 'dailyAggregates');
                 // Query for documents whose ID (date string) is greater than or equal to the start date
                 const q = query(dailyAggregatesRef, where('__name__', '>=', startYYYYMMDD));
 
                 try {
                     const querySnapshot = await getDocs(q);
-                    console.log(`Update View: Found ${querySnapshot.docs.length} daily aggregate documents for ${timeframe}.`);
+                    console.log(`Update View: Found ${querySnapshot.docs.length} daily aggregate documents for ${timeframe} for feed ${currentActiveFeedId}.`);
                     if (querySnapshot.docs.length === 0) {
-                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD} in ${APP_ID}.`);
+                        console.warn(`No daily aggregate documents found for ${timeframe} starting from ${startYYYYMMDD} for feed ${currentActiveFeedId} in ${APP_ID}.`);
                     }
 
                     querySnapshot.forEach((docSnap) => {
