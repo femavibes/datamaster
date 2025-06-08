@@ -1612,7 +1612,7 @@
                         
                         let postEmbed = post.embed; 
                         // Pass the timestamp and facets of the actual post to the debounced function
-                        debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed, postUri, timestamp, facets); 
+                        debouncedUpdateFirestoreAnalysis(currentActiveFeedId, authorDid, postText, postEmbed, postUri, timestamp, postFacets); 
 
                     } else {
                         // console.log(`[WS: ${feedId} - onmessage] WebSocket message is not a recognized post type or missing expected fields. Received data:`, data);
@@ -2072,7 +2072,7 @@
                             }
                         }
                         for (const simplifiedDomain in feedUpdates.domainCounts) {
-                            const dailyEntry = feedUpdates.domainCounts[simplifiedDomain]; // Use feedUpdates directly for this
+                            const dailyEntry = feedUpdates.domainCounts[simplifiedDomain];
                             if (!currentDailyData.domainCounts[simplifiedDomain]) {
                                 currentDailyData.domainCounts[simplifiedDomain] = { count: 0, sources: {} };
                             }
@@ -2223,8 +2223,12 @@
                 topLinksDiv.innerHTML = '<p class="text-gray-500 text-center">No rich link cards yet to display.</p>';
             } else {
                 sortedRichLinkCards.forEach(([url, data]) => {
-                    const item = document.createElement('div');
-                    item.className = 'link-card'; 
+                    // Changed to an <a> tag that wraps the entire card content
+                    const item = document.createElement('a'); 
+                    item.href = url; // Set the href for the whole card
+                    item.target = "_blank"; // Open in new tab
+                    item.rel = "noopener noreferrer"; // Security best practice
+                    item.className = 'link-card'; // Retain existing card styling
                     
                     let imageHtml = '';
                     if (data.thumbnailUrl) {
@@ -2236,14 +2240,14 @@
 
                     item.innerHTML = `
                         ${imageHtml}
-                        <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-card-headline">
+                        <div class="link-card-headline">
                             ${data.title || 'No Title Available'}
-                        </a>
+                        </div>
                         <div class="link-card-description">${data.description || 'No description available.'}</div>
                         <div class="link-card-url">${url}</div>
                         <div class="link-card-footer">
-                            <span class="link-card-count">${data.count} clicks</span>
-                            <button class="link-card-comment-btn" title="View posts for ${url}" data-link-url="${url}">
+                            <span class="link-card-count">${data.count} shares</span>
+                            <button type="button" class="link-card-comment-btn" title="View posts for ${url}" data-link-url="${url}">
                                 <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                                     <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.735-1.579l-3.321 1.096A1 1 0 01.328 15.22l1.096-3.321A7.002 7.002 0 002 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"></path>
                                 </svg>
