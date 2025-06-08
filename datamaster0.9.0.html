@@ -507,7 +507,7 @@
             padding: 10px;
             margin-bottom: 8px;
             transition: all 0.3s ease;
-            text-decoration: none; /* The outer poster-card link for profile */
+            /* text-decoration: none; // Removed, applied to inner link */
             color: inherit;
             border: 1px solid var(--link-card-border);
         }
@@ -515,6 +515,21 @@
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
             transform: translateY(-2px);
             border-color: #3498db;
+        }
+        .poster-card .poster-profile-link { /* New style for the inner profile link */
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1; /* Allows it to take available space */
+            min-width: 0;
+            padding: 5px; /* Add some padding to make it a clearer clickable area */
+            border-radius: 8px;
+            text-decoration: none;
+            color: inherit; /* Inherit color from parent */
+            transition: background-color 0.2s ease;
+        }
+        .poster-card .poster-profile-link:hover {
+            background-color: var(--timeframe-label-bg); /* Subtle hover effect */
         }
         .poster-avatar {
             width: 40px; /* Size for poster avatar */
@@ -2338,7 +2353,7 @@
                     topTermsDiv.innerHTML = '<p class="text-gray-500 text-center">No hashtags yet to analyze.</p>';
                 } else {
                     sortedTerms.forEach(([term, count], index) => {
-                        // NEW FIX: Ensure term has no leading '#' before displaying
+                        // FIX: Ensure term has no leading '#' for display
                         const cleanTerm = term.startsWith('#') ? term.substring(1) : term;
                         const item = document.createElement('div');
                         item.className = 'domain-card'; 
@@ -2467,19 +2482,18 @@
                 } else {
                     sortedPosters.forEach(([did, count]) => {
                         const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?' }; // Default avatar
-                        const item = document.createElement('a');
-                        item.href = `https://bsky.app/profile/${resolvedInfo.handle}`; // Link to Bluesky profile
-                        item.target = "_blank";
-                        item.rel = "noopener noreferrer";
-                        item.className = 'poster-card'; // Use new poster-card styling
+                        const item = document.createElement('div'); // Changed to div
+                        item.className = 'poster-card'; 
                         item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
 
                         item.innerHTML = `
-                            <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
-                            <div class="poster-info">
-                                <div class="poster-display-name">${resolvedInfo.displayName}</div> 
-                                <div class="poster-handle">@${resolvedInfo.handle}</div> 
-                            </div>
+                            <a href="https://bsky.app/profile/${resolvedInfo.handle}" target="_blank" rel="noopener noreferrer" class="poster-profile-link">
+                                <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
+                                <div class="poster-info">
+                                    <div class="poster-display-name">${resolvedInfo.displayName}</div> 
+                                    <div class="poster-handle">@${resolvedInfo.handle}</div> 
+                                </div>
+                            </a>
                             <div class="poster-count-wrapper" data-type="poster" data-value="${did}">
                                 ${count} posts
                             </div>
@@ -2499,19 +2513,18 @@
                 } else {
                     sortedMentions.forEach(([did, count]) => {
                         const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?m' }; // Default avatar
-                        const item = document.createElement('a');
-                        item.href = `https://bsky.app/profile/${resolvedInfo.handle}`; // Link to Bluesky profile
-                        item.target = "_blank";
-                        item.rel = "noopener noreferrer";
-                        item.className = 'poster-card'; // Reuse poster-card styling
+                        const item = document.createElement('div'); // Changed to div
+                        item.className = 'poster-card'; 
                         item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
 
                         item.innerHTML = `
-                            <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
-                            <div class="poster-info">
-                                <div class="poster-display-name">${resolvedInfo.displayName}</div> 
-                                <div class="poster-handle">@${resolvedInfo.handle}</div> 
-                            </div>
+                            <a href="https://bsky.app/profile/${resolvedInfo.handle}" target="_blank" rel="noopener noreferrer" class="poster-profile-link">
+                                <img src="${resolvedInfo.avatar}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/cccccc/333?text=?';" alt="${resolvedInfo.displayName}'s avatar" class="poster-avatar">
+                                <div class="poster-info">
+                                    <div class="poster-display-name">${resolvedInfo.displayName}</div> 
+                                    <div class="poster-handle">@${resolvedInfo.handle}</div> 
+                                </div>
+                            </a>
                             <div class="poster-count-wrapper" data-type="mention" data-value="${did}">
                                 ${count} mentions
                             </div>
@@ -3233,7 +3246,7 @@
                 for (const post of selectedPosts) { // Use for...of for async inside loop
                     const resolvedInfo = await resolveBlueskyDidAndProfile(post.author_did); // Resolve DID here
                     const postRKey = post.uri.split('/').pop(); // Extract rkey from uri
-                    const blueskyPostUrl = `https://bsky.app/profile/${resolvedInfo.handle}/post/${postRKey}`;
+                    const blueskyPostUrl = `httpsky.app/profile/${resolvedInfo.handle}/post/${postRKey}`;
 
                     const postElement = document.createElement('div'); // Use div as container
                     postElement.className = 'post-card cursor-pointer'; // Reuse post-card styling
