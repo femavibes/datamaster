@@ -642,11 +642,10 @@
 
         /* New: Styling for individual ranking scroll areas */
         .ranking-scroll-area {
-            /* Removed max-height: 400px; */
             overflow-y: auto;
             padding-right: 10px; /* Space for scrollbar */
-            /* margin-bottom handled by grid gap now */
             flex-grow: 1; /* Allow it to fill available vertical space */
+            margin-bottom: 20px; /* Add margin-bottom here to push down if needed */
         }
         /* Hide scrollbar for aesthetic purposes if needed, but keep functionality */
         .ranking-scroll-area::-webkit-scrollbar {
@@ -803,7 +802,7 @@
 
                 <!-- Grid for rankings - Adjusted for 12 columns, and now flex-grow -->
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6 w-full flex-grow">
-                    <div class="md:col-span-3 flex flex-col"> <!-- Top Hashtags (3/12) - now flex-col -->
+                    <div class="md:col-span-3 flex flex-col"> <!-- Top Hashtags (3/12) - now flex-col and takes vertical space -->
                         <h3 class="stylish-subheader">Top Hashtags</h3>
                         <div id="topTermsWrapper" class="ranking-scroll-area">
                             <div id="topTerms">
@@ -811,7 +810,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="md:col-span-5 flex flex-col"> <!-- Top Links (5/12) - now flex-col -->
+                    <div class="md:col-span-5 flex flex-col"> <!-- Top Links (5/12) - now flex-col and takes vertical space -->
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="stylish-subheader mb-0">Top Links</h3>
                         </div>
@@ -821,8 +820,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="md:col-span-4 flex flex-col"> <!-- Top Posters / Top Mentions (4/12) - now flex-col -->
-                        <div class="flex flex-col h-full"> <!-- Added h-full to make it take full height -->
+                    <div class="md:col-span-4 flex flex-col"> <!-- Top Posters / Top Mentions (4/12) - now flex-col and takes vertical space -->
+                        <div class="flex flex-col flex-grow"> <!-- Added flex-grow to make it take full height -->
                             <div class="flex items-center justify-between mb-4 flex-wrap"> <!-- Added flex-wrap for small screens -->
                                 <h3 class="stylish-subheader flex-grow mb-0 mr-2">Ranked Users</h3> <!-- Generic title for the section -->
                                 <div class="flex gap-2 flex-shrink-0">
@@ -845,7 +844,7 @@
                         </div>
                     </div>
                     
-                    <div class="md:col-span-4 flex flex-col" id="topSitesSection" style="display: none;"> <!-- Now flex-col -->
+                    <div class="md:col-span-4 flex flex-col" id="topSitesSection" style="display: none;"> <!-- Now flex-col and takes vertical space -->
                         <h3 class="stylish-subheader">Top Sites</h3>
                         <div id="topDomainsWrapper" class="ranking-scroll-area">
                             <div id="topDomains">
@@ -853,7 +852,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="md:col-span-5 flex flex-col" id="contentTypeBreakdownSection" style="display: none;"> <!-- Now flex-col -->
+                    <div class="md:col-span-5 flex flex-col" id="contentTypeBreakdownSection" style="display: none;"> <!-- Now flex-col and takes vertical space -->
                         <h3 class="stylish-subheader">Content Type Breakdown</h3>
                         <div id="contentTypeBreakdownWrapper" class="ranking-scroll-area">
                             <div id="contentTypeBreakdown">
@@ -2373,7 +2372,7 @@
             // Attach event listeners for comment buttons after rendering
             document.querySelectorAll('.link-card-comment-btn').forEach(button => {
                 button.onclick = (event) => {
-                    event.preventDefault(); // Prevent default link behavior if inside an <a>
+                    event.preventDefault(); // Prevent default link behavior if inside an<a>
                     const url = event.currentTarget.dataset.linkUrl;
                     openLinkPostsModal(url);
                 };
