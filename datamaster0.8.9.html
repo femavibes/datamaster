@@ -709,7 +709,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             padding: 15px;
-            margin-bottom: 10px;
+            margin-bottom: 10px; /* Keep consistent margin for grid items */
             text-decoration: none; /* For the <a> tag */
             color: inherit;
             transition: all 0.3s ease;
@@ -927,23 +927,23 @@
                 </div>
 
                 <!-- NEW: Featured Feeds Content (hidden by default, shown for Datamaster feed) -->
-                <div id="featuredFeedsContent" class="flex flex-col gap-4 mt-6 w-full" style="display: none;">
-                    <h3 class="text-center text-gray-600 dark:text-gray-400">Explore other curated feeds!</h3>
-                    <a href="#" class="featured-feed-card" data-feed-id="urbanismPlus">
+                <div id="featuredFeedsContent" class="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6 w-full" style="display: none;">
+                    <h3 class="md:col-span-12 text-center text-gray-600 dark:text-gray-400">Discover other curated feeds!</h3>
+                    <a href="#" class="featured-feed-card md:col-span-4" data-feed-id="urbanismPlus">
                         <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg" alt="Urbanism+ Logo" class="featured-feed-icon">
                         <div class="featured-feed-info">
                             <div class="featured-feed-name">Urbanism+</div>
                             <div class="featured-feed-description">Daily news and insights on urban planning, public transit, and walkable cities.</div>
                         </div>
                     </a>
-                    <a href="#" class="featured-feed-card" data-feed-id="bandcamp">
+                    <a href="#" class="featured-feed-card md:col-span-4" data-feed-id="bandcamp">
                         <img src="https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp" alt="Bandcamp Logo" class="featured-feed-icon">
                         <div class="featured-feed-info">
                             <div class="featured-feed-name">Bandcamp</div>
                             <div class="featured-feed-description">Discover new music and independent artists trending on Bandcamp.</div>
                         </div>
                     </a>
-                    <a href="#" class="featured-feed-card" data-feed-id="transitSky">
+                    <a href="#" class="featured-feed-card md:col-span-4" data-feed-id="transitSky">
                         <svg class="featured-feed-icon p-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H7.5c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H11V16zm5.5 0H13c-.276 0-.5-.224-.5-.5V7.5c0-.276.224-.5.5-.5H16.5c.276 0 .5.224.5.5V15.5c0 .276-.224.5-.5.5z"/>
                         </svg>
@@ -2209,11 +2209,11 @@
                             if (headline && currentDailyData.linkCounts[url].headline === null) {
                                 currentDailyData.linkCounts[url].headline = headline;
                             }
-                            if (originalTitle && currentDailyData.linkCounts[url].originalTitle === null) { // Typo fix
-                                currentDailyData.linkCounts[url].originalTitle = originalTitle;
+                            if (originalTitle && currentDailyData.linkCardsData[url].originalTitle === null) { // Typo fix
+                                currentDailyData.linkCardsData[url].originalTitle = originalTitle;
                             }
-                            if (description && currentDailyData.linkCounts[url].description === null) {
-                                currentDailyData.linkCounts[url].description = description;
+                            if (description && currentDailyData.linkCardsData[url].description === null) {
+                                currentDailyData.linkCardsData[url].description = description;
                             }
                         }
                         for (const simplifiedDomain in feedUpdates.domainCounts) {
@@ -2334,9 +2334,9 @@
             // NEW: Conditional display for Rankings vs Featured Feeds
             if (currentActiveFeedId === 'datamaster') { // 'datamaster' is the Home feed
                 rankingsContent.style.display = 'none'; // Hide the ranking grid
-                featuredFeedsContent.style.display = 'flex'; // Show featured feeds content
+                featuredFeedsContent.style.display = 'grid'; // Show featured feeds content (now a grid)
                 timeframeSelectorContainer.style.display = 'none'; // Hide timeframe selector for Home
-                rankingsSectionTitle.textContent = 'Featured Feeds'; // Change title
+                rankingsSectionTitle.textContent = 'Discover Feeds'; // Change title
                 connectionStatusElem.textContent = `No real-time data for ${feeds[currentActiveFeedId].displayName}`;
                 connectionStatusElem.classList.remove('text-green-600', 'text-red-600', 'text-orange-600');
                 connectionStatusElem.classList.add('text-gray-600');
@@ -2770,8 +2770,13 @@
 
             // Determine the current version to load for the active feed
             const activeVersionKey = `activeVersion_${feedId}`;
-            let currentVersionSrc = localStorage.getItem(activeVersionKey) || feed.versions[0].src;
-            mainIframe.src = currentVersionSrc;
+            let currentVersionSrc = localStorage.getItem(activeVersionKey) || (feed.versions && feed.versions[0].src);
+            if (currentVersionSrc) { // Only set src if it exists
+                mainIframe.src = currentVersionSrc;
+            } else {
+                mainIframe.src = ''; // Clear iframe if no src
+            }
+
 
             // Update title link href
             feedTitleLink.href = feed.blueskyProfileUrl;
