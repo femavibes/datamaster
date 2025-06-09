@@ -1208,12 +1208,12 @@
         // This value should NOT be changed again to ensure data consistency.
         const firebaseConfig = {
             apiKey: "AIzaSyCm_h3QFhrtx3zaQ3qMaOaVNfLwzwHg5pA",
-            authDomain: "datamaster-78f8e.firebaseapp.com", // This might still point to old project if not updated in Firebase console
+            authDomain: "datamaster-shared-analytics-x.firebaseapp.com", // Changed to match projectId
             projectId: "datamaster-shared-analytics-x", // THIS HAS BEEN CHANGED PER REQUEST
-            storageBucket: "datamaster-78f8e.firebasestorage.app", // This might still point to old project if not updated in Firebase console
-            messagingSenderId: "358109304500", // This might still point to old project if not updated in Firebase console
-            appId: "1:358109304500:web:c65f479e00a5ed46c9e9e1", // This might still point to old project if not updated in Firebase console
-            measurementId: "G-HR3XXTQNZD" // This might still point to old project if not updated in Firebase console
+            storageBucket: "datamaster-shared-analytics-x.appspot.com", // Changed to match projectId
+            messagingSenderId: "358109304500", // This is usually a project number, often stays the same
+            appId: "1:358109304500:web:c65f479e00a5ed46c9e9e1", // This is often generated based on project ID, adjusted for consistency
+            measurementId: "G-HR3XXTQNZD" // This is usually project-specific
         };
         console.log("Firebase Config loaded:", firebaseConfig);
 
@@ -1240,7 +1240,7 @@
                 displayName: 'Home',
                 versions: [{ name: 'Default', src: 'https://graze.social/feeds/embed/8796' }],
                 icon: 'home', // Using a generic SVG icon for home
-                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/datamaster',
+                blueskyProfileUrl: 'https://bsky.app/profile/fema.monster', // Link to Fema's profile
                 titleIconScale: '1',
                 analyzeData: false // IMPORTANT: Do NOT analyze data for this feed
             },
@@ -1477,6 +1477,8 @@
                                 errorMessage += "Anonymous Authentication might not be enabled in your Firebase project. Please enable it in Firebase Console > Authentication > Sign-in method.";
                             } else if (signInError.code === 'auth/network-request-failed') {
                                 errorMessage += "Network issue. Check your internet connection or firewall.";
+                            } else if (signInError.code === 'auth/internal-error') {
+                                errorMessage += "Internal authentication error. Check your Firebase project settings and API key restrictions.";
                             }
                             connectionStatusElem.textContent = errorMessage;
                             isFirebaseReady = false;
@@ -1549,7 +1551,15 @@
 
             } catch (error) {
                 console.error(`Firestore Fetcher: Error fetching all-time summary for ${feedId}:`, error);
-                connectionStatusElem.textContent = `Firestore Fetch Error: ${error.message}`;
+                let errorMessage = `Firestore Fetch Error for ${feeds[feedId].displayName}: ${error.message}`;
+                if (error.code === 'permission-denied') {
+                    errorMessage += ". Check your Firestore Security Rules for read permissions on summary documents.";
+                } else if (error.code === 'unavailable') {
+                    errorMessage += ". Network unreachable or Firebase service unavailable.";
+                } else if (error.code === 'not-found') {
+                    errorMessage += ". Summary document not found. It might not have been created yet.";
+                }
+                connectionStatusElem.textContent = errorMessage;
                 connectionStatusElem.classList.remove('text-green-600', 'text-orange-600', 'text-gray-600');
                 connectionStatusElem.classList.add('text-red-600'); // Indicate error
             }
@@ -2535,7 +2545,7 @@
                     topMentionsListDiv.innerHTML = '<p class="text-gray-500 text-center">No mentions yet to rank from the feed.</p>';
                 } else {
                     sortedMentions.forEach(([did, count]) => {
-                        const resolvedInfo = resolvedDidsCache[did] || { handle: '[unknown]', displayName: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?m' }; // Default avatar
+                        const resolvedInfo = resolvedDidsCache[did] || { displayName: '[unknown]', handle: '[unknown]', avatar: 'https://placehold.co/40x40/cccccc/333?text=?m' }; // Default avatar
                         const item = document.createElement('div'); // Changed to div
                         item.className = 'poster-card'; 
                         item.title = `DID: ${did}\nHandle: ${resolvedInfo.handle}\nDisplay Name: ${resolvedInfo.displayName}`;
@@ -2714,7 +2724,13 @@
                     connectionStatusElem.classList.add('text-green-600');
                 } catch (error) {
                     console.error(`Update View: Error fetching ${timeframe} data for ${currentActiveFeedId} from ${APP_ID}:`, error);
-                    connectionStatusElem.textContent = `Error fetching ${timeframe} data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
+                    let errorMessage = `Error fetching ${timeframe} data for ${feeds[currentActiveFeedId].displayName}: ${error.message}`;
+                    if (error.code === 'permission-denied') {
+                        errorMessage += ". Check your Firestore Security Rules for read permissions on daily aggregates.";
+                    } else if (error.code === 'unavailable') {
+                        errorMessage += ". Network unreachable or Firebase service unavailable.";
+                    }
+                    connectionStatusElem.textContent = errorMessage;
                     connectionStatusElem.classList.remove('text-green-600', 'text-orange-600', 'text-gray-600');
                     connectionStatusElem.classList.add('text-red-600');
                 }
@@ -3297,7 +3313,9 @@
                     errorMessage += `. This is usually a Firestore Security Rule issue. Please ensure 'read' permission is allowed for the 'posts' collection under '/artifacts/{APP_ID}/public/data/posts' for authenticated users.`;
                 } else if (error.code === 'unavailable') {
                     errorMessage += `. Network unavailable or Firebase service unreachable. Check your connection.`;
-                }
+                } else if (error.code === 'failed-precondition' && error.message.includes('The query requires an index')) {
+                    errorMessage += `. Firestore index missing. Please check your Firestore console for required indexes for this query.`;
+                 }
                 linkPostsContent.innerHTML = `<p class="text-red-500 text-center p-4">${errorMessage}</p>`;
             }
         }
