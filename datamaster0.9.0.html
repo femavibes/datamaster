@@ -1256,7 +1256,210 @@
                 versions: [
                     { name: 'Default', src: 'https://graze.social/feeds/embed/5511' }
                 ],
-                icon: 'train', 
+                icon: 'train', // Placeholder SVG for now. Will be replaced by actual image URL.
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg', 
+                titleIconScale: '1',
+                analyzeData: true // Analyze data for this feed
+            }
+            // Add more feeds here
+        };
+
+        // Initialize currentActiveFeedId from localStorage, or default to 'datamaster' (NEW DEFAULT)
+        let currentActiveFeedId = localStorage.getItem('activeFeedId') || 'datamaster';
+
+        // --- DOM Elements ---
+        const postsContainer = document.getElementById('postsContainer');
+        const connectionStatusElem = document.getElementById('connectionStatus');
+        const datamasterVersionTextElem = document.getElementById('datamasterVersionText'); // Element for "Feedmaster 0.8.9" text
+        const loadingIndicatorElem = document.getElementById('loadingIndicator'); // This will now be hidden
+        
+        // Ranking Section Wrappers (for independent scrolling)
+        const topTermsWrapper = document.getElementById('topTermsWrapper');
+        const topLinksWrapper = document.getElementById('topLinksWrapper');
+        const postersContentWrapper = document.getElementById('postersContentWrapper');
+        const mentionsContentWrapper = document.getElementById('mentionsContentWrapper');
+        const topDomainsWrapper = document.getElementById('topDomainsWrapper'); // For Top Sites
+        const contentTypeBreakdownWrapper = document.getElementById('contentTypeBreakdownWrapper'); // For Content Type Breakdown
+
+        // Individual Ranking Display Elements
+        const topTermsDiv = document.getElementById('topTerms'); 
+        const topLinksDiv = document.getElementById('topLinks'); // Now used for Link Cards (with Title & Description)
+        const topDomainsDiv = document.getElementById('topDomains'); 
+        const contentTypeBreakdownDiv = document.getElementById('contentTypeBreakdown');
+        const resolvedDidsListDiv = document.getElementById('resolvedDidsList'); // Original resolved DIDs list (now hidden)
+        const topPostersListDiv = document.getElementById('topPostersList'); // NEW: Top Posters List
+        const topMentionsListDiv = document.getElementById('topMentionsList'); // NEW: Top Mentions List
+        const noPostsMessage = document.getElementById('noPostsMessage');
+        const mainIframe = document.getElementById('mainIframe'); // Reference to the iframe
+        const feedTitleIcon = document.getElementById('feedTitleIcon'); // Image in the title
+        const feedTitleText = document.getElementById('feedTitleText'); // Text in the title
+        const feedTitleLink = document.getElementById('feedTitleLink'); // New link for title image and text
+        
+        // Feed buttons
+        const homeFeedBtn = document.getElementById('homeFeedBtn'); // NEW: Home button listener
+        const urbanismPlusFeedBtn = document.getElementById('urbanismPlusFeedBtn');
+        const bandcampFeedBtn = document.getElementById('bandcampFeedBtn');
+        const transitSkyFeedBtn = document.getElementById('transitSkyFeedBtn'); // NEW: Event Listener for TransitSky
+        const feedVersionButtonsContainer = document.getElementById('feedVersionButtons'); // New container for version buttons
+
+        // NEW: Toggle buttons for Posters/Mentions
+        const showPostersBtn = document.getElementById('showPostersBtn');
+        const showMentionsBtn = document.getElementById('showMentionsBtn');
+
+        // NEW: Elements related to the Rankings/Featured Feeds section
+        const rankingsSectionTitle = document.getElementById('rankingsSectionTitle');
+        const timeframeSelectorContainer = document.getElementById('timeframeSelectorContainer');
+        const rankingsContent = document.getElementById('rankingsContent'); // The grid containing all ranking sections
+        const featuredFeedsContent = document.getElementById('featuredFeedsContent'); // The new featured feeds section
+        const topHashtagsSection = document.getElementById('topHashtagsSection');
+        const topLinksSection = document.getElementById('topLinksSection');
+        const rankedUsersSection = document.getElementById('rankedUsersSection'); // Contains posters/mentions
+        const topSitesSection = document.getElementById('topSitesSection');
+        const contentTypeBreakdownSection = document.getElementById('contentTypeBreakdownSection');
+
+
+        // Link Posts Modal elements
+        const linkPostsModal = document.getElementById('linkPostsModal');
+        const linkPostsModalTitle = document.getElementById('linkPostsModalTitle');
+        const linkPostsContent = document.getElementById('linkPostsContent');
+        const closeLinkPostsModalBtn = document.getElementById('closeLinkPostsModalBtn');
+
+        // Plus Button Modal elements
+        const plusButtonModal = document.getElementById('plusButtonModal');
+        const closePlusButtonModalBtn = document.getElementById('closePlusButtonModalBtn');
+
+
+        // --- Analysis Data (synced with Firestore for the CURRENTLY ACTIVE feed) ---
+        // currentFeedData will store data read from the unified APP_ID
+        let currentFeedData = {
+            termCounts: {},
+            linkCounts: {},
+            domainCounts: {},
+            contentTypeCounts: {},
+            linkCardsData: {}, // linkCardsData will now store recentPosts and thumbnailUrl
+            imageCardsData: {},
+            posterCounts: {},
+            posterLikes: {}, // This will now explicitly be based on posterCounts
+            mentionCounts: {} // NEW: For mentions
+        };
+        // Cache for already resolved DIDs { did: { handle, displayName, avatar, timestamp } }
+        let resolvedDidsCache = {}; 
+
+        // These will hold the counts for the CURRENTLY SELECTED timeframe (derived from currentFeedData or daily aggregates)
+        let currentDisplayTermCounts = {};
+        let currentDisplayLinkCounts = {}; 
+        let currentDisplayDomainCounts = {}; 
+        let currentDisplayContentTypeCounts = {}; 
+        let currentDisplayPosterCounts = {}; // For displaying current timeframe poster counts
+        let currentDisplayPosterLikes = {}; // For displaying current timeframe poster likes (now same as posts)
+        let currentDisplayMentionCounts = {}; // NEW: For displaying current timeframe mention counts
+
+        let currentSelectedTimeframe = localStorage.getItem('selectedTimeframe') || 'allTime'; // Default timeframe to 'allTime'
+        // REMOVED: let currentLinkFilterHashtag = localStorage.getItem('linkFilterHashtag') || ''; // Default to no filter
+
+        // State for Top Posters/Mentions toggle
+        let currentPosterMentionsView = localStorage.getItem('posterMentionsView') || 'posters'; // 'posters' or 'mentions'
+
+
+        // --- WebSocket Variables ---
+        let ws = null; // Global variable for the currently active WebSocket instance
+        let reconnectInterval = null; // Global variable for the reconnect interval
+        let currentConnectingFeedId = null; // New variable to track which feed is currently attempting connection
+
+        // Debounce variables for Firestore updates
+        let debounceTimer = null;
+        const RECONNECT_DELAY = 10000; // 10 seconds
+        const DEBOUNCE_DELAY = 60000; // Reverted: 60 seconds (1 minute) to reduce Firestore writes
+
+        // Stop words for term analysis (still relevant for hashtags)
+        const stopWords = new Set([
+            'a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'on', 'at', 'to', 'from', 'by',
+            'with', 'in', 'of', 'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have',
+            'has', 'had', 'do', 'does', 'did', 'not', 'no', 'yes', 'it', 'its', 'he', 'she', 'they',
+            'we', 'you', 'i', 'me', 'him', 'her', 'us', 'them', 'this', 'that', 'these', 'those',
+            'my', 'your', 'his', 'her', 'our', 'their', 'which', 'who', 'whom', 'where', 'when',
+            'why', 'how', 'what', 'then', 'than', 'as', 'so', 'if', 'else', 'about', 'just', 'can',
+            'will', 'would', 'should', 'could', 'get', 'like', 'one', 'two', 'new', 'time', 'good',
+            'great', 'very', 'much', 'more', 'also', 'up', 'down', 'out', 'in', 'on', 'off', 'all',
+            'any', 'some', 'such', 'only', 'very', 'through', 'into', 'from', 'here', 'there', 'when',
+            'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other',
+            'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+            's', 't', 'can', 'will', 'just', 'don', 'should', 'now'
+        ]);
+
+        // --- Firebase Configuration (Provided by User) ---
+        // Using the user's provided Firebase config directly.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCm_h3QFhrtx3zaQ3qMaOaVNfLwzwHg5pA",
+            authDomain: "datamaster-78f8e.firebaseapp.com",
+            projectId: "datamaster-78f8e",
+            storageBucket: "datamaster-78f8e.firebasestorage.app",
+            messagingSenderId: "358109304500",
+            appId: "1:358109304500:web:c65f479e00a5ed46c9e9e1",
+            measurementId: "G-HR3XXTQNZD"
+        };
+        console.log("Firebase Config loaded:", firebaseConfig);
+
+
+        // --- Global variables (derived from firebaseConfig or defaults) ---
+        // All read/write operations for analytics data will now use this specified APP_ID.
+        // Derived APP_ID from the projectId in the firebaseConfig for consistency.
+        const APP_ID = firebaseConfig.projectId; 
+        console.log(`Using APP_ID for all public data operations: ${APP_ID}`);
+
+
+        // --- Firebase Instances ---
+        let app;
+        let db;
+        let auth;
+        let currentUserId = null;
+        let isFirebaseReady = false; 
+
+        // --- Feed Configurations ---
+        const feeds = {
+            'datamaster': { // NEW: Datamaster feed (Home)
+                id: 'datamaster',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/datamaster',
+                displayName: 'Home',
+                versions: [{ name: 'Default', src: 'https://graze.social/feeds/embed/8796' }],
+                icon: 'home', // Using a generic SVG icon for home
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/datamaster',
+                titleIconScale: '1',
+                analyzeData: false // IMPORTANT: Do NOT analyze data for this feed
+            },
+            'urbanismPlus': {
+                id: 'urbanismPlus',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaotfjzjplna',
+                displayName: 'Urbanism+',
+                versions: [
+                    { name: 'Default', src: 'https://graze.social/feeds/embed/3654' }
+                ],
+                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/uplus.jpg',
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaotfjzjplna', 
+                titleIconScale: '1.0',
+                analyzeData: true // Analyze data for this feed
+            },
+            'bandcamp': {
+                id: 'bandcamp',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/bandcamp', 
+                displayName: 'Bandcamp', 
+                versions: [
+                    { name: 'Trending', src: 'https://graze.social/feeds/embed/8723' },
+                    { name: 'New', src: 'https://graze.social/feeds/embed/8768' }
+                ],
+                icon: 'https://raw.githubusercontent.com/femavibes/datamaster/refs/heads/main/bandcamp7796.logowik.com.webp',
+                blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/bandcamp', 
+                titleIconScale: '1.3225',
+                analyzeData: true // Analyze data for this feed
+            },
+            'transitSky': { 
+                id: 'transitSky',
+                uri: 'at://did:plc:lptjvw6ut224kwrj7ub3sqbe/app.bsky.feed.generator/aaaic34mdicfg', 
+                displayName: 'TransitSky', 
+                versions: [
+                    { name: 'Default', src: 'https://graze.social/feeds/embed/5511' }
+                ],
+                icon: 'train', // Placeholder SVG for now. Will be replaced by actual image URL.
                 blueskyProfileUrl: 'https://bsky.app/profile/did:plc:lptjvw6ut224kwrj7ub3sqbe/feed/aaaic34mdicfg', 
                 titleIconScale: '1',
                 analyzeData: true // Analyze data for this feed
