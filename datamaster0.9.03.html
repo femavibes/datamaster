@@ -1857,13 +1857,23 @@
                     if (!link) link = currentEmbed.external.uri;
                     if (!title) title = currentEmbed.external.title;
                     if (!description) description = currentEmbed.external.description;
-                    if (!thumbnailUrl) thumbnailUrl = currentEmbed.external.thumb; // Get thumbnail from external embed
-                    console.log('    ExtractEmbedData: Found external embed. Thumbnail:', thumbnailUrl);
+                    // Check if thumb is a string before assigning
+                    if (typeof currentEmbed.external.thumb === 'string' && !thumbnailUrl) {
+                        thumbnailUrl = currentEmbed.external.thumb; // Get thumbnail from external embed
+                    } else if (currentEmbed.external.thumb) {
+                        console.error('  ExtractEmbedData: external.thumb is not a string URL, it is:', currentEmbed.external.thumb);
+                    }
+                    console.log('    ExtractEmbedData: Found external embed. Thumbnail (raw):', currentEmbed.external.thumb, 'Final URL:', thumbnailUrl);
                 }
                 // Case: Direct image embed (not a link, but might have a thumb)
                 else if (currentEmbed.$type === 'app.bsky.embed.images' && currentEmbed.images?.length > 0) {
-                    if (!thumbnailUrl) thumbnailUrl = currentEmbed.images[0].thumb;
-                    console.log('    ExtractEmbedData: Found image embed. Thumbnail:', thumbnailUrl);
+                    // Check if thumb is a string before assigning
+                    if (currentEmbed.images[0].thumb && typeof currentEmbed.images[0].thumb === 'string' && !thumbnailUrl) {
+                        thumbnailUrl = currentEmbed.images[0].thumb;
+                    } else if (currentEmbed.images[0].thumb) {
+                        console.error('  ExtractEmbedData: images[0].thumb is not a string URL, it is:', currentEmbed.images[0].thumb);
+                    }
+                    console.log('    ExtractEmbedData: Found image embed. Thumbnail (raw):', currentEmbed.images[0].thumb, 'Final URL:', thumbnailUrl);
                 }
                 // Case: RecordWithMedia embed (contains a record and media)
                 else if (currentEmbed.$type === 'app.bsky.embed.recordWithMedia') {
@@ -2344,7 +2354,16 @@
 
         // --- UI Update Functions ---
         function renderAnalysis(termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData, mentionCountsData) { 
-            console.log("Rendering analysis with data:", { termData, richLinkCardsData, domainData, contentTypeData, posterCountsData, posterLikesData, mentionCountsData });
+            console.log("Rendering analysis with data: (truncated for console)", { 
+                termData: Object.keys(termData).length > 5 ? `${Object.keys(termData).length} items` : termData, 
+                richLinkCardsData: Object.keys(richLinkCardsData).length > 5 ? `${Object.keys(richLinkCardsData).length} items` : richLinkCardsData, 
+                domainData: Object.keys(domainData).length > 5 ? `${Object.keys(domainData).length} items` : domainData, 
+                contentTypeData: Object.keys(contentTypeData).length > 5 ? `${Object.keys(contentTypeData).length} items` : contentTypeData, 
+                posterCountsData: Object.keys(posterCountsData).length > 5 ? `${Object.keys(posterCountsData).length} items` : posterCountsData, 
+                posterLikesData: Object.keys(posterLikesData).length > 5 ? `${Object.keys(posterLikesData).length} items` : posterLikesData, 
+                mentionCountsData: Object.keys(mentionCountsData).length > 5 ? `${Object.keys(mentionCountsData).length} items` : mentionCountsData 
+            });
+
 
             // NEW: Conditional display for Rankings vs Featured Feeds
             if (currentActiveFeedId === 'datamaster') { // 'datamaster' is the Home feed
@@ -2418,10 +2437,10 @@
                         
                         let imageHtml = '';
                         console.log(`Rendering Link Card for URL: ${url}, Thumbnail URL: ${data.thumbnailUrl}`); // Log the thumbnail URL being used for rendering
-                        if (data.thumbnailUrl) {
+                        if (data.thumbnailUrl && typeof data.thumbnailUrl === 'string') { // Ensure it's a string URL
                             imageHtml = `<img src="${data.thumbnailUrl}" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e2e8f0/333?text=No+Image';this.alt='No Image Available';" class="w-full h-32 object-cover rounded-t-md">`; // Removed mb-2
                         } else {
-                            // Optional: Add a fallback placeholder image if no thumbnail URL is present
+                            // Optional: Add a fallback placeholder image if no thumbnail URL is present or it's not a string
                             imageHtml = `<img src="https://placehold.co/128x128/e2e8f0/333?text=No+Image" alt="No Image Available" class="w-full h-32 object-cover rounded-t-md">`; // Removed mb-2
                         }
 
@@ -2761,6 +2780,12 @@
             currentActiveFeedId = newFeedId;
             // Persist active feed ID
             localStorage.setItem('activeFeedId', newFeedId);
+
+            // NEW: Clear any pending debounce operations from the previous feed
+            clearTimeout(debounceTimer); // Clear existing timer
+            debounceTimer = null; // Ensure it's explicitly null
+            console.log(`Switch Feed: Cleared debounce timer for previous feed.`);
+
 
             // Update UI immediately for responsiveness
             updateUIForActiveFeed(newFeedId);
